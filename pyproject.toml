@@ -20,22 +20,23 @@ classifiers = [
 ]
 
 dependencies = [
-    "pydantic>=2.0",
-    "pandas>=2.0",
-    "numpy>=1.24",
-    "openpyxl>=3.1",
-    "pyyaml>=6.0",
+    "pydantic",
+    "pandas",
+    "polars",
+    "numpy",
+    "openpyxl",
+    "pyyaml",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4",
-    "pytest-cov>=4.1",
-    "ruff>=0.1.0",
-    "mypy>=1.5",
-    "pandas-stubs>=2.0",
-    "types-PyYAML>=6.0",
-    "types-python-dateutil>=2.8",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "pandas-stubs",
+    "types-PyYAML",
+    "types-python-dateutil",
 ]
 
 [tool.setuptools.packages.find]
