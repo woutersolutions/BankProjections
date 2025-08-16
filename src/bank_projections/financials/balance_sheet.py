@@ -56,21 +56,13 @@ class Positions:
         amount: float,
         relative: bool = False,
     ) -> None:
-        """
-        Set the amount for a specific balance sheet item and metric.
-
-        Args:
-            item: Balance sheet item to modify (defines filter criteria)
-            metric: Metric to update (must be stored, not derived)
-            amount: New amount to set
-            relative: If True, add to existing amount; if False, replace existing amount
-        """
-        # Check if any rows match the filter
-        mutation_amounts = self._data.filter(item.filter_expression).select(amount * metric.mutation_expression).item()
-        expr = pl.col(metric.mutation_column) + mutation_amounts if relative else mutation_amounts
+        if relative:
+            expr = metric.mutation_expression(amount, item.filter_expression) + pl.col(metric.mutation_column)
+        else:
+            expr = metric.mutation_expression(amount, item.filter_expression)
 
         self._data = self._data.with_columns(
-            pl.when(item.filter_expression, expr)
+            pl.when(item.filter_expression)
             .then(expr)
             .otherwise(pl.col(metric.mutation_column))
             .alias(metric.mutation_column)
