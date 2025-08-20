@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 import polars as pl
 
-from src.bank_projections.financials.balance_sheet import BalanceSheet, Positions
+from src.bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, Positions
 
 
 @dataclass
@@ -97,14 +97,13 @@ def generate_synthetic_positions(
     # Generate other attributes with simpler values for balance sheet balancing
     data = {
         "Quantity": quantities,
+        "Impairment": [0.0] * num_positions,  # Required for coverage_rate metric
+        "AccruedInterest": [0.0] * num_positions,  # Required for accrued_interest metric
+        "CleanPrice": [1.0] * num_positions,  # Required for fair value calculation
+        "Agio": [0.0] * num_positions,  # Required for book_value calculation (was AgioWeight but this is the amount)
         "AssetType": [random.choice(config.asset_types) for _ in range(num_positions)],
         "Currency": [random.choice(config.currencies) for _ in range(num_positions)],
         "ValuationMethod": [random.choice(config.valuation_methods) for _ in range(num_positions)],
-        "CoverageRate": [0.0] * num_positions,  # Zero coverage for simplicity
-        "AgioWeight": [0.0] * num_positions,  # Zero agio for simplicity
-        "AccruedInterestWeight": [0.0] * num_positions,  # Zero accrued interest for simplicity
-        "AccruedInterestRate": [0.0] * num_positions,  # Zero accrued interest rate for simplicity
-        "DirtyPrice": [0.0] * num_positions,  # Zero dirty price for simplicity
     }
 
     # Add any additional columns
@@ -184,4 +183,8 @@ def create_balanced_balance_sheet(
         **generation_kwargs,
     )
 
-    return BalanceSheet.combine(assets, liabilities, equity)
+    combined_positions = Positions.combine(assets, liabilities, equity)
+    cash_account = BalanceSheetItem(AssetType="cash")
+    pnl_account = BalanceSheetItem(BalanceSheetSide="Equity")
+
+    return BalanceSheet(combined_positions._data, cash_account, pnl_account)
