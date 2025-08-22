@@ -1,3 +1,4 @@
+import datetime
 import random
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -95,6 +96,17 @@ def generate_synthetic_positions(
     quantities = [q * sign for q in quantities]
 
     # Generate other attributes with simpler values for balance sheet balancing
+    # Ensure InterestRate, CouponDate, CouponFrequency, MaturityDate are always present
+    start_year = 2020
+    start_month = 1
+    coupon_dates = [datetime.date(start_year, start_month, 1) for _ in range(num_positions)]
+    coupon_freqs = [random.choice(["M", "Q", "Y"]) for _ in range(num_positions)]
+    interest_rates = [round(random.uniform(0.01, 0.10), 4) for _ in range(num_positions)]
+    # Maturity: 1-10 years after coupon date
+    maturity_dates = [
+        coupon_dates[i].replace(year=coupon_dates[i].year + random.randint(1, 10)) for i in range(num_positions)
+    ]
+
     data = {
         "Quantity": quantities,
         "Impairment": [0.0] * num_positions,  # Required for coverage_rate metric
@@ -104,6 +116,10 @@ def generate_synthetic_positions(
         "AssetType": [random.choice(config.asset_types) for _ in range(num_positions)],
         "Currency": [random.choice(config.currencies) for _ in range(num_positions)],
         "ValuationMethod": [random.choice(config.valuation_methods) for _ in range(num_positions)],
+        "InterestRate": interest_rates,
+        "CouponDate": coupon_dates,
+        "CouponFrequency": coupon_freqs,
+        "MaturityDate": maturity_dates,
     }
 
     # Add any additional columns
