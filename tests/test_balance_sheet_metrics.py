@@ -1,5 +1,7 @@
 """Test script for BalanceSheet get_amount and mutate methods."""
 
+import polars as pl
+
 from examples.synthetic_data import create_balanced_balance_sheet
 from src.bank_projections.financials.balance_sheet import BalanceSheetItem
 from src.bank_projections.financials.metrics import BalanceSheetMetrics
@@ -49,3 +51,80 @@ class TestBalanceSheetMethods:
             "Total cash change should match the loan quantity change"
         )
         assert abs(mutation_result["PnL"].sum()) < 1, "Total cash change should match the loan quantity change"
+
+    # Parameterized test for all editable metrics and offset modes
+    import pytest
+
+    @pytest.mark.parametrize(
+        "metric, asset_type",
+        [
+            (BalanceSheetMetrics.quantity, "loan"),
+            (BalanceSheetMetrics.impairment, "loan"),
+            (BalanceSheetMetrics.accrued_interest, "bond"),
+            (BalanceSheetMetrics.agio, "bond"),
+            (BalanceSheetMetrics.clean_price, "bond"),
+        ],
+    )
+    @pytest.mark.parametrize("offset_mode", [None, "cash", "pnl"])
+    def test_mutate_metric_with_offsets(self, metric, asset_type, offset_mode):
+        item = BalanceSheetItem(AssetType=asset_type)
+        initial_value = self.bs.get_amount(item, metric)
+        mutation_amount = initial_value + 1000 if metric != BalanceSheetMetrics.clean_price else 105.0
+
+        # Determine offset args
+        offset_args = {}
+        if offset_mode == "cash":
+            offset_args["offset_liquidity"] = True
+            offset_column = BalanceSheetMetrics.quantity
+            offset_item = BalanceSheetItem(AssetType="cash")
+        elif offset_mode == "pnl":
+            offset_args["offset_pnl"] = True
+            offset_column = BalanceSheetMetrics.quantity
+            offset_item = BalanceSheetItem(BalanceSheetSide="Equity")
+        else:
+            offset_column = None
+            offset_item = None
+
+        # Record initial offset value before mutation
+        if offset_item:
+            initial_offset = self.bs.get_amount(offset_item, offset_column)
+
+        # Perform mutation
+        mutation_result = self.bs.mutate(item, metric, mutation_amount, relative=False, **offset_args)
+
+        # Check mutated value
+        new_value = self.bs.get_amount(item, metric)
+        assert abs(new_value - mutation_amount) < 1, f"Expected {mutation_amount}, got {new_value} for {metric}"
+
+        # If offsetting, check offset column after mutation
+        if offset_item:
+            new_offset = self.bs.get_amount(offset_item, offset_column)
+            offset_change = new_offset - initial_offset
+            total_book_value_change = float(mutation_result["BookValue"].sum())
+            expected_change = total_book_value_change if offset_mode == "pnl" else -total_book_value_change
+            assert abs(offset_change - expected_change) < 1, (
+                f"Offset change {offset_change} does not match expected {expected_change} for {offset_mode}"
+            )
+
+            if offset_mode == "cash":
+                assert abs(mutation_result["Liquidity"].sum() + total_book_value_change) < 1, (
+                    "Liquidity change in mutation result should match book value change"
+                )
+                assert abs(mutation_result["PnL"].sum()) < 1, "PnL change should be zero when offsetting with cash"
+            if offset_mode == "pnl":
+                assert abs(mutation_result["PnL"].sum() - total_book_value_change) < 1, (
+                    "PnL change in mutation result should match book value change"
+                )
+                assert abs(mutation_result["Liquidity"].sum()) < 1, (
+                    "Liquidity change should be zero when offsetting with PnL"
+                )
+
+        # Check mutation result table
+        assert len(mutation_result) > 0, "Mutation should return a results table"
+
+        # In case of offset, check total mutations (book value + cash - pnl) are zero
+        if offset_item:
+            total_mutation = mutation_result.select(
+                (pl.col("BookValue") + pl.col("Liquidity") - pl.col("PnL")).alias("TotalChange").sum()
+            ).item()
+            assert abs(total_mutation) < 1, "Total mutation (book value + liquidity - pnl) should be close to zero"

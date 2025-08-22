@@ -23,6 +23,7 @@ dependencies = [
     "pydantic",
     "pandas",
     "polars",
+    "pyarrow",
     "numpy",
     "openpyxl",
     "pyyaml",
