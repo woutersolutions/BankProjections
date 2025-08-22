@@ -1,6 +1,7 @@
 """Test script for BalanceSheet get_amount and mutate methods."""
 
 import polars as pl
+import pytest
 
 from examples.synthetic_data import create_balanced_balance_sheet
 from src.bank_projections.financials.balance_sheet import BalanceSheetItem
@@ -53,8 +54,6 @@ class TestBalanceSheetMethods:
         assert abs(mutation_result["PnL"].sum()) < 1, "Total cash change should match the loan quantity change"
 
     # Parameterized test for all editable metrics and offset modes
-    import pytest
-
     @pytest.mark.parametrize(
         "metric, asset_type",
         [
@@ -70,24 +69,39 @@ class TestBalanceSheetMethods:
         ],
     )
     @pytest.mark.parametrize("offset_mode", [None, "cash", "pnl"])
-    def test_mutate_metric_with_offsets(self, metric, asset_type, offset_mode):
+    @pytest.mark.parametrize("relative", [False, True])
+    def test_mutate_metric_with_offsets(self, metric, asset_type, offset_mode, relative):
         item = BalanceSheetItem(AssetType=asset_type)
         initial_value = self.bs.get_amount(item, metric)
 
-        # Choose a sensible mutation target per metric type
+        # Choose a sensible mutation target per metric type and relative mode
         if metric == BalanceSheetMetrics.clean_price:
-            mutation_amount = 105.0  # set clean price to a fixed realistic value
+            if relative:
+                mutation_amount = 5.0  # add 5 to current clean price (weighted)
+                expected_value = initial_value + mutation_amount
+            else:
+                mutation_amount = 105.0  # set clean price to a fixed realistic value
+                expected_value = mutation_amount
         elif metric in {
             BalanceSheetMetrics.coverage_rate,
             BalanceSheetMetrics.accrued_interest_rate,
             BalanceSheetMetrics.agio_weight,
         }:
-            # Set a small positive rate; if initial already near this, bump slightly
-            target = 0.02
-            mutation_amount = target if abs(initial_value - target) > 1e-6 else target + 0.01
+            if relative:
+                mutation_amount = 0.01  # add 1 percentage point to the weight
+                expected_value = initial_value + mutation_amount
+            else:
+                target = 0.02
+                mutation_amount = target if abs(initial_value - target) > 1e-6 else target + 0.01
+                expected_value = mutation_amount
         else:
-            # For absolute amount columns, nudge upward by a fixed increment
-            mutation_amount = initial_value + 1_000
+            # For absolute amount columns
+            if relative:
+                mutation_amount = 1_000.0  # add 1,000 to the aggregate amount
+                expected_value = initial_value + mutation_amount
+            else:
+                mutation_amount = initial_value + 1_000.0  # set aggregate amount to initial + 1,000
+                expected_value = mutation_amount
 
         # Determine offset args
         offset_args = {}
@@ -108,11 +122,13 @@ class TestBalanceSheetMethods:
             initial_offset = self.bs.get_amount(offset_item, offset_column)
 
         # Perform mutation
-        mutation_result = self.bs.mutate(item, metric, mutation_amount, relative=False, **offset_args)
+        mutation_result = self.bs.mutate(item, metric, mutation_amount, relative=relative, **offset_args)
 
         # Check mutated value
         new_value = self.bs.get_amount(item, metric)
-        assert abs(new_value - mutation_amount) < 1, f"Expected {mutation_amount}, got {new_value} for {metric}"
+        assert abs(new_value - expected_value) < 1, (
+            f"Expected {expected_value}, got {new_value} for {metric} (relative={relative})"
+        )
 
         # If offsetting, check offset column after mutation
         if offset_item:
