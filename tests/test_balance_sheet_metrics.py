@@ -63,13 +63,31 @@ class TestBalanceSheetMethods:
             (BalanceSheetMetrics.accrued_interest, "bond"),
             (BalanceSheetMetrics.agio, "bond"),
             (BalanceSheetMetrics.clean_price, "bond"),
+            # Include derived, but updatable metrics (weights)
+            (BalanceSheetMetrics.coverage_rate, "loan"),
+            (BalanceSheetMetrics.accrued_interest_rate, "bond"),
+            (BalanceSheetMetrics.agio_weight, "bond"),
         ],
     )
     @pytest.mark.parametrize("offset_mode", [None, "cash", "pnl"])
     def test_mutate_metric_with_offsets(self, metric, asset_type, offset_mode):
         item = BalanceSheetItem(AssetType=asset_type)
         initial_value = self.bs.get_amount(item, metric)
-        mutation_amount = initial_value + 1000 if metric != BalanceSheetMetrics.clean_price else 105.0
+
+        # Choose a sensible mutation target per metric type
+        if metric == BalanceSheetMetrics.clean_price:
+            mutation_amount = 105.0  # set clean price to a fixed realistic value
+        elif metric in {
+            BalanceSheetMetrics.coverage_rate,
+            BalanceSheetMetrics.accrued_interest_rate,
+            BalanceSheetMetrics.agio_weight,
+        }:
+            # Set a small positive rate; if initial already near this, bump slightly
+            target = 0.02
+            mutation_amount = target if abs(initial_value - target) > 1e-6 else target + 0.01
+        else:
+            # For absolute amount columns, nudge upward by a fixed increment
+            mutation_amount = initial_value + 1_000
 
         # Determine offset args
         offset_args = {}
