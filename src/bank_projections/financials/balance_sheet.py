@@ -128,7 +128,7 @@ class BalanceSheet(Positions):
             if offset_liquidity
             else pl.lit(0.0).alias("Liquidity"),
             (pl.col("BookValueNew") - pl.col("BookValueOld")).alias("PnL") if offset_pnl else pl.lit(0.0).alias("PnL"),
-        ).select(MUTATION_AGGREGATION_LABELS + list(impact_metrics.keys()))
+        ).select(MUTATION_AGGREGATION_LABELS + list(impact_metrics.keys()) + ["Liquidity", "PnL"])
 
         # Update the balance sheet data with the mutations
         self._data = new_data
