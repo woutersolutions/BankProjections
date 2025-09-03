@@ -1,5 +1,6 @@
 """Test script for BalanceSheet get_amount and mutate methods."""
 
+import polars as pl
 import pytest
 
 from examples.synthetic_data import create_balanced_balance_sheet
@@ -74,10 +75,6 @@ class TestBalanceSheetMethods:
 
     def test_mutate_with_liquidity_offset(self) -> None:
         """Test mutating with liquidity offset."""
-        # Get initial cash amount
-        cash_item = BalanceSheetItem(AssetType="cash")
-        initial_cash = self.bs.get_amount(cash_item, BalanceSheetMetrics.book_value)
-
         # Get initial loan amount
         loans_item = BalanceSheetItem(AssetType="loan")
         initial_loans = self.bs.get_amount(loans_item, BalanceSheetMetrics.book_value)
@@ -127,6 +124,147 @@ class TestBalanceSheetMethods:
             self.bs.mutate_metric(
                 loans_item, BalanceSheetMetrics.quantity, 100_000, offset_liquidity=True, offset_pnl=True
             )
+
+    def test_mutate_basic_functionality(self) -> None:
+        """Test basic functionality of the new mutate method."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+
+        # Test simple quantity mutation
+        self.bs.mutate(loans_item, Quantity=pl.col("Quantity") + 10_000)
+
+        # Verify the mutation
+        new_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        loan_rows = len(self.bs._data.filter(loans_item.filter_expression))
+        expected_total = initial_quantity + (loan_rows * 10_000)
+
+        assert abs(new_quantity - expected_total) < 1, f"Expected {expected_total}, got {new_quantity}"
+
+    def test_mutate_multiple_columns(self) -> None:
+        """Test mutating multiple columns simultaneously."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        initial_impairment = self.bs.get_amount(loans_item, BalanceSheetMetrics.impairment)
+
+        # Test mutation with multiple columns
+        self.bs.mutate(loans_item, Quantity=pl.col("Quantity") + 5_000, Impairment=pl.col("Impairment") + 500)
+
+        # Verify both mutations
+        new_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        new_impairment = self.bs.get_amount(loans_item, BalanceSheetMetrics.impairment)
+
+        loan_rows = len(self.bs._data.filter(loans_item.filter_expression))
+        expected_quantity = initial_quantity + (loan_rows * 5_000)
+        expected_impairment = initial_impairment + (loan_rows * 500)
+
+        assert abs(new_quantity - expected_quantity) < 1, f"Expected quantity {expected_quantity}, got {new_quantity}"
+        assert abs(new_impairment - expected_impairment) < 1, (
+            f"Expected impairment {expected_impairment}, got {new_impairment}"
+        )
+
+    def test_mutate_with_custom_pnl_expression(self) -> None:
+        """Test mutate with custom PnL expression."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+
+        # Clear existing cashflows/pnls
+        self.bs.cashflows = pl.DataFrame()
+        self.bs.pnls = pl.DataFrame()
+
+        # Test with custom PnL expression (fixed amount per row)
+        self.bs.mutate(loans_item, pnl=pl.lit(1000.0), Quantity=pl.col("Quantity") + 1_000)
+
+        # Verify PnL was recorded
+        assert len(self.bs.pnls) > 0, "PnL should have been recorded"
+        total_pnl = self.bs.pnls["Amount"].sum()
+        loan_rows = len(self.bs._data.filter(loans_item.filter_expression))
+        expected_pnl = loan_rows * 1000.0  # pl.lit(1000.0) applied to each row
+        assert abs(total_pnl - expected_pnl) < 1, f"Expected PnL {expected_pnl}, got {total_pnl}"
+
+    def test_mutate_with_custom_liquidity_expression(self) -> None:
+        """Test mutate with custom liquidity expression."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+
+        # Clear existing cashflows/pnls
+        self.bs.cashflows = pl.DataFrame()
+        self.bs.pnls = pl.DataFrame()
+
+        # Test with custom liquidity expression
+        self.bs.mutate(loans_item, liquidity=pl.lit(-500.0), Quantity=pl.col("Quantity") + 2_000)
+
+        # Verify cashflow was recorded
+        assert len(self.bs.cashflows) > 0, "Cashflow should have been recorded"
+        total_cashflow = self.bs.cashflows["Amount"].sum()
+        loan_rows = len(self.bs._data.filter(loans_item.filter_expression))
+        expected_cashflow = loan_rows * (-500.0)
+        assert abs(total_cashflow - expected_cashflow) < 1, (
+            f"Expected cashflow {expected_cashflow}, got {total_cashflow}"
+        )
+
+    def test_mutate_with_offset_pnl_flag(self) -> None:
+        """Test mutate with offset_pnl flag (automatic book value offset)."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+        initial_balance = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
+
+        # Clear existing cashflows/pnls
+        self.bs.cashflows = pl.DataFrame()
+        self.bs.pnls = pl.DataFrame()
+
+        # Test with automatic PnL offset
+        self.bs.mutate(loans_item, offset_pnl=True, Quantity=pl.col("Quantity") + 3_000)
+
+        # Verify PnL offset was recorded and balance is maintained
+        assert len(self.bs.pnls) > 0, "PnL should have been recorded for offset"
+        final_balance = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
+        assert abs(final_balance - initial_balance) < 0.01, f"Balance should be maintained, got {final_balance}"
+
+    def test_mutate_with_offset_liquidity_flag(self) -> None:
+        """Test mutate with offset_liquidity flag (automatic book value offset)."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+        initial_balance = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
+
+        # Clear existing cashflows/pnls
+        self.bs.cashflows = pl.DataFrame()
+        self.bs.pnls = pl.DataFrame()
+
+        # Test with automatic liquidity offset
+        self.bs.mutate(loans_item, offset_liquidity=True, Quantity=pl.col("Quantity") + 4_000)
+
+        # Verify liquidity offset was recorded and balance is maintained
+        assert len(self.bs.cashflows) > 0, "Cashflow should have been recorded for offset"
+        final_balance = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
+        assert abs(final_balance - initial_balance) < 0.01, f"Balance should be maintained, got {final_balance}"
+
+    def test_mutate_error_invalid_column(self) -> None:
+        """Test that mutate raises error for invalid column names."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+
+        with pytest.raises(ValueError, match="Invalid column"):
+            self.bs.mutate(loans_item, InvalidColumn=pl.lit(100))
+
+    def test_mutate_error_both_offset_flags(self) -> None:
+        """Test that mutate raises error when both offset flags are True."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+
+        with pytest.raises(ValueError, match="Cannot offset with both cash and pnl"):
+            self.bs.mutate(loans_item, offset_pnl=True, offset_liquidity=True, Quantity=pl.col("Quantity") + 1000)
+
+    def test_mutate_cleanup_temporary_columns(self) -> None:
+        """Test that temporary columns are properly cleaned up after mutation."""
+        loans_item = BalanceSheetItem(AssetType="loan")
+        initial_columns = set(self.bs._data.columns)
+
+        # Perform mutation with PnL expression (creates temporary columns)
+        self.bs.mutate(loans_item, pnl=pl.lit(100.0), Quantity=pl.col("Quantity") + 1000)
+
+        # Check that no temporary columns remain
+        final_columns = set(self.bs._data.columns)
+        temp_columns = {"pnl", "liquidity", "BookValueBefore"}
+
+        for temp_col in temp_columns:
+            assert temp_col not in final_columns, f"Temporary column '{temp_col}' was not cleaned up"
+
+        # Should have same columns as before (plus any permanent additions if any)
+        assert initial_columns.issubset(final_columns), "Original columns should be preserved"
 
 
 if __name__ == "__main__":

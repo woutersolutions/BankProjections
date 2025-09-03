@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 import polars as pl
 
+from bank_projections.config import PNL_AGGREGATION_LABELS
 from src.bank_projections.config import CASHFLOW_AGGREGATION_LABELS
 from src.bank_projections.financials.metrics import (
     BalanceSheetMetric,
@@ -99,44 +100,58 @@ class BalanceSheet(Positions):
         else:
             expr = metric.mutation_expression(amount, item.filter_expression)
 
-        new_data = self._data.with_columns(
-            pl.when(item.filter_expression)
-            .then(expr)
-            .otherwise(pl.col(metric.mutation_column))
-            .alias(metric.mutation_column),
-            BalanceSheetMetrics.book_value.get_expression.alias("BookValueBefore"),
-        ).with_columns(
-            (BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore")).alias("BookValueImpact")
+        self.mutate(item, **{metric.mutation_column: expr}, offset_pnl=offset_pnl, offset_liquidity=offset_liquidity)
+
+    def mutate(
+        self,
+        item: BalanceSheetItem,
+        pnl: Optional[pl.Expr] = None,
+        liquidity: Optional[pl.Expr] = None,
+        offset_pnl: bool = False,
+        offset_liquidity: bool = False,
+        **exprs: pl.Expr,
+    ) -> None:
+        # Assert all exprs keys are valid columns
+        valid_columns = set(self._data.columns)
+        for k in exprs:
+            if k not in valid_columns:
+                raise ValueError(f"Invalid column '{k}' for mutation. Valid columns are: {valid_columns}")
+
+        self._data = self._data.with_columns(
+            **{k: pl.when(item.filter_expression).then(v).otherwise(pl.col(k)) for k, v in exprs.items()},
+            pnl=pl.when(item.filter_expression).then(pnl).otherwise(0.0) if pnl is not None else None,
+            liquidity=pl.when(item.filter_expression).then(liquidity).otherwise(0.0) if liquidity is not None else None,
+            BookValueBefore=BalanceSheetMetrics.book_value.get_expression,
         )
 
-        self._data = new_data.drop("BookValueBefore", "BookValueImpact")
-
-        if offset_liquidity and offset_pnl:
+        if pnl is not None:
+            self.add_pnl(self._data.filter(item.filter_expression), pl.col("pnl"))
+        if liquidity is not None:
+            self.add_liquidity(self._data.filter(item.filter_expression), pl.col("liquidity"))
+        if offset_pnl and offset_liquidity:
             raise ValueError("Cannot offset with both cash and pnl")
-        if offset_liquidity:
-            cashflows = (
-                new_data.filter(item.filter_expression)
-                .group_by(CASHFLOW_AGGREGATION_LABELS)
-                .agg(Amount=-pl.col("BookValueImpact").sum())
-            )
-            self.cashflows = pl.concat([self.cashflows, cashflows])
-            self.add_liquidity(cashflows["Amount"].sum())
-
         if offset_pnl:
-            pnls = (
-                new_data.filter(item.filter_expression)
-                .group_by(CASHFLOW_AGGREGATION_LABELS)
-                .agg(Amount=pl.col("BookValueImpact").sum())
+            self.add_pnl(
+                self._data.filter(item.filter_expression),
+                BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore"),
             )
-            self.pnls = pl.concat([self.pnls, pnls])
-            self.add_pnl(-pnls["Amount"].sum())
+        if offset_liquidity:
+            self.add_liquidity(
+                self._data.filter(item.filter_expression),
+                -(BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore")),
+            )
 
-    def add_pnl(self, amount: float):
-        # TODO: Add origination date
-        self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, amount, relative=True)
+        self._data = self._data.drop("BookValueBefore", "pnl", "liquidity", strict=False)
 
-    def add_liquidity(self, amount: float):
-        self.mutate_metric(self.cash_account, BalanceSheetMetrics.quantity, amount, relative=True)
+    def add_pnl(self, data: pl.DataFrame, expr: pl.Expr):
+        pnls = data.group_by(PNL_AGGREGATION_LABELS).agg(Amount=expr.sum())
+        self.pnls = pl.concat([self.pnls, pnls])
+        self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, -pnls["Amount"].sum(), relative=True)
+
+    def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr):
+        cashflows = data.group_by(CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum())
+        self.cashflows = pl.concat([self.cashflows, cashflows])
+        self.mutate_metric(self.cash_account, BalanceSheetMetrics.quantity, cashflows["Amount"].sum(), relative=True)
 
     def copy(self):
         return BalanceSheet(
