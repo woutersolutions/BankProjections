@@ -109,6 +109,8 @@ class BalanceSheet(Positions):
             (BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore")).alias("BookValueImpact")
         )
 
+        self._data = new_data.drop("BookValueBefore", "BookValueImpact")
+
         if offset_liquidity and offset_pnl:
             raise ValueError("Cannot offset with both cash and pnl")
         if offset_liquidity:
@@ -118,6 +120,8 @@ class BalanceSheet(Positions):
                 .agg(Amount=-pl.col("BookValueImpact").sum())
             )
             self.cashflows = pl.concat([self.cashflows, cashflows])
+            self.add_liquidity(cashflows["Amount"].sum())
+
         if offset_pnl:
             pnls = (
                 new_data.filter(item.filter_expression)
@@ -125,16 +129,14 @@ class BalanceSheet(Positions):
                 .agg(Amount=pl.col("BookValueImpact").sum())
             )
             self.pnls = pl.concat([self.pnls, pnls])
-
-        # Update the balance sheet data with the mutations
-        self._data = new_data.drop("BookValueBefore", "BookValueImpact")
+            self.add_pnl(-pnls["Amount"].sum())
 
     def add_pnl(self, amount: float):
         # TODO: Add origination date
-        self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, amount, True)
+        self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, amount, relative=True)
 
     def add_liquidity(self, amount: float):
-        self.mutate_metric(self.cash_account, BalanceSheetMetrics.quantity, amount, True)
+        self.mutate_metric(self.cash_account, BalanceSheetMetrics.quantity, amount, relative=True)
 
     def copy(self):
         return BalanceSheet(

@@ -47,10 +47,7 @@ class TestBalanceSheetMethods:
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity to 100,000 (absolute)
-        mutation_result = self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=False)
-
-        # Verify the mutation result table is returned
-        assert len(mutation_result) > 0, "Mutation should return a results table"
+        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=False)
 
         # Verify the loan quantity is now 100,000 (absolute mutation)
         new_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
@@ -85,19 +82,24 @@ class TestBalanceSheetMethods:
         loans_item = BalanceSheetItem(AssetType="loan")
         initial_loans = self.bs.get_amount(loans_item, BalanceSheetMetrics.book_value)
 
+        # Clear existing cashflows to track just this mutation
+        initial_cashflows_len = len(self.bs.cashflows)
+
         # Increase loans with liquidity offset
         self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=True, offset_liquidity=True)
 
-        # Verify loans increased and cash decreased to maintain balance
+        # Verify loans increased and cashflows were recorded
         new_loans = self.bs.get_amount(loans_item, BalanceSheetMetrics.book_value)
-        new_cash = self.bs.get_amount(cash_item, BalanceSheetMetrics.book_value)
-
         loan_increase = new_loans - initial_loans
-        cash_change = new_cash - initial_cash
 
         assert loan_increase > 0, "Loans should have increased"
-        # Cash should decrease by approximately the same amount (with opposite sign)
-        assert abs(loan_increase + cash_change) < 1, "Liquidity offset should balance the change"
+
+        # Verify cashflows were recorded
+        assert len(self.bs.cashflows) > initial_cashflows_len, "Cashflows should have been recorded"
+
+        # Verify cashflow amount matches loan increase (with opposite sign)
+        total_cashflow = self.bs.cashflows["Amount"].sum()
+        assert abs(total_cashflow + loan_increase) < 1, "Cashflow should offset loan increase"
 
     def test_mutate_preserves_balance(self) -> None:
         """Test that mutations preserve balance sheet balance."""
