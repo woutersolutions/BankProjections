@@ -25,7 +25,7 @@ class TestBalanceSheetMethods:
 
         # Mutate loan quantity to 100,000 with cash offset
         mutation_amount = 100_000
-        mutation_result = self.bs.mutate(
+        mutation_result = self.bs.mutate_metric(
             loans_item, BalanceSheetMetrics.quantity, mutation_amount, relative=False, offset_liquidity=True
         )
         expected_mutation = mutation_amount - initial_loan_qty
@@ -122,7 +122,7 @@ class TestBalanceSheetMethods:
             initial_offset = self.bs.get_amount(offset_item, offset_column)
 
         # Perform mutation
-        mutation_result = self.bs.mutate(item, metric, mutation_amount, relative=relative, **offset_args)
+        mutation_result = self.bs.mutate_metric(item, metric, mutation_amount, relative=relative, **offset_args)
 
         # Check mutated value
         new_value = self.bs.get_amount(item, metric)

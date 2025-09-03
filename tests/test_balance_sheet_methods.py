@@ -47,7 +47,7 @@ class TestBalanceSheetMethods:
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity to 100,000 (absolute)
-        mutation_result = self.bs.mutate(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=False)
+        mutation_result = self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=False)
 
         # Verify the mutation result table is returned
         assert len(mutation_result) > 0, "Mutation should return a results table"
@@ -68,7 +68,7 @@ class TestBalanceSheetMethods:
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity by adding 50,000 relatively
-        self.bs.mutate(loans_item, BalanceSheetMetrics.quantity, 50_000, relative=True)
+        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 50_000, relative=True)
 
         # Verify the loan quantity increased
         new_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
@@ -86,7 +86,7 @@ class TestBalanceSheetMethods:
         initial_loans = self.bs.get_amount(loans_item, BalanceSheetMetrics.book_value)
 
         # Increase loans with liquidity offset
-        self.bs.mutate(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=True, offset_liquidity=True)
+        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=True, offset_liquidity=True)
 
         # Verify loans increased and cash decreased to maintain balance
         new_loans = self.bs.get_amount(loans_item, BalanceSheetMetrics.book_value)
@@ -108,7 +108,7 @@ class TestBalanceSheetMethods:
         loans_item = BalanceSheetItem(AssetType="loan")
 
         # Mutation with liquidity offset should preserve balance
-        self.bs.mutate(loans_item, BalanceSheetMetrics.quantity, 50_000, relative=True, offset_liquidity=True)
+        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 50_000, relative=True, offset_liquidity=True)
 
         # Check balance is still maintained
         new_total = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
@@ -122,7 +122,9 @@ class TestBalanceSheetMethods:
 
         # Should raise error if both offset_liquidity and offset_pnl are True
         with pytest.raises(ValueError, match="Cannot offset with both cash and pnl"):
-            self.bs.mutate(loans_item, BalanceSheetMetrics.quantity, 100_000, offset_liquidity=True, offset_pnl=True)
+            self.bs.mutate_metric(
+                loans_item, BalanceSheetMetrics.quantity, 100_000, offset_liquidity=True, offset_pnl=True
+            )
 
 
 if __name__ == "__main__":

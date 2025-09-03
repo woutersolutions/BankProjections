@@ -3,7 +3,7 @@ from typing import Any
 
 import polars as pl
 
-from src.bank_projections.config import MUTATION_AGGREGATION_LABELS
+from src.bank_projections.config import CASHFLOW_AGGREGATION_LABELS
 from src.bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
@@ -70,6 +70,9 @@ class BalanceSheet(Positions):
         self.cash_account = cash_account
         self.pnl_account = pnl_account
 
+        self.cashflows = pl.DataFrame()
+        self.pnls = pl.DataFrame()
+
         self.validate()
 
     def validate(self) -> None:
@@ -82,7 +85,7 @@ class BalanceSheet(Positions):
                 f"expected 0.00 (assets should equal funding within 0.01 tolerance)"
             )
 
-    def mutate(
+    def mutate_metric(
         self,
         item: BalanceSheetItem,
         metric: BalanceSheetMetric,
@@ -90,10 +93,7 @@ class BalanceSheet(Positions):
         relative: bool = False,
         offset_liquidity: bool = False,
         offset_pnl: bool = False,
-    ) -> pl.DataFrame:
-        if offset_liquidity and offset_pnl:
-            raise ValueError("Cannot offset with both cash and pnl")
-
+    ) -> None:
         if relative:
             expr = metric.mutation_expression(amount, item.filter_expression) + pl.col(metric.mutation_column)
         else:
@@ -103,53 +103,38 @@ class BalanceSheet(Positions):
             pl.when(item.filter_expression)
             .then(expr)
             .otherwise(pl.col(metric.mutation_column))
-            .alias(metric.mutation_column)
+            .alias(metric.mutation_column),
+            BalanceSheetMetrics.book_value.get_expression.alias("BookValueBefore"),
+        ).with_columns(
+            (BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore")).alias("BookValueImpact")
         )
 
-        # Calculate book value impact
-        impact_metrics = {"Quantity": BalanceSheetMetrics.quantity, "BookValue": BalanceSheetMetrics.book_value}
-
-        def agg_bs(df: pl.DataFrame, suffix: str) -> pl.DataFrame:
-            return (
-                df.filter(item.filter_expression)
-                .group_by(MUTATION_AGGREGATION_LABELS)
-                .agg(*[metric.aggregation_expression.alias(name + suffix) for name, metric in impact_metrics.items()])
+        if offset_liquidity and offset_pnl:
+            raise ValueError("Cannot offset with both cash and pnl")
+        if offset_liquidity:
+            cashflows = (
+                new_data.filter(item.filter_expression)
+                .group_by(CASHFLOW_AGGREGATION_LABELS)
+                .agg(Amount=-pl.col("BookValueImpact").sum())
             )
-
-        diffs = (
-            agg_bs(new_data, "New")
-            .join(agg_bs(self._data, "Old"), on=MUTATION_AGGREGATION_LABELS, how="full", coalesce=True)
-            .fill_null(0.0)
-        )
-
-        mutations = diffs.with_columns(
-            *[(pl.col(name + "New") - pl.col(name + "Old")).alias(name) for name in impact_metrics],
-            -(pl.col("BookValueNew") - pl.col("BookValueOld")).alias("Liquidity")
-            if offset_liquidity
-            else pl.lit(0.0).alias("Liquidity"),
-            (pl.col("BookValueNew") - pl.col("BookValueOld")).alias("PnL") if offset_pnl else pl.lit(0.0).alias("PnL"),
-        ).select(MUTATION_AGGREGATION_LABELS + list(impact_metrics.keys()) + ["Liquidity", "PnL"])
+            self.cashflows = pl.concat([self.cashflows, cashflows])
+        if offset_pnl:
+            pnls = (
+                new_data.filter(item.filter_expression)
+                .group_by(CASHFLOW_AGGREGATION_LABELS)
+                .agg(Amount=pl.col("BookValueImpact").sum())
+            )
+            self.pnls = pl.concat([self.pnls, pnls])
 
         # Update the balance sheet data with the mutations
-        self._data = new_data
-
-        if offset_pnl or offset_liquidity:
-            # Calculate the total book value change for offsetting
-            total_book_value_change = mutations.select(pl.col("BookValue").sum()).item()
-
-            if offset_pnl:
-                self.add_pnl(total_book_value_change)
-            if offset_liquidity:
-                self.add_liquidity(-total_book_value_change)
-
-        return mutations
+        self._data = new_data.drop("BookValueBefore", "BookValueImpact")
 
     def add_pnl(self, amount: float):
         # TODO: Add origination date
-        self.mutate(self.pnl_account, BalanceSheetMetrics.quantity, amount, True)
+        self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, amount, True)
 
     def add_liquidity(self, amount: float):
-        self.mutate(self.cash_account, BalanceSheetMetrics.quantity, amount, True)
+        self.mutate_metric(self.cash_account, BalanceSheetMetrics.quantity, amount, True)
 
     def copy(self):
         return BalanceSheet(
