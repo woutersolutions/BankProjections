@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 import polars as pl
 
-from src.bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, Positions
+from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, Positions
 
 
 @dataclass

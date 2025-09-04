@@ -2,9 +2,9 @@
 
 import pytest
 
+from bank_projections.financials.balance_sheet import BalanceSheetItem
+from bank_projections.financials.metrics import BalanceSheetMetrics
 from examples.synthetic_data import create_balanced_balance_sheet
-from src.bank_projections.financials.balance_sheet import BalanceSheetItem
-from src.bank_projections.financials.metrics import BalanceSheetMetrics
 
 
 def test_create_simple_balance_sheet():

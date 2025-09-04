@@ -77,6 +77,11 @@ python -m bank_projections     # Run the application
 - Use pytest fixtures for test data
 - Generate synthetic data for testing
 
+### Import Conventions
+- Use `from bank_projections.module import Class` for imports within the codebase
+- The `src/` directory is in the Python path, so `bank_projections` can be imported directly
+- Avoid `src.bank_projections` import style
+
 ## Important Reminders
 
 1. **No Real Data**: This repo uses only synthetic data for testing and demonstration
