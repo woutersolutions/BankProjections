@@ -159,25 +159,18 @@ class TestCouponPayments:
     def test_apply_zero_interest_rate(self) -> None:
         """Test applying rule with zero interest rate."""
         # Set interest rate to zero for all loans
-        loan_filter = pl.col("AssetType") == "loan"
-        self.bs._data = self.bs._data.with_columns(
-            pl.when(loan_filter)
-            .then(pl.lit(0.0))
-            .otherwise(pl.col("InterestRate"))
-            .alias("InterestRate")  # TODO: Use mutate matric to set the interest
-        )
         item = BalanceSheetItem(AssetType="loan")
-        self.bs.mutate_metric(item, BalanceSheetMetrics.accrued_interest, 0.0, MutationReason(test="test"))
+        reason = MutationReason(test="test")
+        self.bs.mutate_metric(item, BalanceSheetMetrics.interest_rate, 0.0, reason)
+        self.bs.mutate_metric(item, BalanceSheetMetrics.accrued_interest, 0.0, reason)
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
         rule = CouponPayments()
-        initial_pnl = (
-            self.bs.pnls.filter(pl.col("AssetType") == "loan")["Amount"].sum() if len(self.bs.pnls) > 0 else 0.0
-        )
+        initial_pnl = self.bs.pnls.filter(item.filter_expression)["Amount"].sum() if len(self.bs.pnls) > 0 else 0.0
 
         result_bs = rule.apply(self.bs, increment)
-        new_pnl = result_bs.pnls.filter(pl.col("AssetType") == "loan")["Amount"].sum()
+        new_pnl = result_bs.pnls.filter(item.filter_expression)["Amount"].sum()
 
         assert initial_pnl == new_pnl
 

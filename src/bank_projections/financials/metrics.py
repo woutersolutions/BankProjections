@@ -60,7 +60,7 @@ class CoreAmount(StoredColumn):
         return pl.lit(amount) * pl.col("Quantity") / (filter_expression * pl.col("Quantity")).sum()
 
 
-class CleanPrice(StoredColumn):
+class CoreWeight(StoredColumn):
     @property
     def aggregation_expression(self) -> pl.Expr:
         return (pl.col(self.column) * pl.col("Quantity")).sum() / pl.col("Quantity").sum()
@@ -136,7 +136,7 @@ class BalanceSheetMetrics:
     impairment = CoreAmount("Impairment")
     accrued_interest = CoreAmount("AccruedInterest")
     agio = CoreAmount("Agio")
-    clean_price = CleanPrice("CleanPrice")
+    clean_price = CoreWeight("CleanPrice")
 
     dirty_price = DirtyPrice()
 
@@ -145,3 +145,5 @@ class BalanceSheetMetrics:
     agio_weight = DerivedWeight("Agio")
 
     book_value = BookValue()
+
+    interest_rate = CoreWeight("InterestRate")

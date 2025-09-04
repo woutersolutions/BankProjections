@@ -73,7 +73,7 @@ class FrequencyRegistry(Frequency):
 
 
 class MonthlyBase(Frequency):
-    number_of_months = 0  # TODO: Use protocol instead of ABC
+    number_of_months = None  # Needs to be overridden
 
     @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
