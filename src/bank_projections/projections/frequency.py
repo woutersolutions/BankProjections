@@ -111,6 +111,26 @@ class Annual(MonthlyBase):
     number_of_months = 12
 
 
+class DailyBase(Frequency):
+    number_of_days: int = None  # Needs to be overridden
+
+    @classmethod
+    def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
+        return date + pl.duration(days=number * cls.number_of_days)
+
+    @classmethod
+    def number_due(cls, coupon_date: pl.Expr, projection_date: pl.Expr) -> pl.Expr:
+        return (projection_date - coupon_date).dt.total_days() // cls.number_of_days
+
+    @classmethod
+    def portion_passed(cls, next_coupon_date: pl.Expr, projection_date: datetime.date) -> pl.Expr:
+        return (cls.number_of_days - (next_coupon_date - projection_date).dt.total_days()) / cls.number_of_days
+
+    @classmethod
+    def portion_year(cls) -> pl.Expr:
+        return pl.lit(cls.number_of_days / 365.25)
+
+
 class Daily(Frequency):
     @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
