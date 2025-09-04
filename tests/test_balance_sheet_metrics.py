@@ -4,7 +4,7 @@ import polars as pl
 import pytest
 
 from examples.synthetic_data import create_balanced_balance_sheet
-from src.bank_projections.financials.balance_sheet import BalanceSheetItem
+from src.bank_projections.financials.balance_sheet import BalanceSheetItem, MutationReason
 from src.bank_projections.financials.metrics import BalanceSheetMetrics
 
 
@@ -21,7 +21,7 @@ class TestBalanceSheetMethods:
         # Get initial loan quantity
         loans_item = BalanceSheetItem(AssetType="loan")
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
-        initial_cash_qty = self.bs.get_amount(BalanceSheetItem(AssetType="cash"), BalanceSheetMetrics.quantity)
+        # initial_cash_qty = self.bs.get_amount(BalanceSheetItem(AssetType="cash"), BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity to 100,000 with cash offset
         mutation_amount = 100_000
@@ -31,8 +31,9 @@ class TestBalanceSheetMethods:
         self.bs.cashflows = pl.DataFrame()
         self.bs.pnls = pl.DataFrame()
 
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_quantity_with_cash_offset")
         self.bs.mutate_metric(
-            loans_item, BalanceSheetMetrics.quantity, mutation_amount, relative=False, offset_liquidity=True
+            loans_item, BalanceSheetMetrics.quantity, mutation_amount, reason, relative=False, offset_liquidity=True
         )
 
         # Verify the loan quantity is now 100,000 (absolute mutation)
@@ -40,8 +41,8 @@ class TestBalanceSheetMethods:
         assert abs(new_loan_qty - 100_000) < 1, f"Expected final amount ~100,000, got {new_loan_qty}"
 
         # Verify that the cash is mutated correctly
-        new_cash_qty = self.bs.get_amount(BalanceSheetItem(AssetType="cash"), BalanceSheetMetrics.quantity)
-        cash_change = new_cash_qty - initial_cash_qty
+        # new_cash_qty = self.bs.get_amount(BalanceSheetItem(AssetType="cash"), BalanceSheetMetrics.quantity)
+        # Cash should have changed due to the offset (not specifically testing the amount here)
 
         # Verify cashflows were recorded for the offset
         assert len(self.bs.cashflows) > 0, "Cashflows should have been recorded"
@@ -107,19 +108,19 @@ class TestBalanceSheetMethods:
         offset_args = {}
         if offset_mode == "cash":
             offset_args["offset_liquidity"] = True
-            offset_column = BalanceSheetMetrics.quantity
+            # offset_column = BalanceSheetMetrics.quantity
             offset_item = BalanceSheetItem(AssetType="cash")
         elif offset_mode == "pnl":
             offset_args["offset_pnl"] = True
-            offset_column = BalanceSheetMetrics.quantity
+            # offset_column = BalanceSheetMetrics.quantity
             offset_item = BalanceSheetItem(BalanceSheetSide="Equity")
         else:
-            offset_column = None
+            # offset_column = None
             offset_item = None
 
-        # Record initial offset value before mutation
-        if offset_item:
-            initial_offset = self.bs.get_amount(offset_item, offset_column)
+        # Record initial offset value before mutation (for potential future verification)
+        # if offset_item:
+        #     initial_offset = self.bs.get_amount(offset_item, offset_column)
 
         # Clear existing cashflows/pnls to track just this mutation
         if offset_item:
@@ -127,7 +128,15 @@ class TestBalanceSheetMethods:
             self.bs.pnls = pl.DataFrame()
 
         # Perform mutation
-        self.bs.mutate_metric(item, metric, mutation_amount, relative=relative, **offset_args)
+        reason = MutationReason(
+            action="test_mutation",
+            test_name="test_mutate_metric_with_offsets",
+            metric=str(metric),
+            asset_type=asset_type,
+            offset_mode=offset_mode,
+            relative=relative,
+        )
+        self.bs.mutate_metric(item, metric, mutation_amount, reason, relative=relative, **offset_args)
 
         # Check mutated value
         new_value = self.bs.get_amount(item, metric)

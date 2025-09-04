@@ -4,7 +4,7 @@ import polars as pl
 import pytest
 
 from examples.synthetic_data import create_balanced_balance_sheet
-from src.bank_projections.financials.balance_sheet import BalanceSheetItem
+from src.bank_projections.financials.balance_sheet import BalanceSheetItem, MutationReason
 from src.bank_projections.financials.metrics import BalanceSheetMetrics
 
 
@@ -48,7 +48,8 @@ class TestBalanceSheetMethods:
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity to 100,000 (absolute)
-        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=False)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_quantity_absolute")
+        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 100_000, reason, relative=False)
 
         # Verify the loan quantity is now 100,000 (absolute mutation)
         new_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
@@ -66,7 +67,8 @@ class TestBalanceSheetMethods:
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity by adding 50,000 relatively
-        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 50_000, relative=True)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_quantity_relative")
+        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 50_000, reason, relative=True)
 
         # Verify the loan quantity increased
         new_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
@@ -83,7 +85,10 @@ class TestBalanceSheetMethods:
         initial_cashflows_len = len(self.bs.cashflows)
 
         # Increase loans with liquidity offset
-        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 100_000, relative=True, offset_liquidity=True)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_liquidity_offset")
+        self.bs.mutate_metric(
+            loans_item, BalanceSheetMetrics.quantity, 100_000, reason, relative=True, offset_liquidity=True
+        )
 
         # Verify loans increased and cashflows were recorded
         new_loans = self.bs.get_amount(loans_item, BalanceSheetMetrics.book_value)
@@ -107,7 +112,10 @@ class TestBalanceSheetMethods:
         loans_item = BalanceSheetItem(AssetType="loan")
 
         # Mutation with liquidity offset should preserve balance
-        self.bs.mutate_metric(loans_item, BalanceSheetMetrics.quantity, 50_000, relative=True, offset_liquidity=True)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_preserves_balance")
+        self.bs.mutate_metric(
+            loans_item, BalanceSheetMetrics.quantity, 50_000, reason, relative=True, offset_liquidity=True
+        )
 
         # Check balance is still maintained
         new_total = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
@@ -120,9 +128,10 @@ class TestBalanceSheetMethods:
         loans_item = BalanceSheetItem(AssetType="loan")
 
         # Should raise error if both offset_liquidity and offset_pnl are True
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_error_conditions")
         with pytest.raises(ValueError, match="Cannot offset with both cash and pnl"):
             self.bs.mutate_metric(
-                loans_item, BalanceSheetMetrics.quantity, 100_000, offset_liquidity=True, offset_pnl=True
+                loans_item, BalanceSheetMetrics.quantity, 100_000, reason, offset_liquidity=True, offset_pnl=True
             )
 
     def test_mutate_basic_functionality(self) -> None:
@@ -131,7 +140,8 @@ class TestBalanceSheetMethods:
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Test simple quantity mutation
-        self.bs.mutate(loans_item, Quantity=pl.col("Quantity") + 10_000)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_basic_functionality")
+        self.bs.mutate(loans_item, reason, Quantity=pl.col("Quantity") + 10_000)
 
         # Verify the mutation
         new_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
@@ -147,7 +157,8 @@ class TestBalanceSheetMethods:
         initial_impairment = self.bs.get_amount(loans_item, BalanceSheetMetrics.impairment)
 
         # Test mutation with multiple columns
-        self.bs.mutate(loans_item, Quantity=pl.col("Quantity") + 5_000, Impairment=pl.col("Impairment") + 500)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_multiple_columns")
+        self.bs.mutate(loans_item, reason, Quantity=pl.col("Quantity") + 5_000, Impairment=pl.col("Impairment") + 500)
 
         # Verify both mutations
         new_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
@@ -171,7 +182,8 @@ class TestBalanceSheetMethods:
         self.bs.pnls = pl.DataFrame()
 
         # Test with custom PnL expression (fixed amount per row)
-        self.bs.mutate(loans_item, pnl=pl.lit(1000.0), Quantity=pl.col("Quantity") + 1_000)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_custom_pnl_expression")
+        self.bs.mutate(loans_item, reason, pnl=pl.lit(1000.0), Quantity=pl.col("Quantity") + 1_000)
 
         # Verify PnL was recorded
         assert len(self.bs.pnls) > 0, "PnL should have been recorded"
@@ -189,7 +201,8 @@ class TestBalanceSheetMethods:
         self.bs.pnls = pl.DataFrame()
 
         # Test with custom liquidity expression
-        self.bs.mutate(loans_item, liquidity=pl.lit(-500.0), Quantity=pl.col("Quantity") + 2_000)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_custom_liquidity_expression")
+        self.bs.mutate(loans_item, reason, liquidity=pl.lit(-500.0), Quantity=pl.col("Quantity") + 2_000)
 
         # Verify cashflow was recorded
         assert len(self.bs.cashflows) > 0, "Cashflow should have been recorded"
@@ -210,7 +223,8 @@ class TestBalanceSheetMethods:
         self.bs.pnls = pl.DataFrame()
 
         # Test with automatic PnL offset
-        self.bs.mutate(loans_item, offset_pnl=True, Quantity=pl.col("Quantity") + 3_000)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_offset_pnl_flag")
+        self.bs.mutate(loans_item, reason, offset_pnl=True, Quantity=pl.col("Quantity") + 3_000)
 
         # Verify PnL offset was recorded and balance is maintained
         assert len(self.bs.pnls) > 0, "PnL should have been recorded for offset"
@@ -227,7 +241,8 @@ class TestBalanceSheetMethods:
         self.bs.pnls = pl.DataFrame()
 
         # Test with automatic liquidity offset
-        self.bs.mutate(loans_item, offset_liquidity=True, Quantity=pl.col("Quantity") + 4_000)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_offset_liquidity_flag")
+        self.bs.mutate(loans_item, reason, offset_liquidity=True, Quantity=pl.col("Quantity") + 4_000)
 
         # Verify liquidity offset was recorded and balance is maintained
         assert len(self.bs.cashflows) > 0, "Cashflow should have been recorded for offset"
@@ -238,15 +253,19 @@ class TestBalanceSheetMethods:
         """Test that mutate raises error for invalid column names."""
         loans_item = BalanceSheetItem(AssetType="loan")
 
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_error_invalid_column")
         with pytest.raises(ValueError, match="Invalid column"):
-            self.bs.mutate(loans_item, InvalidColumn=pl.lit(100))
+            self.bs.mutate(loans_item, reason, InvalidColumn=pl.lit(100))
 
     def test_mutate_error_both_offset_flags(self) -> None:
         """Test that mutate raises error when both offset flags are True."""
         loans_item = BalanceSheetItem(AssetType="loan")
 
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_error_both_offset_flags")
         with pytest.raises(ValueError, match="Cannot offset with both cash and pnl"):
-            self.bs.mutate(loans_item, offset_pnl=True, offset_liquidity=True, Quantity=pl.col("Quantity") + 1000)
+            self.bs.mutate(
+                loans_item, reason, offset_pnl=True, offset_liquidity=True, Quantity=pl.col("Quantity") + 1000
+            )
 
     def test_mutate_cleanup_temporary_columns(self) -> None:
         """Test that temporary columns are properly cleaned up after mutation."""
@@ -254,7 +273,8 @@ class TestBalanceSheetMethods:
         initial_columns = set(self.bs._data.columns)
 
         # Perform mutation with PnL expression (creates temporary columns)
-        self.bs.mutate(loans_item, pnl=pl.lit(100.0), Quantity=pl.col("Quantity") + 1000)
+        reason = MutationReason(action="test_mutation", test_name="test_mutate_cleanup_temporary_columns")
+        self.bs.mutate(loans_item, reason, pnl=pl.lit(100.0), Quantity=pl.col("Quantity") + 1000)
 
         # Check that no temporary columns remain
         final_columns = set(self.bs._data.columns)

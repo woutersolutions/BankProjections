@@ -3,12 +3,20 @@ from typing import Any, Optional
 
 import polars as pl
 
-from bank_projections.config import PNL_AGGREGATION_LABELS
-from src.bank_projections.config import CASHFLOW_AGGREGATION_LABELS
+from src.bank_projections.config import CASHFLOW_AGGREGATION_LABELS, PNL_AGGREGATION_LABELS
 from src.bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
+
+
+@dataclass
+class MutationReason:
+    def __init__(self, **kwargs: str) -> None:
+        self.reasons = kwargs
+
+    def add_to_df(self, df: pl.DataFrame) -> pl.DataFrame:
+        return df.with_columns(**{k: pl.lit(v) for k, v in self.reasons.items()})
 
 
 @dataclass
@@ -91,6 +99,7 @@ class BalanceSheet(Positions):
         item: BalanceSheetItem,
         metric: BalanceSheetMetric,
         amount: float,
+        reason: MutationReason,
         relative: bool = False,
         offset_liquidity: bool = False,
         offset_pnl: bool = False,
@@ -100,11 +109,14 @@ class BalanceSheet(Positions):
         else:
             expr = metric.mutation_expression(amount, item.filter_expression)
 
-        self.mutate(item, **{metric.mutation_column: expr}, offset_pnl=offset_pnl, offset_liquidity=offset_liquidity)
+        self.mutate(
+            item, reason, **{metric.mutation_column: expr}, offset_pnl=offset_pnl, offset_liquidity=offset_liquidity
+        )
 
     def mutate(
         self,
         item: BalanceSheetItem,
+        reason: MutationReason,
         pnl: Optional[pl.Expr] = None,
         liquidity: Optional[pl.Expr] = None,
         offset_pnl: bool = False,
@@ -125,33 +137,39 @@ class BalanceSheet(Positions):
         )
 
         if pnl is not None:
-            self.add_pnl(self._data.filter(item.filter_expression), pl.col("pnl"))
+            self.add_pnl(self._data.filter(item.filter_expression), pl.col("pnl"), reason)
         if liquidity is not None:
-            self.add_liquidity(self._data.filter(item.filter_expression), pl.col("liquidity"))
+            self.add_liquidity(self._data.filter(item.filter_expression), pl.col("liquidity"), reason)
         if offset_pnl and offset_liquidity:
             raise ValueError("Cannot offset with both cash and pnl")
         if offset_pnl:
             self.add_pnl(
                 self._data.filter(item.filter_expression),
                 BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore"),
+                reason,
             )
         if offset_liquidity:
             self.add_liquidity(
                 self._data.filter(item.filter_expression),
                 -(BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore")),
+                reason,
             )
 
         self._data = self._data.drop("BookValueBefore", "pnl", "liquidity", strict=False)
 
-    def add_pnl(self, data: pl.DataFrame, expr: pl.Expr):
-        pnls = data.group_by(PNL_AGGREGATION_LABELS).agg(Amount=expr.sum())
-        self.pnls = pl.concat([self.pnls, pnls])
-        self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, -pnls["Amount"].sum(), relative=True)
+    def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason):
+        pnls = data.group_by(PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
-    def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr):
-        cashflows = data.group_by(CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum())
+        self.pnls = pl.concat([self.pnls, pnls])
+        self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, -pnls["Amount"].sum(), reason, relative=True)
+
+    def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason):
+        cashflows = data.group_by(CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+
         self.cashflows = pl.concat([self.cashflows, cashflows])
-        self.mutate_metric(self.cash_account, BalanceSheetMetrics.quantity, cashflows["Amount"].sum(), relative=True)
+        self.mutate_metric(
+            self.cash_account, BalanceSheetMetrics.quantity, cashflows["Amount"].sum(), reason, relative=True
+        )
 
     def copy(self):
         return BalanceSheet(
