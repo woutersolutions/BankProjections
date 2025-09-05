@@ -18,6 +18,9 @@ class MutationReason:
     def add_to_df(self, df: pl.DataFrame) -> pl.DataFrame:
         return df.with_columns(**{k: pl.lit(v) for k, v in self.reasons.items()})
 
+    def __hash__(self) -> int:
+        return hash(tuple(sorted(self.reasons.items())))
+
 
 @dataclass
 class BalanceSheetItem:
@@ -109,18 +112,22 @@ class BalanceSheet(Positions):
         else:
             expr = metric.mutation_expression(amount, item.filter_expression)
 
+        offset_pnl_reason = reason if offset_pnl else None
+        offset_liquidity_reason = reason if offset_liquidity else None
         self.mutate(
-            item, reason, **{metric.mutation_column: expr}, offset_pnl=offset_pnl, offset_liquidity=offset_liquidity
+            item,
+            offset_pnl=offset_pnl_reason,
+            offset_liquidity=offset_liquidity_reason,
+            **{metric.mutation_column: expr},
         )
 
     def mutate(
         self,
         item: BalanceSheetItem,
-        reason: MutationReason,
-        pnl: Optional[pl.Expr] = None,
-        liquidity: Optional[pl.Expr] = None,
-        offset_pnl: bool = False,
-        offset_liquidity: bool = False,
+        pnls: Optional[dict[MutationReason, pl.Expr]] = None,
+        cashflows: Optional[dict[MutationReason, pl.Expr]] = None,
+        offset_pnl: Optional[MutationReason] = None,
+        offset_liquidity: Optional[MutationReason] = None,
         **exprs: pl.Expr,
     ) -> None:
         # Assert all exprs keys are valid columns
@@ -130,37 +137,52 @@ class BalanceSheet(Positions):
                 raise ValueError(f"Invalid column '{k}' for mutation. Valid columns are: {valid_columns}")
 
         calculations = {k: pl.when(item.filter_expression).then(v).otherwise(pl.col(k)) for k, v in exprs.items()}
-        if pnl is not None:
-            calculations["pnl"] = pl.when(item.filter_expression).then(pnl).otherwise(0.0).alias("pnl")
-        if liquidity is not None:
-            calculations["liquidity"] = (
-                pl.when(item.filter_expression).then(liquidity).otherwise(0.0).alias("liquidity")
-            )
-        if offset_liquidity or offset_pnl:
+
+        if pnls is not None:
+            for i, (_mut_reason, pnl_expr) in enumerate(pnls.items()):
+                pnl_col = f"pnl_{i}"
+                calculations[pnl_col] = pl.when(item.filter_expression).then(pnl_expr).otherwise(0.0).alias(pnl_col)
+
+        if cashflows is not None:
+            for i, (_mut_reason, cashflow_expr) in enumerate(cashflows.items()):
+                cashflow_col = f"cashflow_{i}"
+                calculations[cashflow_col] = (
+                    pl.when(item.filter_expression).then(cashflow_expr).otherwise(0.0).alias(cashflow_col)
+                )
+
+        if offset_liquidity is not None or offset_pnl is not None:
             calculations["BookValueBefore"] = BalanceSheetMetrics.book_value.get_expression.alias("BookValueBefore")
 
         self._data = self._data.with_columns(**calculations)
 
-        if pnl is not None:
-            self.add_pnl(self._data.filter(item.filter_expression), pl.col("pnl"), reason)
-            self._data = self._data.drop("pnl")
-        if liquidity is not None:
-            self.add_liquidity(self._data.filter(item.filter_expression), pl.col("liquidity"), reason)
-            self._data = self._data.drop("liquidity")
-        if offset_pnl and offset_liquidity:
+        # Process PnL mutations
+        if pnls is not None:
+            for i, (mut_reason, _) in enumerate(pnls.items()):
+                pnl_col = f"pnl_{i}"
+                self.add_pnl(self._data.filter(item.filter_expression), pl.col(pnl_col), mut_reason)
+                self._data.drop(pnl_col)
+
+        # Process cashflow mutations
+        if cashflows is not None:
+            for i, (mut_reason, _) in enumerate(cashflows.items()):
+                cashflow_col = f"cashflow_{i}"
+                self.add_liquidity(self._data.filter(item.filter_expression), pl.col(cashflow_col), mut_reason)
+                self._data.drop(cashflow_col)
+
+        if offset_pnl is not None and offset_liquidity is not None:
             raise ValueError("Cannot offset with both cash and pnl")
-        if offset_pnl:
+        if offset_pnl is not None:
             self.add_pnl(
                 self._data.filter(item.filter_expression),
                 BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore"),
-                reason,
+                offset_pnl,
             )
             self._data = self._data.drop("BookValueBefore")
-        if offset_liquidity:
+        if offset_liquidity is not None:
             self.add_liquidity(
                 self._data.filter(item.filter_expression),
                 -(BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore")),
-                reason,
+                offset_liquidity,
             )
             self._data = self._data.drop("BookValueBefore")
 

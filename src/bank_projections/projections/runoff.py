@@ -30,11 +30,10 @@ class CouponPayments(Rule):
 
         bs.mutate(
             item,
-            reason,
+            pnls={reason: new_accrual - pl.col("AccruedInterest") + payments},
+            cashflows={reason: pl.when(pl.col("IsAccumulating")).then(0.0).otherwise(payments)},
             Quantity=pl.col("Quantity") + pl.when(pl.col("IsAccumulating")).then(payments).otherwise(0.0),
             AccruedInterest=new_accrual,
-            pnl=new_accrual - pl.col("AccruedInterest") + payments,
-            liquidity=pl.when(pl.col("IsAccumulating")).then(0.0).otherwise(payments),
         )
 
         return bs
