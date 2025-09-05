@@ -15,56 +15,32 @@ class TestRunoff:
     """Test Runoff rule functionality including coupon payments and principal repayments."""
 
     def setup_method(self) -> None:
-        """Set up test balance sheet and register frequencies and redemption types."""
+        """Set up test balance sheet with consistent loan data for runoff testing."""
 
-        # Create test balance sheet with loan data
+        # Create test balance sheet with loan data - all required columns are now generated
         self.bs = create_balanced_balance_sheet(total_assets=1_000_000, random_seed=42)
 
         # Validate initial balance sheet
         self.bs.validate()
 
-        # Add required columns for runoff calculations
+        # Override specific loan parameters for consistent testing
+        # Use mutate method instead of direct _data access
+        loan_item = BalanceSheetItem(AssetType="loan")
+
+        # Set specific dates and parameters for predictable test results
+        self.bs.mutate(
+            loan_item,
+            NextCouponDate=pl.lit(datetime.date(2025, 2, 15)),
+            MaturityDate=pl.lit(datetime.date(2030, 1, 15)),
+            InterestRate=pl.lit(0.05),  # 5% annual interest rate
+            PrepaymentRate=pl.lit(0.02),  # 2% annual prepayment rate
+            IsAccumulating=pl.lit(False),  # Not accumulating
+        )
+
+        # Add RedemptionType column which is not part of standard balance sheet
         loan_filter = pl.col("AssetType") == "loan"
         self.bs._data = self.bs._data.with_columns(
-            [
-                pl.when(loan_filter).then(pl.lit("Monthly")).otherwise(pl.lit("")).alias("CouponFrequency"),
-                pl.when(loan_filter)
-                .then(pl.lit(datetime.date(2025, 2, 15)))
-                .otherwise(pl.lit(None))
-                .alias("NextCouponDate"),
-                pl.when(loan_filter)
-                .then(pl.lit(datetime.date(2030, 1, 15)))
-                .otherwise(pl.lit(None))
-                .alias("MaturityDate"),
-                pl.when(loan_filter)
-                .then(pl.lit(0.05))  # 5% annual interest rate
-                .otherwise(pl.lit(0.0))
-                .alias("InterestRate"),
-                pl.when(loan_filter)
-                .then(pl.lit(False))  # Not accumulating
-                .otherwise(pl.lit(False))
-                .alias("IsAccumulating"),
-                pl.when(loan_filter)
-                .then(pl.lit(0.0))  # Start with zero accrued interest
-                .otherwise(pl.lit(0.0))
-                .alias("AccruedInterest"),
-                pl.when(loan_filter)
-                .then(pl.lit(0.0))  # Start with zero agio
-                .otherwise(pl.lit(0.0))
-                .alias("Agio"),
-                pl.when(loan_filter)
-                .then(pl.lit(0.0))  # Start with zero impairment
-                .otherwise(pl.lit(0.0))
-                .alias("Impairment"),
-                pl.when(loan_filter)
-                .then(pl.lit("bullet"))  # Default to bullet redemption
-                .otherwise(pl.lit(""))
-                .alias("RedemptionType"),
-                pl.when(loan_filter)
-                .then(pl.lit(0.02))  # 2% annual prepayment rate
-                .otherwise(pl.lit(0.0))
-                .alias("PrepaymentRate"),
-            ]
+            pl.when(loan_filter).then(pl.lit("bullet")).otherwise(pl.lit("")).alias("RedemptionType")
         )
 
     def test_bullet_repayment_before_maturity(self) -> None:
@@ -246,13 +222,20 @@ class TestRunoff:
 
     def test_coupon_payments_accumulating(self) -> None:
         """Test coupon payments for accumulating loans increase quantity."""
-        # Set some loans to accumulating
+        # Set some loans to accumulating and reduce prepayment to see the accumulation effect
         loan_filter = pl.col("AssetType") == "loan"
         self.bs._data = self.bs._data.with_columns(
-            pl.when(loan_filter & (pl.int_range(pl.len()) % 2 == 0))
-            .then(pl.lit(True))
-            .otherwise(pl.col("IsAccumulating"))
-            .alias("IsAccumulating")
+            [
+                pl.when(loan_filter & (pl.int_range(pl.len()) % 2 == 0))
+                .then(pl.lit(True))
+                .otherwise(pl.col("IsAccumulating"))
+                .alias("IsAccumulating"),
+                # Reduce prepayment rate to see accumulation effect more clearly
+                pl.when(loan_filter)
+                .then(pl.lit(0.0))  # No prepayment for this test
+                .otherwise(pl.col("PrepaymentRate"))
+                .alias("PrepaymentRate"),
+            ]
         )
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
