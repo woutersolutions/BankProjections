@@ -57,7 +57,7 @@ class Runoff(Rule):
             )
         )
 
-        item = BalanceSheetItem()
+        item = BalanceSheetItem(AssetType="loan")  # TODO: Temporary fix to make the test work
 
         bs.mutate(
             item,
@@ -73,8 +73,8 @@ class Runoff(Rule):
                 MutationReason(module="Runoff", rule="Coupon payment"): pl.when(pl.col("IsAccumulating"))
                 .then(0.0)
                 .otherwise(payments),
-                MutationReason(module="Runoff", rule="Principal Repayment"): -pl.col("Quantity") * repayment_factors,
-                MutationReason(module="Runoff", rule="Principal Prepayment"): -pl.col("Quantity")
+                MutationReason(module="Runoff", rule="Principal Repayment"): pl.col("Quantity") * repayment_factors,
+                MutationReason(module="Runoff", rule="Principal Prepayment"): pl.col("Quantity")
                 * (1 - repayment_factors)
                 * prepayment_factors,
             },

@@ -14,6 +14,8 @@ class TestBalanceSheetMethods:
     def setup_method(self) -> None:
         """Create a test balance sheet for each test."""
         self.bs = create_balanced_balance_sheet(total_assets=1_000_000, random_seed=42)
+        # Validate initial balance sheet
+        self.bs.validate()
 
     # Test whether the quantity can be changed and offset with cash
     def test_mutate_quantity_with_cash_offset(self) -> None:
@@ -53,6 +55,9 @@ class TestBalanceSheetMethods:
 
         # Verify no PnL changes were recorded since we used liquidity offset
         assert len(self.bs.pnls) == 0, "No PnL changes should be recorded for liquidity offset"
+
+        # Verify balance sheet is still valid after mutation
+        self.bs.validate()
 
     # Parameterized test for all editable metrics and offset modes
     @pytest.mark.parametrize(
@@ -164,3 +169,6 @@ class TestBalanceSheetMethods:
             # Check that the balance sheet remains balanced after mutation and offset
             current_total = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
             assert abs(current_total) < 0.01, f"Balance sheet should remain balanced with offsets, got {current_total}"
+
+            # Verify balance sheet is still valid after mutation
+            self.bs.validate()

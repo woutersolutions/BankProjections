@@ -14,6 +14,8 @@ class TestBalanceSheetMethods:
     def setup_method(self) -> None:
         """Create a test balance sheet for each test."""
         self.bs = create_balanced_balance_sheet(total_assets=1_000_000, random_seed=42)
+        # Validate initial balance sheet
+        self.bs.validate()
 
     def test_get_amount_total_assets(self) -> None:
         """Test getting total asset amounts."""
@@ -60,6 +62,9 @@ class TestBalanceSheetMethods:
         actual_change = new_loan_qty - initial_loan_qty
         assert abs(actual_change - expected_change) < 1, f"Expected change {expected_change}, got {actual_change}"
 
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
+
     def test_mutate_quantity_relative(self) -> None:
         """Test mutating quantity with relative amounts."""
         # Get initial loan quantity
@@ -74,6 +79,9 @@ class TestBalanceSheetMethods:
         new_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
         assert new_loan_qty > initial_loan_qty, "Loan quantity should have increased"
         assert (new_loan_qty - initial_loan_qty) == 50_000, "Should add exactly 50,000"
+
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
 
     def test_mutate_with_liquidity_offset(self) -> None:
         """Test mutating with liquidity offset."""
@@ -103,6 +111,9 @@ class TestBalanceSheetMethods:
         total_cashflow = self.bs.cashflows["Amount"].sum()
         assert abs(total_cashflow + loan_increase) < 1, "Cashflow should offset loan increase"
 
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
+
     def test_mutate_preserves_balance(self) -> None:
         """Test that mutations preserve balance sheet balance."""
         # Get initial total book value
@@ -122,6 +133,9 @@ class TestBalanceSheetMethods:
         assert abs(new_total - initial_total) < 0.01, (
             f"Balance should be preserved, initial: {initial_total}, new: {new_total}"
         )
+
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
 
     def test_mutate_error_conditions(self) -> None:
         """Test error conditions for mutate method."""
@@ -149,6 +163,9 @@ class TestBalanceSheetMethods:
 
         assert abs(new_quantity - expected_total) < 1, f"Expected {expected_total}, got {new_quantity}"
 
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
+
     def test_mutate_multiple_columns(self) -> None:
         """Test mutating multiple columns simultaneously."""
         loans_item = BalanceSheetItem(AssetType="loan")
@@ -171,6 +188,9 @@ class TestBalanceSheetMethods:
             f"Expected impairment {expected_impairment}, got {new_impairment}"
         )
 
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
+
     def test_mutate_with_custom_pnl_expression(self) -> None:
         """Test mutate with custom PnL expression."""
         loans_item = BalanceSheetItem(AssetType="loan")
@@ -189,6 +209,9 @@ class TestBalanceSheetMethods:
         loan_rows = len(self.bs._data.filter(loans_item.filter_expression))
         expected_pnl = loan_rows * 1000.0  # pl.lit(1000.0) applied to each row
         assert abs(total_pnl - expected_pnl) < 1, f"Expected PnL {expected_pnl}, got {total_pnl}"
+
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
 
     def test_mutate_with_custom_liquidity_expression(self) -> None:
         """Test mutate with custom liquidity expression."""
@@ -211,6 +234,9 @@ class TestBalanceSheetMethods:
             f"Expected cashflow {expected_cashflow}, got {total_cashflow}"
         )
 
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
+
     def test_mutate_with_offset_pnl_flag(self) -> None:
         """Test mutate with offset_pnl flag (automatic book value offset)."""
         loans_item = BalanceSheetItem(AssetType="loan")
@@ -229,6 +255,9 @@ class TestBalanceSheetMethods:
         final_balance = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
         assert abs(final_balance - initial_balance) < 0.01, f"Balance should be maintained, got {final_balance}"
 
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
+
     def test_mutate_with_offset_liquidity_flag(self) -> None:
         """Test mutate with offset_liquidity flag (automatic book value offset)."""
         loans_item = BalanceSheetItem(AssetType="loan")
@@ -246,6 +275,9 @@ class TestBalanceSheetMethods:
         assert len(self.bs.cashflows) > 0, "Cashflow should have been recorded for offset"
         final_balance = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
         assert abs(final_balance - initial_balance) < 0.01, f"Balance should be maintained, got {final_balance}"
+
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
 
     def test_mutate_error_invalid_column(self) -> None:
         """Test that mutate raises error for invalid column names."""
@@ -280,6 +312,9 @@ class TestBalanceSheetMethods:
 
         # Should have same columns as before (plus any permanent additions if any)
         assert initial_columns.issubset(final_columns), "Original columns should be preserved"
+
+        # Note: Balance sheet will be unbalanced after mutation without offset
+        # This is expected behavior for this test
 
 
 if __name__ == "__main__":

@@ -22,6 +22,9 @@ def test_create_simple_balance_sheet():
     total_book_value = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
     assert abs(total_book_value) < 0.01, f"Balance sheet not balanced: {total_book_value}"
 
+    # Verify balance sheet is valid
+    bs.validate()
+
 
 def test_balance_sheet_components():
     """Test that the balance sheet has proper asset, liability, and equity components."""
@@ -44,6 +47,9 @@ def test_balance_sheet_components():
     assert equity < 0, "Equity should be negative"
     assert abs(abs(equity) - 200_000) < 1000, f"Equity should be close to 200K, got {abs(equity)}"
 
+    # Verify balance sheet is valid
+    bs.validate()
+
 
 def test_different_balance_sheet_sizes():
     """Test creating balance sheets of different sizes."""
@@ -56,6 +62,9 @@ def test_different_balance_sheet_sizes():
         # Verify balance
         total_book_value = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
         assert abs(total_book_value) < 0.01, f"Balance sheet not balanced for size {total_assets}"
+
+        # Verify balance sheet is valid
+        bs.validate()
 
 
 if __name__ == "__main__":

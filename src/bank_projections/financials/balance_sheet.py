@@ -12,7 +12,7 @@ from bank_projections.financials.metrics import (
 
 @dataclass
 class MutationReason:
-    def __init__(self, **kwargs: str) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         self.reasons = kwargs
 
     def add_to_df(self, df: pl.DataFrame) -> pl.DataFrame:
