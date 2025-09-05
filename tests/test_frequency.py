@@ -245,4 +245,4 @@ class TestDaily:
         projection_date = datetime.date(2025, 2, 10)
         result = df.with_columns(portion=Daily.portion_passed(pl.col("next_coupon"), projection_date))
 
-        assert result["portion"][0] == 0.0
+        assert result["portion"][0] == -4

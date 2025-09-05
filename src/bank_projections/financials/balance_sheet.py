@@ -189,13 +189,13 @@ class BalanceSheet(Positions):
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason):
         pnls = data.group_by(PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
-        self.pnls = pl.concat([self.pnls, pnls])
+        self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
         self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, -pnls["Amount"].sum(), reason, relative=True)
 
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason):
         cashflows = data.group_by(CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
-        self.cashflows = pl.concat([self.cashflows, cashflows])
+        self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
             self.cash_account, BalanceSheetMetrics.quantity, cashflows["Amount"].sum(), reason, relative=True
         )

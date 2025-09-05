@@ -57,7 +57,9 @@ class Runoff(Rule):
             )
         )
 
-        item = BalanceSheetItem(AssetType="loan")  # TODO: Temporary fix to make the test work
+        # TODO: Improve synthetic balance sheet so that rule works on all items
+        # TODO: Improve logic so that it works for fair value as well
+        item = BalanceSheetItem(AssetType="loan")
 
         bs.mutate(
             item,
@@ -67,7 +69,7 @@ class Runoff(Rule):
                 + payments
                 + new_agio
                 - pl.col("Agio"),
-                MutationReason(module="Runoff", rule="Impairment"): pl.col("Impairment") - new_impairment,
+                MutationReason(module="Runoff", rule="Impairment"): new_impairment - pl.col("Impairment"),
             },
             cashflows={
                 MutationReason(module="Runoff", rule="Coupon payment"): pl.when(pl.col("IsAccumulating"))

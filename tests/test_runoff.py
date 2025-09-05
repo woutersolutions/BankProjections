@@ -6,14 +6,6 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.frequency import FrequencyRegistry, Monthly, Quarterly
-from bank_projections.projections.redemption import (
-    AnnuityRedemption,
-    BulletRedemption,
-    LinearRedemption,
-    PerpetualRedemption,
-    RedemptionRegistry,
-)
 from bank_projections.projections.rule import TimeIncrement
 from bank_projections.projections.runoff import Runoff
 from examples.synthetic_data import create_balanced_balance_sheet
@@ -24,17 +16,6 @@ class TestRunoff:
 
     def setup_method(self) -> None:
         """Set up test balance sheet and register frequencies and redemption types."""
-        # Clear and register test frequencies
-        FrequencyRegistry._registry.clear()
-        FrequencyRegistry.register("Monthly", Monthly)
-        FrequencyRegistry.register("Quarterly", Quarterly)
-
-        # Clear and register redemption types
-        RedemptionRegistry._registry.clear()
-        RedemptionRegistry.register("bullet", BulletRedemption)
-        RedemptionRegistry.register("annuity", AnnuityRedemption)
-        RedemptionRegistry.register("linear", LinearRedemption)
-        RedemptionRegistry.register("perpetual", PerpetualRedemption)
 
         # Create test balance sheet with loan data
         self.bs = create_balanced_balance_sheet(total_assets=1_000_000, random_seed=42)
@@ -128,7 +109,9 @@ class TestRunoff:
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(
+            AssetType="loan",
+        )
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         rule = Runoff()
@@ -316,16 +299,16 @@ class TestRunoff:
                 .then(pl.lit("annuity"))
                 .otherwise(pl.col("RedemptionType"))
                 .alias("RedemptionType"),
-                pl.when(loan_filter)
-                .then(pl.lit(100.0))
-                .otherwise(pl.col("Impairment"))
-                .alias("Impairment"),  # Set some initial impairment
             ]
+        )
+
+        loans_item = BalanceSheetItem(AssetType="loan", ValuationMethod="amortized cost")
+        self.bs.mutate_metric(
+            loans_item, BalanceSheetMetrics.impairment, -10000.0, MutationReason(test="test"), offset_pnl=True
         )
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
-        loans_item = BalanceSheetItem(AssetType="loan")
         initial_impairment = self.bs.get_amount(loans_item, BalanceSheetMetrics.impairment)
 
         rule = Runoff()
@@ -333,15 +316,19 @@ class TestRunoff:
 
         # Impairment should decrease proportionally to principal repayments
         new_impairment = result_bs.get_amount(loans_item, BalanceSheetMetrics.impairment)
-        assert new_impairment < initial_impairment
+        assert new_impairment > initial_impairment
 
     def test_agio_linear_decrease(self) -> None:
         """Test that agio decreases linearly over time."""
         # Set some initial agio to test the decrease
-        loan_filter = pl.col("AssetType") == "loan"
-        self.bs._data = self.bs._data.with_columns(
-            pl.when(loan_filter).then(pl.lit(500.0)).otherwise(pl.col("Agio")).alias("Agio")  # Set some initial agio
+        self.bs.mutate_metric(
+            BalanceSheetItem(AssetType="loan"),
+            BalanceSheetMetrics.agio,
+            500.0,
+            MutationReason(test="test"),
+            offset_pnl=True,
         )
+        self.bs.validate()
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 

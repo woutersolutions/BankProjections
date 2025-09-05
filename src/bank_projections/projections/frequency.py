@@ -131,14 +131,22 @@ class DailyBase(Frequency):
         return pl.lit(cls.number_of_days / 365.25)
 
 
-class Daily(Frequency):
+class Daily(DailyBase):
+    number_of_days = 1
+
+
+class Weekly(DailyBase):
+    number_of_days = 7
+
+
+class Never(Frequency):
     @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
-        return date + pl.duration(days=number)
+        return date
 
     @classmethod
     def number_due(cls, coupon_date: pl.Expr, projection_date: pl.Expr) -> pl.Expr:
-        return (projection_date - coupon_date).dt.total_days()
+        return pl.lit(0)
 
     @classmethod
     def portion_passed(cls, next_coupon_date: pl.Expr, projection_date: datetime.date) -> pl.Expr:
@@ -146,4 +154,13 @@ class Daily(Frequency):
 
     @classmethod
     def portion_year(cls) -> pl.Expr:
-        return pl.lit(1 / 365.25)
+        return pl.lit(0.0)
+
+
+FrequencyRegistry.register("Monthly", Monthly)
+FrequencyRegistry.register("Quarterly", Quarterly)
+FrequencyRegistry.register("SemiAnnual", SemiAnnual)
+FrequencyRegistry.register("Annual", Annual)
+FrequencyRegistry.register("Daily", Daily)
+FrequencyRegistry.register("Weekly", Weekly)
+FrequencyRegistry.register("Never", Never)

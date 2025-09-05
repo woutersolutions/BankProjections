@@ -62,9 +62,6 @@ class TestPerpetualRedemption:
 
 class TestLinearRedemption:
     def test_linear_constant_principal_payment(self):
-        # Set up frequency registry for testing
-        FrequencyRegistry.register("annual", Annual)
-
         maturity = pl.lit(datetime.date(2025, 12, 31))
         rate = pl.lit(0.05)
         coupon_date = pl.lit(datetime.date(2023, 12, 31))
@@ -86,9 +83,6 @@ class TestLinearRedemption:
 
 class TestAnnuityRedemption:
     def test_annuity_payment_formula(self):
-        # Set up frequency registry for testing
-        FrequencyRegistry.register("annual", Annual)
-
         maturity = pl.lit(datetime.date(2025, 12, 31))
         rate = pl.lit(0.05)
         coupon_date = pl.lit(datetime.date(2023, 12, 31))
