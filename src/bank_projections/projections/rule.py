@@ -13,6 +13,10 @@ class TimeIncrement:
     def days(self):
         return (self.to_date - self.from_date).days
 
+    @property
+    def portion_year(self):
+        return self.days / 365.25
+
 
 class Rule(ABC):
     @abstractmethod

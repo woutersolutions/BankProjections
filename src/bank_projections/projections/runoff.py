@@ -17,7 +17,7 @@ class Runoff(Rule):
         new_coupon_date = FrequencyRegistry.advance_next(pl.col("NextCouponDate"), number_of_payments)
         payments = pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
 
-        redemption_factors = (
+        repayment_factors = (
             pl.when(matured)
             .then(1.0)
             .otherwise(
@@ -26,6 +26,8 @@ class Runoff(Rule):
                 )
             )
         )
+        prepayment_factors = pl.col("PrepaymentRate") * increment.portion_year
+        redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
 
         new_quantity = pl.col("Quantity") * (1 - redemption_factors) + pl.when(pl.col("IsAccumulating")).then(
             payments
@@ -71,7 +73,10 @@ class Runoff(Rule):
                 MutationReason(module="Runoff", rule="Coupon payment"): pl.when(pl.col("IsAccumulating"))
                 .then(0.0)
                 .otherwise(payments),
-                MutationReason(module="Runoff", rule="Principal Repayment"): -pl.col("Quantity") * redemption_factors,
+                MutationReason(module="Runoff", rule="Principal Repayment"): -pl.col("Quantity") * repayment_factors,
+                MutationReason(module="Runoff", rule="Principal Prepayment"): -pl.col("Quantity")
+                * (1 - repayment_factors)
+                * prepayment_factors,
             },
             Quantity=new_quantity,
             AccruedInterest=new_accrual,

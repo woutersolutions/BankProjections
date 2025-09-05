@@ -120,6 +120,9 @@ def generate_synthetic_positions(
         "CouponDate": coupon_dates,
         "CouponFrequency": coupon_freqs,
         "MaturityDate": maturity_dates,
+        "PrepaymentRate": [
+            round(random.uniform(0.0, 0.10), 4) for _ in range(num_positions)
+        ],  # 0-10% annual prepayment rate
     }
 
     # Add any additional columns

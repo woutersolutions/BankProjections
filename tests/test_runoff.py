@@ -76,11 +76,15 @@ class TestRunoff:
                 .then(pl.lit("bullet"))  # Default to bullet redemption
                 .otherwise(pl.lit(""))
                 .alias("RedemptionType"),
+                pl.when(loan_filter)
+                .then(pl.lit(0.02))  # 2% annual prepayment rate
+                .otherwise(pl.lit(0.0))
+                .alias("PrepaymentRate"),
             ]
         )
 
     def test_bullet_repayment_before_maturity(self) -> None:
-        """Test bullet loans have no repayment before maturity."""
+        """Test bullet loans have no scheduled repayment before maturity, but may have prepayments."""
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
         loans_item = BalanceSheetItem(AssetType="loan")
@@ -89,16 +93,24 @@ class TestRunoff:
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
-        # Quantity should remain the same for bullet loans before maturity
+        # Quantity should decrease slightly due to prepayments only
         new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
-        assert abs(new_quantity - initial_quantity) < 0.01
+        assert new_quantity < initial_quantity  # Some prepayment occurred
+        assert new_quantity > initial_quantity * 0.95  # But not much (small prepayment rate)
 
-        # Should have principal repayment cashflow of zero
+        # Should have principal repayment cashflow of zero (no scheduled repayment)
         principal_cashflows = result_bs.cashflows.filter(
             (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Repayment")
         )
-        total_repayment = principal_cashflows["Amount"].sum() if len(principal_cashflows) > 0 else 0.0
+        total_repayment = abs(principal_cashflows["Amount"].sum()) if len(principal_cashflows) > 0 else 0.0
         assert abs(total_repayment) < 0.01
+
+        # Should have principal prepayment cashflow greater than zero
+        prepayment_cashflows = result_bs.cashflows.filter(
+            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Prepayment")
+        )
+        total_prepayment = abs(prepayment_cashflows["Amount"].sum()) if len(prepayment_cashflows) > 0 else 0.0
+        assert total_prepayment > 0
 
     def test_bullet_repayment_at_maturity(self) -> None:
         """Test bullet loans are fully repaid at maturity."""
@@ -185,7 +197,7 @@ class TestRunoff:
         assert total_repayment > 0
 
     def test_perpetual_repayment(self) -> None:
-        """Test perpetual loans have no principal repayments."""
+        """Test perpetual loans have no scheduled repayments but may have prepayments."""
         # Set redemption type to perpetual
         loan_filter = pl.col("AssetType") == "loan"
         self.bs._data = self.bs._data.with_columns(
@@ -200,16 +212,24 @@ class TestRunoff:
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
-        # Quantity should remain the same for perpetual loans
+        # Quantity should decrease slightly due to prepayments only
         new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
-        assert abs(new_quantity - initial_quantity) < 0.01
+        assert new_quantity < initial_quantity  # Some prepayment occurred
+        assert new_quantity > initial_quantity * 0.95  # But not much (small prepayment rate)
 
-        # Should have no principal repayment cashflow
+        # Should have no principal repayment cashflow (perpetual = no scheduled repayments)
         principal_cashflows = result_bs.cashflows.filter(
             (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Repayment")
         )
         total_repayment = abs(principal_cashflows["Amount"].sum()) if len(principal_cashflows) > 0 else 0.0
         assert abs(total_repayment) < 0.01
+
+        # Should have positive prepayment cashflow
+        prepayment_cashflows = result_bs.cashflows.filter(
+            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Prepayment")
+        )
+        total_prepayment = abs(prepayment_cashflows["Amount"].sum()) if len(prepayment_cashflows) > 0 else 0.0
+        assert total_prepayment > 0
 
     def test_coupon_payments_non_accumulating(self) -> None:
         """Test coupon payments for non-accumulating loans generate cashflows."""
@@ -415,3 +435,114 @@ class TestRunoff:
         # Should have cashflows and PnL
         assert len(result_bs.cashflows) >= len(self.bs.cashflows)
         assert len(result_bs.pnls) >= len(self.bs.pnls)
+
+    def test_prepayment_only_scenario(self) -> None:
+        """Test scenario with prepayments only (no scheduled repayments)."""
+        # Set redemption type to perpetual and higher prepayment rate
+        loan_filter = pl.col("AssetType") == "loan"
+        self.bs._data = self.bs._data.with_columns(
+            [
+                pl.when(loan_filter)
+                .then(pl.lit("perpetual"))
+                .otherwise(pl.col("RedemptionType"))
+                .alias("RedemptionType"),
+                pl.when(loan_filter)
+                .then(pl.lit(0.05))
+                .otherwise(pl.col("PrepaymentRate"))
+                .alias("PrepaymentRate"),  # 5% annual
+            ]
+        )
+
+        increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
+
+        loans_item = BalanceSheetItem(AssetType="loan")
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+
+        rule = Runoff()
+        result_bs = rule.apply(self.bs, increment)
+
+        # Quantity should decrease due to prepayments only
+        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        assert new_quantity < initial_quantity
+
+        # Should have no principal repayment cashflow (perpetual)
+        principal_cashflows = result_bs.cashflows.filter(
+            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Repayment")
+        )
+        total_repayment = abs(principal_cashflows["Amount"].sum()) if len(principal_cashflows) > 0 else 0.0
+        assert abs(total_repayment) < 0.01
+
+        # Should have positive prepayment cashflow
+        prepayment_cashflows = result_bs.cashflows.filter(
+            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Prepayment")
+        )
+        total_prepayment = abs(prepayment_cashflows["Amount"].sum()) if len(prepayment_cashflows) > 0 else 0.0
+        assert total_prepayment > 0
+
+    def test_zero_prepayment_rate(self) -> None:
+        """Test scenario with zero prepayment rate."""
+        # Set prepayment rate to zero
+        loan_filter = pl.col("AssetType") == "loan"
+        self.bs._data = self.bs._data.with_columns(
+            pl.when(loan_filter).then(pl.lit(0.0)).otherwise(pl.col("PrepaymentRate")).alias("PrepaymentRate")
+        )
+
+        increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
+
+        rule = Runoff()
+        result_bs = rule.apply(self.bs, increment)
+
+        # Should have zero prepayment cashflow
+        prepayment_cashflows = result_bs.cashflows.filter(
+            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Prepayment")
+        )
+        total_prepayment = abs(prepayment_cashflows["Amount"].sum()) if len(prepayment_cashflows) > 0 else 0.0
+        assert abs(total_prepayment) < 0.01
+
+    def test_combined_repayment_and_prepayment(self) -> None:
+        """Test scenario with both scheduled repayments and prepayments."""
+        # Set redemption type to annuity with moderate prepayment rate
+        loan_filter = pl.col("AssetType") == "loan"
+        self.bs._data = self.bs._data.with_columns(
+            [
+                pl.when(loan_filter)
+                .then(pl.lit("annuity"))
+                .otherwise(pl.col("RedemptionType"))
+                .alias("RedemptionType"),
+                pl.when(loan_filter)
+                .then(pl.lit(0.03))
+                .otherwise(pl.col("PrepaymentRate"))
+                .alias("PrepaymentRate"),  # 3% annual
+            ]
+        )
+
+        increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
+
+        loans_item = BalanceSheetItem(AssetType="loan")
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+
+        rule = Runoff()
+        result_bs = rule.apply(self.bs, increment)
+
+        # Quantity should decrease due to both repayments and prepayments
+        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        assert new_quantity < initial_quantity
+
+        # Should have both repayment and prepayment cashflows
+        principal_cashflows = result_bs.cashflows.filter(
+            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Repayment")
+        )
+        prepayment_cashflows = result_bs.cashflows.filter(
+            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Prepayment")
+        )
+
+        total_repayment = abs(principal_cashflows["Amount"].sum()) if len(principal_cashflows) > 0 else 0.0
+        total_prepayment = abs(prepayment_cashflows["Amount"].sum()) if len(prepayment_cashflows) > 0 else 0.0
+
+        assert total_repayment > 0
+        assert total_prepayment > 0
+
+        # Total reduction should be approximately equal to sum of repayment and prepayment
+        total_reduction = initial_quantity - new_quantity
+        total_cashflows = total_repayment + total_prepayment
+        assert abs(total_reduction - total_cashflows) < total_reduction * 0.01
