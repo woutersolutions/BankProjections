@@ -8,6 +8,7 @@ from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
+from bank_projections.projections.redemption import RedemptionRegistry
 
 
 @dataclass
@@ -59,6 +60,9 @@ class Positions:
     def validate(self) -> None:
         if len(self) == 0:
             raise ValueError("Positions data cannot be empty")
+
+        if not self._data.select(RedemptionRegistry.required_columns_validation().all()).item():
+            raise ValueError("Positions data is missing required columns for registered redemption types")
 
     def __len__(self) -> int:
         return len(self._data)

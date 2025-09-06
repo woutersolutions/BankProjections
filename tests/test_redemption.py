@@ -126,3 +126,99 @@ class TestRedemptionRegistry:
 
         assert df_bullet["factor"][0] == 0.0  # Before maturity
         assert df_perpetual["factor"][0] == 0.0  # Never redeems
+
+
+class TestRedemptionValidation:
+    def test_bullet_redemption_validation(self):
+        # Test that bullet redemption validates successfully (no additional columns needed)
+        df = pl.DataFrame({"RedemptionType": ["bullet"]}).with_columns(
+            BulletRedemption.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is True
+
+    def test_annuity_redemption_validation_valid(self):
+        # Test valid CouponFrequency for annuity redemption
+        df = pl.DataFrame({"RedemptionType": ["annuity"], "CouponFrequency": ["Annual"]}).with_columns(
+            AnnuityRedemption.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is True
+
+    def test_annuity_redemption_validation_invalid(self):
+        # Test invalid CouponFrequency for annuity redemption
+        df = pl.DataFrame({"RedemptionType": ["annuity"], "CouponFrequency": ["Invalid"]}).with_columns(
+            AnnuityRedemption.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is False
+
+    def test_annuity_redemption_validation_null(self):
+        # Test null CouponFrequency for annuity redemption
+        df = pl.DataFrame({"RedemptionType": ["annuity"], "CouponFrequency": [None]}).with_columns(
+            AnnuityRedemption.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is False
+
+    def test_linear_redemption_validation_valid(self):
+        # Test valid CouponFrequency for linear redemption
+        df = pl.DataFrame({"RedemptionType": ["linear"], "CouponFrequency": ["Quarterly"]}).with_columns(
+            LinearRedemption.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is True
+
+    def test_perpetual_redemption_validation(self):
+        # Test that perpetual redemption validates successfully (no additional columns needed)
+        df = pl.DataFrame({"RedemptionType": ["perpetual"]}).with_columns(
+            PerpetualRedemption.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is True
+
+    def test_registry_validation_valid_bullet(self):
+        # Set up frequency registry for testing
+        FrequencyRegistry.register("annual", Annual)
+
+        # Test registry validation for bullet type
+        df = pl.DataFrame({"RedemptionType": ["bullet"]}).with_columns(
+            RedemptionRegistry.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is True
+
+    def test_registry_validation_valid_annuity(self):
+        # Test registry validation for annuity type with valid frequency
+        df = pl.DataFrame({"RedemptionType": ["annuity"], "CouponFrequency": ["Annual"]}).with_columns(
+            RedemptionRegistry.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is True
+
+    def test_registry_validation_null_redemption_type(self):
+        # Test registry validation with null RedemptionType
+        df = pl.DataFrame({"RedemptionType": [None], "CouponFrequency": ["Annual"]}).with_columns(
+            RedemptionRegistry.required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is False
+
+    def test_validate_specific_bullet_redemption(self):
+        # Test specific bullet redemption validation
+        df = pl.DataFrame({"dummy": [1]}).with_columns(
+            RedemptionRegistry.get("bullet").required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is True
+
+    def test_validate_specific_annuity_redemption_valid(self):
+        # Test specific annuity redemption validation with valid frequency
+        df = pl.DataFrame({"CouponFrequency": ["Annual"]}).with_columns(
+            RedemptionRegistry.get("annuity").required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is True
+
+    def test_validate_specific_annuity_redemption_invalid(self):
+        # Test specific annuity redemption validation with invalid frequency
+        df = pl.DataFrame({"CouponFrequency": ["Invalid"]}).with_columns(
+            RedemptionRegistry.get("annuity").required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is False
+
+    def test_validate_unknown_redemption_type(self):
+        # Test validation of unknown redemption type
+        df = pl.DataFrame({"dummy": [1]}).with_columns(
+            RedemptionRegistry.get("unknown").required_columns_validation().alias("is_valid")
+        )
+        assert df["is_valid"][0] is False
