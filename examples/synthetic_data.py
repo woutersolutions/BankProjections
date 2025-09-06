@@ -106,6 +106,7 @@ def generate_synthetic_assets(
         "MaturityDate": maturity_dates,
         "PrepaymentRate": [round(random.uniform(0.0, 0.10), 4) for _ in range(num_positions)],
         "IsAccumulating": [random.choice([True, False]) for _ in range(num_positions)],
+        "RedemptionType": [random.choice(["bullet", "annuity", "linear"]) for _ in range(num_positions)],
         "BalanceSheetSide": ["Asset"] * num_positions,
     }
 
@@ -193,6 +194,9 @@ def generate_synthetic_liabilities(
         "MaturityDate": maturity_dates,
         "PrepaymentRate": [round(random.uniform(0.0, 0.05), 4) for _ in range(num_positions)],  # Lower prepayment
         "IsAccumulating": [False] * num_positions,  # Liabilities typically don't accumulate
+        "RedemptionType": [
+            random.choice(["bullet", "linear"]) for _ in range(num_positions)
+        ],  # Simpler redemption types for liabilities
         "BalanceSheetSide": ["Liability"] * num_positions,
     }
 
@@ -270,6 +274,7 @@ def generate_synthetic_equity(
         "MaturityDate": [None] * num_positions,  # No maturity for equity
         "PrepaymentRate": [0.0] * num_positions,  # No prepayment for equity
         "IsAccumulating": [False] * num_positions,  # Equity doesn't accumulate
+        "RedemptionType": ["perpetual"] * num_positions,  # Equity is perpetual
         "BalanceSheetSide": ["Equity"] * num_positions,
     }
 

@@ -8,7 +8,8 @@ from bank_projections.projections.rule import Rule, TimeIncrement
 
 class Runoff(Rule):
     def apply(self, bs: BalanceSheet, increment: TimeIncrement) -> BalanceSheet:
-        # Polars Series indicating which loans have coupon payments due in the period
+        # Apply runoff to all instruments that have maturity dates
+        item = BalanceSheetItem(expr=pl.col("MaturityDate").is_not_null())
 
         matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
         number_of_payments = FrequencyRegistry.number_due(
@@ -56,10 +57,6 @@ class Runoff(Rule):
                 / (pl.col("MaturityDate") - increment.from_date).dt.total_days()
             )
         )
-
-        # TODO: Improve synthetic balance sheet so that rule works on all items
-        # TODO: Improve logic so that it works for fair value as well
-        item = BalanceSheetItem(AssetType="loan")
 
         bs.mutate(
             item,

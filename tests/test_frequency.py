@@ -19,8 +19,14 @@ class TestFrequencyRegistry:
     """Test FrequencyRegistry functionality."""
 
     def setup_method(self) -> None:
-        """Clear registry before each test."""
+        """Save registry state and clear for isolated testing."""
+        self._original_registry = FrequencyRegistry._registry.copy()
         FrequencyRegistry._registry.clear()
+
+    def teardown_method(self) -> None:
+        """Restore original registry state."""
+        FrequencyRegistry._registry.clear()
+        FrequencyRegistry._registry.update(self._original_registry)
 
     def test_register_valid_frequency(self) -> None:
         """Test registering a valid frequency class."""

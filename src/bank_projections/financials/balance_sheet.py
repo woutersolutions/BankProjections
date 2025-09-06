@@ -26,8 +26,9 @@ class MutationReason:
 class BalanceSheetItem:
     identifiers: dict[str, Any] = field(default_factory=dict)
 
-    def __init__(self, **identifiers: Any) -> None:
+    def __init__(self, expr: Optional[pl.Expr] = None, **identifiers: Any) -> None:
         self.identifiers = identifiers
+        self.expr = expr
 
     def add_identifier(self, key: str, value: Any) -> "BalanceSheetItem":
         identifiers = self.identifiers.copy()
@@ -44,9 +45,10 @@ class BalanceSheetItem:
 
     @property
     def filter_expression(self) -> pl.Expr:
-        if not self.identifiers:
-            return pl.lit(True)
-        expr = pl.all_horizontal([pl.col(col) == val for col, val in self.identifiers.items()])
+        expr = pl.all_horizontal(
+            ([pl.lit(True)] if self.expr is None else [self.expr])
+            + [pl.col(col) == val for col, val in self.identifiers.items()]
+        )
         return expr
 
 

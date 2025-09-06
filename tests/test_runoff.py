@@ -481,10 +481,10 @@ class TestRunoff:
 
     def test_zero_prepayment_rate(self) -> None:
         """Test scenario with zero prepayment rate."""
-        # Set prepayment rate to zero
-        loan_filter = pl.col("AssetType") == "loan"
+        # Set prepayment rate to zero for all items that can have prepayments
+        has_maturity = pl.col("MaturityDate").is_not_null()
         self.bs._data = self.bs._data.with_columns(
-            pl.when(loan_filter).then(pl.lit(0.0)).otherwise(pl.col("PrepaymentRate")).alias("PrepaymentRate")
+            pl.when(has_maturity).then(pl.lit(0.0)).otherwise(pl.col("PrepaymentRate")).alias("PrepaymentRate")
         )
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
