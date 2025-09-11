@@ -5,7 +5,7 @@ import pytest
 
 from bank_projections.financials.balance_sheet import BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from examples.synthetic_data import create_balanced_balance_sheet
+from examples.synthetic_data import create_synthetic_balance_sheet
 
 
 class TestBalanceSheetMethods:
@@ -13,7 +13,7 @@ class TestBalanceSheetMethods:
 
     def setup_method(self) -> None:
         """Create a test balance sheet for each test."""
-        self.bs = create_balanced_balance_sheet(total_assets=1_000_000, random_seed=42)
+        self.bs = create_synthetic_balance_sheet()
         # Validate initial balance sheet
         self.bs.validate()
 
@@ -21,9 +21,8 @@ class TestBalanceSheetMethods:
     def test_mutate_quantity_with_cash_offset(self) -> None:
         """Test mutating quantity with cash offset."""
         # Get initial loan quantity
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
-        # initial_cash_qty = self.bs.get_amount(BalanceSheetItem(AssetType="cash"), BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity to 100,000 with cash offset
         mutation_amount = 100_000
@@ -43,7 +42,6 @@ class TestBalanceSheetMethods:
         assert abs(new_loan_qty - 100_000) < 1, f"Expected final amount ~100,000, got {new_loan_qty}"
 
         # Verify that the cash is mutated correctly
-        # new_cash_qty = self.bs.get_amount(BalanceSheetItem(AssetType="cash"), BalanceSheetMetrics.quantity)
         # Cash should have changed due to the offset (not specifically testing the amount here)
 
         # Verify cashflows were recorded for the offset
@@ -63,21 +61,21 @@ class TestBalanceSheetMethods:
     @pytest.mark.parametrize(
         "metric, asset_type",
         [
-            (BalanceSheetMetrics.quantity, "loan"),
-            (BalanceSheetMetrics.impairment, "loan"),
-            (BalanceSheetMetrics.accrued_interest, "bond"),
-            (BalanceSheetMetrics.agio, "bond"),
-            (BalanceSheetMetrics.clean_price, "bond"),
+            (BalanceSheetMetrics.quantity, "Mortgages"),
+            (BalanceSheetMetrics.impairment, "Mortgages"),
+            (BalanceSheetMetrics.accrued_interest, "Debt securities"),
+            (BalanceSheetMetrics.agio, "Debt securities"),
+            (BalanceSheetMetrics.clean_price, "Debt securities"),
             # Include derived, but updatable metrics (weights)
-            (BalanceSheetMetrics.coverage_rate, "loan"),
-            (BalanceSheetMetrics.accrued_interest_rate, "bond"),
-            (BalanceSheetMetrics.agio_weight, "bond"),
+            (BalanceSheetMetrics.coverage_rate, "Mortgages"),
+            (BalanceSheetMetrics.accrued_interest_rate, "Debt securities"),
+            (BalanceSheetMetrics.agio_weight, "Debt securities"),
         ],
     )
-    @pytest.mark.parametrize("offset_mode", [None, "cash", "pnl"])
+    @pytest.mark.parametrize("offset_mode", [None, "Cash", "pnl"])
     @pytest.mark.parametrize("relative", [False, True])
     def test_mutate_metric_with_offsets(self, metric, asset_type, offset_mode, relative):
-        item = BalanceSheetItem(AssetType=asset_type)
+        item = BalanceSheetItem(ItemType=asset_type)
         initial_value = self.bs.get_amount(item, metric)
 
         # Choose a sensible mutation target per metric type and relative mode
@@ -114,7 +112,7 @@ class TestBalanceSheetMethods:
         if offset_mode == "cash":
             offset_args["offset_liquidity"] = True
             # offset_column = BalanceSheetMetrics.quantity
-            offset_item = BalanceSheetItem(AssetType="cash")
+            offset_item = BalanceSheetItem(ItemType="Cash")
         elif offset_mode == "pnl":
             offset_args["offset_pnl"] = True
             # offset_column = BalanceSheetMetrics.quantity

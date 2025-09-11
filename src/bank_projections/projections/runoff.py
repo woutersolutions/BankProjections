@@ -27,7 +27,7 @@ class Runoff(Rule):
                 )
             )
         )
-        prepayment_factors = pl.col("PrepaymentRate") * increment.portion_year
+        prepayment_factors = pl.col("PrepaymentRate").fill_null(0.0) * increment.portion_year
         redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
 
         new_quantity = pl.col("Quantity") * (1 - redemption_factors) + pl.when(pl.col("IsAccumulating")).then(

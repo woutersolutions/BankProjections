@@ -159,6 +159,9 @@ class BalanceSheet(Positions):
         if offset_liquidity is not None or offset_pnl is not None:
             calculations["BookValueBefore"] = BalanceSheetMetrics.book_value.get_expression.alias("BookValueBefore")
 
+        if self._data.filter(item.filter_expression).is_empty():
+            raise ValueError("At least one position is required")
+
         self._data = self._data.with_columns(**calculations)
 
         # Process PnL mutations
@@ -166,14 +169,14 @@ class BalanceSheet(Positions):
             for i, (mut_reason, _) in enumerate(pnls.items()):
                 pnl_col = f"pnl_{i}"
                 self.add_pnl(self._data.filter(item.filter_expression), pl.col(pnl_col), mut_reason)
-                self._data.drop(pnl_col)
+                self._data = self._data.drop(pnl_col)
 
         # Process cashflow mutations
         if cashflows is not None:
             for i, (mut_reason, _) in enumerate(cashflows.items()):
                 cashflow_col = f"cashflow_{i}"
                 self.add_liquidity(self._data.filter(item.filter_expression), pl.col(cashflow_col), mut_reason)
-                self._data.drop(cashflow_col)
+                self._data = self._data.drop(cashflow_col)
 
         if offset_pnl is not None and offset_liquidity is not None:
             raise ValueError("Cannot offset with both cash and pnl")
@@ -210,3 +213,38 @@ class BalanceSheet(Positions):
         return BalanceSheet(
             self._data.clone(), cash_account=self.cash_account.copy(), pnl_account=self.pnl_account.copy()
         )
+
+    def aggregate(self, group_column: list[str]) -> pl.DataFrame:
+        # TODO: Make it easier to get the metrics
+        metrics = {
+            "Quantity": BalanceSheetMetrics.quantity,
+            "Impairment": BalanceSheetMetrics.impairment,
+            "Agio": BalanceSheetMetrics.agio,
+            "AccruedInterest": BalanceSheetMetrics.accrued_interest,
+            "BookValue": BalanceSheetMetrics.book_value,
+        }
+
+        return (
+            self._data.group_by(group_column)
+            .agg([metric.aggregation_expression.alias(name) for name, metric in metrics.items()])
+            .sort(by=group_column)
+        )
+
+    @classmethod
+    def get_differences(cls, bs1: "BalanceSheet", bs2: "BalanceSheet") -> pl.DataFrame:
+        numeric_cols = [c for c, dt in zip(bs1._data.columns, bs2._data.dtypes) if dt.is_numeric()]
+
+        # Compute differences only on numeric cols
+        diff_df = bs1._data.select([(pl.col(c) - bs2._data[c]).alias(f"Delta_{c}") for c in numeric_cols])
+
+        return diff_df
+
+    @classmethod
+    def debug(cls, bs1: "BalanceSheet", bs2: "BalanceSheet"):
+        return {
+            "bs1": bs1._data.to_pandas(),
+            "bs2": bs2._data.to_pandas(),
+            "diff": cls.get_differences(bs1, bs2).to_pandas(),
+            "pnl": bs2.pnls.to_pandas(),
+            "cash": bs2.cashflows.to_pandas(),
+        }

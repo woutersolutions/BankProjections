@@ -131,6 +131,7 @@ class BookValue(DerivedMetric):
         return self.get_expression.sum()
 
 
+# TODO: Make registry?
 class BalanceSheetMetrics:
     quantity = CoreAmount("Quantity")
     impairment = CoreAmount("Impairment")

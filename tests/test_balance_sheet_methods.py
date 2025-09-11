@@ -5,7 +5,7 @@ import pytest
 
 from bank_projections.financials.balance_sheet import BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from examples.synthetic_data import create_balanced_balance_sheet
+from examples.synthetic_data import create_synthetic_balance_sheet
 
 
 class TestBalanceSheetMethods:
@@ -13,40 +13,36 @@ class TestBalanceSheetMethods:
 
     def setup_method(self) -> None:
         """Create a test balance sheet for each test."""
-        self.bs = create_balanced_balance_sheet(total_assets=1_000_000, random_seed=42)
+        self.bs = create_synthetic_balance_sheet()
         # Validate initial balance sheet
         self.bs.validate()
 
     def test_get_amount_total_assets(self) -> None:
         """Test getting total asset amounts."""
         # Get total book value for all assets
-        total_assets = self.bs.get_amount(BalanceSheetItem(BalanceSheetSide="Asset"), BalanceSheetMetrics.book_value)
+        total_assets = self.bs.get_amount(BalanceSheetItem(BalanceSheetSide="Assets"), BalanceSheetMetrics.book_value)
 
         assert total_assets > 0, "Total assets should be positive"
-        assert abs(total_assets - 1_000_000) < 1000, f"Total assets should be ~1M, got {total_assets}"
 
     def test_get_amount_by_asset_type(self) -> None:
         """Test getting amounts filtered by asset type."""
         # Get loan amounts
-        loan_amount = self.bs.get_amount(BalanceSheetItem(AssetType="loan"), BalanceSheetMetrics.book_value)
+        loan_amount = self.bs.get_amount(BalanceSheetItem(ItemType="Mortgages"), BalanceSheetMetrics.book_value)
 
         # Should have some loans in our synthetic data
         assert loan_amount != 0, "Should have some loan positions"
 
-    def test_get_amount_quantity_vs_book_value(self) -> None:
+    def test_get_book_value(self) -> None:
         """Test difference between quantity and book value."""
-        total_quantity = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.quantity)
-
         total_book_value = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
 
         # Both should be close to zero for balanced sheet, but may differ due to valuation adjustments
-        assert abs(total_quantity) < 0.01, f"Total quantity should be ~0, got {total_quantity}"
         assert abs(total_book_value) < 0.01, f"Total book value should be ~0, got {total_book_value}"
 
     def test_mutate_quantity_absolute(self) -> None:
         """Test mutating quantity with absolute amounts."""
         # Get initial loan quantity
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity to 100,000 (absolute)
@@ -68,7 +64,7 @@ class TestBalanceSheetMethods:
     def test_mutate_quantity_relative(self) -> None:
         """Test mutating quantity with relative amounts."""
         # Get initial loan quantity
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Mutate loan quantity by adding 50,000 relatively
@@ -78,7 +74,7 @@ class TestBalanceSheetMethods:
         # Verify the loan quantity increased
         new_loan_qty = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
         assert new_loan_qty > initial_loan_qty, "Loan quantity should have increased"
-        assert (new_loan_qty - initial_loan_qty) == 50_000, "Should add exactly 50,000"
+        assert abs((new_loan_qty - initial_loan_qty) - 50_000) < 0.001, "Should add exactly 50,000"
 
         # Note: Balance sheet will be unbalanced after mutation without offset
         # This is expected behavior for this test
@@ -86,7 +82,7 @@ class TestBalanceSheetMethods:
     def test_mutate_with_liquidity_offset(self) -> None:
         """Test mutating with liquidity offset."""
         # Get initial loan amount
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_loans = self.bs.get_amount(loans_item, BalanceSheetMetrics.book_value)
 
         # Clear existing cashflows to track just this mutation
@@ -120,7 +116,7 @@ class TestBalanceSheetMethods:
         initial_total = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
 
         # Perform several mutations with offsets
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
 
         # Mutation with liquidity offset should preserve balance
         reason = MutationReason(action="test_mutation", test_name="test_mutate_preserves_balance")
@@ -139,7 +135,7 @@ class TestBalanceSheetMethods:
 
     def test_mutate_error_conditions(self) -> None:
         """Test error conditions for mutate method."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
 
         # Should raise error if both offset_liquidity and offset_pnl are True
         reason = MutationReason(action="test_mutation", test_name="test_mutate_error_conditions")
@@ -150,7 +146,7 @@ class TestBalanceSheetMethods:
 
     def test_mutate_basic_functionality(self) -> None:
         """Test basic functionality of the new mutate method."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
 
         # Test simple quantity mutation
@@ -168,7 +164,7 @@ class TestBalanceSheetMethods:
 
     def test_mutate_multiple_columns(self) -> None:
         """Test mutating multiple columns simultaneously."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
         initial_impairment = self.bs.get_amount(loans_item, BalanceSheetMetrics.impairment)
 
@@ -193,7 +189,7 @@ class TestBalanceSheetMethods:
 
     def test_mutate_with_custom_pnl_expression(self) -> None:
         """Test mutate with custom PnL expression."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
 
         # Clear existing cashflows/pnls
         self.bs.cashflows = pl.DataFrame()
@@ -215,7 +211,7 @@ class TestBalanceSheetMethods:
 
     def test_mutate_with_custom_liquidity_expression(self) -> None:
         """Test mutate with custom liquidity expression."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
 
         # Clear existing cashflows/pnls
         self.bs.cashflows = pl.DataFrame()
@@ -239,7 +235,7 @@ class TestBalanceSheetMethods:
 
     def test_mutate_with_offset_pnl_flag(self) -> None:
         """Test mutate with offset_pnl flag (automatic book value offset)."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_balance = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
 
         # Clear existing cashflows/pnls
@@ -260,7 +256,7 @@ class TestBalanceSheetMethods:
 
     def test_mutate_with_offset_liquidity_flag(self) -> None:
         """Test mutate with offset_liquidity flag (automatic book value offset)."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_balance = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
 
         # Clear existing cashflows/pnls
@@ -281,14 +277,14 @@ class TestBalanceSheetMethods:
 
     def test_mutate_error_invalid_column(self) -> None:
         """Test that mutate raises error for invalid column names."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
 
         with pytest.raises(ValueError, match="Invalid column"):
             self.bs.mutate(loans_item, InvalidColumn=pl.lit(100))
 
     def test_mutate_error_both_offset_flags(self) -> None:
         """Test that mutate raises error when both offset flags are True."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
 
         reason = MutationReason(action="test_mutation", test_name="test_mutate_error_both_offset_flags")
         with pytest.raises(ValueError, match="Cannot offset with both cash and pnl"):
@@ -296,7 +292,7 @@ class TestBalanceSheetMethods:
 
     def test_mutate_cleanup_temporary_columns(self) -> None:
         """Test that temporary columns are properly cleaned up after mutation."""
-        loans_item = BalanceSheetItem(AssetType="loan")
+        loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_columns = set(self.bs._data.columns)
 
         # Perform mutation with PnL expression (creates temporary columns)

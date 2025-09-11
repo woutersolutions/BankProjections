@@ -36,6 +36,12 @@ class FrequencyRegistry(Frequency):
         cls._registry[name] = frequency
 
     @classmethod
+    def get(cls, name: str) -> type[Frequency]:
+        if name not in cls._registry:
+            raise ValueError(f"Frequency '{name}' is not registered.")
+        return cls._registry[name]
+
+    @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
         expr = date
         for name, freq in cls._registry.items():

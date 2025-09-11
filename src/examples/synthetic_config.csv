@@ -1,0 +1,17 @@
+﻿item_type,book_value,number,balance_sheet_side,valuation_method,redemption_type,coupon_frequency,currency,coverage_rate_range,interest_rate_range,agio_range,prepayment_rate,minimum_maturity,maximum_maturity,accumulating
+Mortgages,13075263,1000,Assets,amortized cost,annuity,Monthly,eur,"(0.0, 0.03)","(0.01, 0.04)","(0.0, 0.01)",0.01,0,30,FALSE
+SME loans,97157,100,Assets,amortized cost,bullet,Quarterly,eur,"(0.01, 0.06)","(0.02, 0.07)",,0.01,0,10,FALSE
+Consumer loans,0,0,Assets,amortized cost,annuity,Monthly,eur,"(0.01, 0.06)","(0.03, 0.07)",,0.01,0,3,FALSE
+Cash,2418460,1,Assets,amortized cost,perpetual,Daily,eur,,"(0.01, 0.02)",,,,,TRUE
+Debt securities,260535,100,Assets,fair value,bullet,Quarterly,eur,,"(0.00, 0.03)",,,0,20,FALSE
+Intangible assets,21135,1,Assets,amortized cost,perpetual,Never,eur,,,,,,,FALSE
+Other loans,951939,1,Assets,amortized cost,perpetual,Never,eur,,,,,,,FALSE
+Savings deposits,-12684867,1000,Liabilities,amortized cost,perpetual,Weekly,eur,,"(0.01, 0.02)",,,,,TRUE
+Provisions,-3412,1,Liabilities,amortized cost,perpetual,Never,eur,,,,,,,FALSE
+Borrowings,-2956600,100,Liabilities,amortized cost,bullet,Annual,eur,,"(0.02, 0.04)",,,0,10,FALSE
+Other liabilities,-103453,1,Liabilities,amortized cost,perpetual,Never,eur,,,,,,,FALSE
+CET1 capital,-476751,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,FALSE
+Additional Tier 1 capital,-37437,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,FALSE
+Unaudited earnings,-93965,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,FALSE
+Retained earnings,-468004,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,FALSE
+Other comprehensive income,0,0,Equity,amortized cost,perpetual,Never,eur,,,,,,,FALSE

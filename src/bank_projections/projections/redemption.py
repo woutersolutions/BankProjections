@@ -81,15 +81,18 @@ class AnnuityRedemption(Redemption):
     def redemption_factor(
         cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
     ) -> pl.Expr:
-        payments_left = FrequencyRegistry.number_due(coupon_date, pl.lit(projection_date))
+        payments_done = FrequencyRegistry.number_due(coupon_date, pl.lit(projection_date))
+        total_payments = FrequencyRegistry.number_due(coupon_date, pl.col("MaturityDate"))
         period_rate = interest_rate * FrequencyRegistry.portion_year()
 
         return (
             pl.when(maturity_date <= pl.lit(projection_date))
             .then(pl.lit(1.0))
-            .when(payments_left <= 0)
+            .when(payments_done <= 0)
             .then(pl.lit(0.0))
-            .otherwise(period_rate / (1 - (1 + period_rate).pow(-payments_left)))
+            .when(interest_rate == 0)
+            .then(payments_done / total_payments)
+            .otherwise(((1 + period_rate).pow(payments_done) - 1) / ((1 + period_rate).pow(total_payments) - 1))
         )
 
     @classmethod
