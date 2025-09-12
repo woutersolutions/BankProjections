@@ -6,24 +6,22 @@ from bank_projections.projections.time import TimeHorizon
 
 
 class Projection:
-    def __init__(self, bs_start: BalanceSheet, rules: list[Rule], horizon: TimeHorizon):
-        self.bs_start = bs_start
+    def __init__(self, rules: list[Rule], horizon: TimeHorizon):
         self.rules = rules
         self.horizon = horizon
 
-    def run(self) -> list[BalanceSheet]:
+    def run(self, bs: BalanceSheet) -> list[BalanceSheet]:
         """Run the projection over the defined time horizon."""
-        balance_sheets = [self.bs_start]
+        balance_sheets = []
 
         total_increments = len(self.horizon)
 
         for i, increment in enumerate(self.horizon, 1):
             logger.info(f"Time increment {i}/{total_increments} - From {increment.from_date} to {increment.to_date}")
-            projected_bs = balance_sheets[-1].copy()
 
             for rule in self.rules:
-                projected_bs = rule.apply(projected_bs, increment)
+                bs = rule.apply(bs, increment)
 
-            balance_sheets.append(projected_bs)
+            balance_sheets.append(bs.aggregate(["BalanceSheetSide", "ItemType"]))
 
         return balance_sheets
