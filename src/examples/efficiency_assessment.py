@@ -8,6 +8,7 @@ It generates performance graphs showing processing time vs. parameters.
 """
 
 import datetime
+import os
 import time
 from pathlib import Path
 from typing import Dict, List
@@ -20,56 +21,53 @@ from loguru import logger
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.time import TimeHorizon
+from examples import EXAMPLE_FOLDER
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 
 class EfficiencyAssessment:
     """Class to assess efficiency of bank projections across different parameters."""
 
-    def __init__(self, output_dir: str = "output"):
+    def __init__(
+        self,
+        output_dir: str = "output",
+        synthetic_data_config: str = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
+        size_multipliers=(1, 5, 10, 100),
+        number_of_projections=(1, 5, 10, 20, 50, 100),
+    ):
         """Initialize efficiency assessment.
 
         Args:
             output_dir: Directory to save results and graphs
         """
         self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(exist_ok=True)
 
         # Configuration paths
-        self.examples_dir = Path("src/examples")
-        self.knab_config = self.examples_dir / "knab_bs.csv"
+        self.synthetic_data_config = synthetic_data_config
 
-        # Results storage
-        self.time_horizon_results: List[Dict] = []
-        self.balance_sheet_results: List[Dict] = []
+        # Size multipliers to test
+        self.size_multipliers = size_multipliers
+        self.number_of_projections = number_of_projections
 
-    def measure_time_horizon_performance(self) -> None:
+    def measure_time_horizon_performance(self) -> list[Dict]:
         """Measure performance across different time horizons."""
         logger.info("Starting time horizon performance assessment")
 
+        # Results storage
+        time_horizon_results: List[Dict] = []
+        self.output_dir.mkdir(exist_ok=True)
+
         # Base configuration for balance sheet
         start_date = datetime.date(2024, 12, 31)
-        base_bs = create_synthetic_balance_sheet(current_date=start_date, config_path=str(self.knab_config))
+        base_bs = create_synthetic_balance_sheet(current_date=start_date, config_path=str(self.synthetic_data_config))
 
         rules = [Runoff()]
 
-        # Different time horizon configurations to test
-        horizon_configs = [
-            {"days": 7, "weeks": 0, "months": 0, "years": 0},
-            {"days": 7, "weeks": 4, "months": 0, "years": 0},
-            {"days": 7, "weeks": 4, "months": 12, "years": 0},
-            {"days": 7, "weeks": 4, "months": 36, "years": 0},
-            {"days": 7, "weeks": 4, "months": 60, "years": 10},
-        ]
-
-        for config in horizon_configs:
+        for n in self.number_of_projections:
             # Create time horizon
             horizon = TimeHorizon.from_numbers(
                 start_date=start_date,
-                number_of_days=config["days"],
-                number_of_weeks=config["weeks"],
-                number_of_months=config["months"],
-                number_of_years=config["years"],
+                number_of_months=n - 1,
                 end_of_month=True,
             )
 
@@ -86,15 +84,11 @@ class EfficiencyAssessment:
             processing_time = end_time - start_time
 
             # Store results
-            self.time_horizon_results.append(
+            time_horizon_results.append(
                 {
                     "description": str(num_time_steps) + " steps",
                     "num_time_steps": num_time_steps,
                     "processing_time": processing_time,
-                    "days": config["days"],
-                    "weeks": config["weeks"],
-                    "months": config["months"],
-                    "years": config["years"],
                 }
             )
 
@@ -102,9 +96,13 @@ class EfficiencyAssessment:
                 f"Completed in {processing_time:.3f}s with {num_time_steps} time steps and {len(base_bs)} positions"
             )
 
-    def measure_balance_sheet_size_performance(self) -> None:
+        return time_horizon_results
+
+    def measure_balance_sheet_size_performance(self) -> list[dict]:
         """Measure performance across different balance sheet sizes."""
         logger.info("Starting balance sheet size performance assessment")
+
+        balance_sheet_results = []
 
         start_date = datetime.date(2024, 12, 31)
 
@@ -118,10 +116,7 @@ class EfficiencyAssessment:
 
         rules = [Runoff()]
 
-        # Size multipliers to test
-        size_multipliers = [1, 5, 10, 100]
-
-        for multiplier in size_multipliers:
+        for multiplier in self.size_multipliers:
             logger.info(f"Testing balance sheet size multiplier: {multiplier}")
 
             # Create modified balance sheet with increased size
@@ -141,7 +136,7 @@ class EfficiencyAssessment:
             processing_time = end_time - start_time
 
             # Store results
-            self.balance_sheet_results.append(
+            balance_sheet_results.append(
                 {
                     "size_multiplier": multiplier,
                     "num_positions": num_positions,
@@ -152,6 +147,8 @@ class EfficiencyAssessment:
             logger.info(
                 f"Completed in {processing_time:.3f}s with {len(horizon)} time steps balance sheets and {num_positions} positions"
             )
+
+        return balance_sheet_results
 
     def _create_scaled_balance_sheet(self, current_date: datetime.date, multiplier: int):
         """Create a balance sheet scaled by the given multiplier.
@@ -164,7 +161,7 @@ class EfficiencyAssessment:
             BalanceSheet with scaled size
         """
         # Read and modify the config CSV
-        config_df = pl.read_csv(str(self.knab_config))
+        config_df = pl.read_csv(str(self.synthetic_data_config))
 
         # Scale the 'number' column
         scaled_config_df = config_df.with_columns((pl.col("number") * multiplier).alias("number"))
@@ -186,7 +183,7 @@ class EfficiencyAssessment:
         # Access the internal data DataFrame
         return len(balance_sheet._data)
 
-    def create_visualizations(self) -> None:
+    def create_visualizations(self, time_horizon_results, balance_sheet_results) -> None:
         """Create and save performance visualization graphs."""
         logger.info("Creating performance visualizations")
 
@@ -196,10 +193,10 @@ class EfficiencyAssessment:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
             # Graph 1: Time Horizon Performance
-            if self.time_horizon_results:
-                time_steps = [r["num_time_steps"] for r in self.time_horizon_results]
-                processing_times = [r["processing_time"] for r in self.time_horizon_results]
-                descriptions = [r["description"] for r in self.time_horizon_results]
+            if time_horizon_results:
+                time_steps = [r["num_time_steps"] for r in time_horizon_results]
+                processing_times = [r["processing_time"] for r in time_horizon_results]
+                descriptions = [r["description"] for r in time_horizon_results]
 
                 ax1.scatter(time_steps, processing_times, alpha=0.7, s=60)
                 ax1.plot(time_steps, processing_times, "-", alpha=0.5)
@@ -224,9 +221,9 @@ class EfficiencyAssessment:
                 ax1.text(0.5, 0.5, "No time horizon data", transform=ax1.transAxes, ha="center")
 
             # Graph 2: Balance Sheet Size Performance
-            if self.balance_sheet_results:
-                num_positions = [r["num_positions"] for r in self.balance_sheet_results]
-                processing_times = [r["processing_time"] for r in self.balance_sheet_results]
+            if balance_sheet_results:
+                num_positions = [r["num_positions"] for r in balance_sheet_results]
+                processing_times = [r["processing_time"] for r in balance_sheet_results]
 
                 ax2.scatter(num_positions, processing_times, alpha=0.7, s=60, color="orange")
                 ax2.plot(num_positions, processing_times, "-", alpha=0.5, color="orange")
@@ -237,7 +234,7 @@ class EfficiencyAssessment:
                 ax2.grid(True, alpha=0.3)
 
                 # Add multiplier labels
-                multipliers = [r["size_multiplier"] for r in self.balance_sheet_results]
+                multipliers = [r["size_multiplier"] for r in balance_sheet_results]
                 for i, mult in enumerate(multipliers):
                     ax2.annotate(
                         f"{mult}x",
@@ -264,43 +261,36 @@ class EfficiencyAssessment:
             logger.error(f"Failed to create visualizations: {e}")
             raise
 
-    def save_results_to_csv(self) -> None:
+    def save_results_to_csv(self, results, file_name) -> None:
         """Save detailed results to CSV files."""
-        logger.info("Saving detailed results to CSV")
+        logger.info(f"Saving detailed results to CSV {file_name}")
 
-        if self.time_horizon_results:
-            time_horizon_df = pd.DataFrame(self.time_horizon_results)
-            time_horizon_path = self.output_dir / "time_horizon_performance.csv"
-            time_horizon_df.to_csv(time_horizon_path, index=False)
-            logger.info(f"Saved time horizon results to {time_horizon_path}")
+        time_horizon_df = pd.DataFrame(results)
+        time_horizon_path = self.output_dir / "time_horizon_performance.csv"
+        time_horizon_df.to_csv(time_horizon_path, index=False)
+        logger.info(f"Saved time horizon results to {time_horizon_path}")
 
-        if self.balance_sheet_results:
-            balance_sheet_df = pd.DataFrame(self.balance_sheet_results)
-            balance_sheet_path = self.output_dir / "balance_sheet_size_performance.csv"
-            balance_sheet_df.to_csv(balance_sheet_path, index=False)
-            logger.info(f"Saved balance sheet size results to {balance_sheet_path}")
-
-    def print_summary(self) -> None:
+    def print_summary(self, time_horizon_results, balance_sheet_results) -> None:
         """Print a summary of the performance assessment."""
         logger.info("=== EFFICIENCY ASSESSMENT SUMMARY ===")
 
-        if self.time_horizon_results:
-            logger.info(f"\nTime Horizon Performance ({len(self.time_horizon_results)} tests):")
-            min_time = min(r["processing_time"] for r in self.time_horizon_results)
-            max_time = max(r["processing_time"] for r in self.time_horizon_results)
-            min_steps = min(r["num_time_steps"] for r in self.time_horizon_results)
-            max_steps = max(r["num_time_steps"] for r in self.time_horizon_results)
+        if time_horizon_results:
+            logger.info(f"\nTime Horizon Performance ({len(time_horizon_results)} tests):")
+            min_time = min(r["processing_time"] for r in time_horizon_results)
+            max_time = max(r["processing_time"] for r in time_horizon_results)
+            min_steps = min(r["num_time_steps"] for r in time_horizon_results)
+            max_steps = max(r["num_time_steps"] for r in time_horizon_results)
 
             logger.info(f"  Time steps range: {min_steps} - {max_steps}")
             logger.info(f"  Processing time range: {min_time:.3f}s - {max_time:.3f}s")
             logger.info(f"  Performance ratio: {max_time / min_time:.2f}x slower for largest horizon")
 
-        if self.balance_sheet_results:
-            logger.info(f"\nBalance Sheet Size Performance ({len(self.balance_sheet_results)} tests):")
-            min_time = min(r["processing_time"] for r in self.balance_sheet_results)
-            max_time = max(r["processing_time"] for r in self.balance_sheet_results)
-            min_positions = min(r["num_positions"] for r in self.balance_sheet_results)
-            max_positions = max(r["num_positions"] for r in self.balance_sheet_results)
+        if balance_sheet_results:
+            logger.info(f"\nBalance Sheet Size Performance ({len(balance_sheet_results)} tests):")
+            min_time = min(r["processing_time"] for r in balance_sheet_results)
+            max_time = max(r["processing_time"] for r in balance_sheet_results)
+            min_positions = min(r["num_positions"] for r in balance_sheet_results)
+            max_positions = max(r["num_positions"] for r in balance_sheet_results)
 
             logger.info(f"  Position count range: {min_positions} - {max_positions}")
             logger.info(f"  Processing time range: {min_time:.3f}s - {max_time:.3f}s")
@@ -311,13 +301,14 @@ class EfficiencyAssessment:
         logger.info("Starting complete efficiency assessment")
 
         # Run both performance tests
-        self.measure_time_horizon_performance()
-        self.measure_balance_sheet_size_performance()
+        time_horizon_results = self.measure_time_horizon_performance()
+        balance_sheet_results = self.measure_balance_sheet_size_performance()
 
         # Generate outputs
-        self.create_visualizations()
-        self.save_results_to_csv()
-        self.print_summary()
+        self.create_visualizations(time_horizon_results, balance_sheet_results)
+        self.save_results_to_csv(balance_sheet_results, "balance_sheet_performance.csv")
+        self.save_results_to_csv(time_horizon_results, "time_horizon_performance.csv")
+        self.print_summary(time_horizon_results, balance_sheet_results)
 
         logger.info("Efficiency assessment completed!")
 

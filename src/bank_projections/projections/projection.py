@@ -1,10 +1,9 @@
+import polars as pl
 from loguru import logger
 
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeHorizon
-
-import polars as pl
 
 
 class Projection:
@@ -12,7 +11,7 @@ class Projection:
         self.rules = rules
         self.horizon = horizon
 
-    def run(self, bs: BalanceSheet) -> tuple[list[pl.Dataframe], list[pl.Dataframe], list[pl.Dataframe]]:
+    def run(self, bs: BalanceSheet) -> tuple[list[pl.DataFrame], list[pl.DataFrame], list[pl.DataFrame]]:
         """Run the projection over the defined time horizon."""
         balance_sheets = []
         pnls_list = []

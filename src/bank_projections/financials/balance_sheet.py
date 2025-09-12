@@ -222,12 +222,12 @@ class BalanceSheet(Positions):
             self._data.clone(), cash_account=self.cash_account.copy(), pnl_account=self.pnl_account.copy()
         )
 
-    def aggregate(self, group_column: list[str]) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    def aggregate(self, group_columns: list[str]) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
         return (
             (
-                self._data.group_by(group_column)
-                .agg([metric.aggregation_expression.alias(name) for name, metric in BalanceSheetMetrics.items])
-                .sort(by=group_column)
+                self._data.group_by(group_columns)
+                .agg([metric.aggregation_expression.alias(name) for name, metric in BalanceSheetMetrics.items.items()])
+                .sort(by=group_columns)
             ),
             self.pnls,
             self.cashflows,

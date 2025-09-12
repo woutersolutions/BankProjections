@@ -88,7 +88,7 @@ class DerivedMetric(BalanceSheetMetric, ABC):
 class DirtyPrice(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterestRate")
+        return pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest")
 
     @property
     def aggregation_expression(self) -> pl.Expr:
