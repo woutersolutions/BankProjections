@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 import polars as pl
 
+from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 
 
@@ -15,23 +16,13 @@ class Redemption(ABC):
         pass
 
     @classmethod
+    @abstractmethod
     def required_columns_validation(cls) -> pl.Expr:
         """Returns an expression that validates all required columns are available and have valid values."""
         pass
 
 
-class RedemptionRegistry(Redemption):
-    _registry: dict[str, type[Redemption]] = {}
-
-    @classmethod
-    def register(cls, name: str, redemption: type[Redemption]) -> None:
-        if not issubclass(redemption, Redemption):
-            raise ValueError(f"Class {redemption} must be a subclass of Redemption")
-        cls._registry[name] = redemption
-
-    @classmethod
-    def get(cls, item: str) -> type[Redemption]:
-        return cls._registry[item]
+class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
 
     @classmethod
     def redemption_factor(

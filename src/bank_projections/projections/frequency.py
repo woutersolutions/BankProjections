@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 import polars as pl
 
+from bank_projections.projections.base_registry import BaseRegistry
+
 
 class Frequency(ABC):
     @classmethod
@@ -26,20 +28,7 @@ class Frequency(ABC):
         pass
 
 
-class FrequencyRegistry(Frequency):
-    _registry: dict[str, type[Frequency]] = {}
-
-    @classmethod
-    def register(cls, name: str, frequency: type[Frequency]) -> None:
-        if not issubclass(frequency, Frequency):
-            raise ValueError(f"Class {frequency} must be a subclass of Frequency")
-        cls._registry[name] = frequency
-
-    @classmethod
-    def get(cls, name: str) -> type[Frequency]:
-        if name not in cls._registry:
-            raise ValueError(f"Frequency '{name}' is not registered.")
-        return cls._registry[name]
+class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
 
     @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:

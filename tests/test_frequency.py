@@ -40,7 +40,7 @@ class TestFrequencyRegistry:
         class NotAFrequency:
             pass
 
-        with pytest.raises(ValueError, match="must be a subclass of Frequency"):
+        with pytest.raises(ValueError, match="must be a subclass of"):
             FrequencyRegistry.register("Invalid", NotAFrequency)
 
     def test_advance_next_with_registered_frequency(self) -> None:
