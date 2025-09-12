@@ -1,21 +1,7 @@
-import datetime
 from abc import ABC, abstractmethod
 
 from bank_projections.financials.balance_sheet import BalanceSheet
-
-
-class TimeIncrement:
-    def __init__(self, from_date: datetime.date, to_date: datetime.date):
-        self.from_date = from_date
-        self.to_date = to_date
-
-    @property
-    def days(self):
-        return (self.to_date - self.from_date).days
-
-    @property
-    def portion_year(self):
-        return self.days / 365.25
+from bank_projections.projections.time import TimeIncrement
 
 
 class Rule(ABC):

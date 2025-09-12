@@ -4,7 +4,8 @@ import datetime
 
 import pytest
 
-from bank_projections.projections.rule import Rule, TimeIncrement
+from bank_projections.projections.rule import Rule
+from bank_projections.projections.time import TimeIncrement
 
 
 class MockRule(Rule):

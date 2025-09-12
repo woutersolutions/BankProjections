@@ -6,8 +6,8 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.rule import TimeIncrement
 from bank_projections.projections.runoff import Runoff
+from bank_projections.projections.time import TimeIncrement
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 
