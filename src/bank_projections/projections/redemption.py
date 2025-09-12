@@ -28,7 +28,7 @@ class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
         cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
     ) -> pl.Expr:
         expr = pl.lit(0.0)
-        for name, redemption_cls in cls._registry.items():
+        for name, redemption_cls in cls.items.items():
             expr = (
                 pl.when(pl.col("RedemptionType") == name)
                 .then(redemption_cls.redemption_factor(maturity_date, interest_rate, coupon_date, projection_date))
@@ -43,7 +43,7 @@ class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
         base_validation = pl.col("RedemptionType").is_not_null()
 
         specific_expr = pl.lit(True)
-        for name, redemption_cls in cls._registry.items():
+        for name, redemption_cls in cls.items.items():
             specific_expr = (
                 pl.when(pl.col("RedemptionType") == name)
                 .then(redemption_cls.required_columns_validation())

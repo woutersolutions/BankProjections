@@ -103,6 +103,10 @@ class BalanceSheet(Positions):
                 f"expected 0.00 (assets should equal funding within 0.01 tolerance)"
             )
 
+    def clear_mutations(self) -> None:
+        self.cashflows = pl.DataFrame()
+        self.pnls = pl.DataFrame()
+
     def mutate_metric(
         self,
         item: BalanceSheetItem,
@@ -218,20 +222,15 @@ class BalanceSheet(Positions):
             self._data.clone(), cash_account=self.cash_account.copy(), pnl_account=self.pnl_account.copy()
         )
 
-    def aggregate(self, group_column: list[str]) -> pl.DataFrame:
-        # TODO: Make it easier to get the metrics
-        metrics = {
-            "Quantity": BalanceSheetMetrics.get("quantity"),
-            "Impairment": BalanceSheetMetrics.get("impairment"),
-            "Agio": BalanceSheetMetrics.get("agio"),
-            "AccruedInterest": BalanceSheetMetrics.get("accrued_interest"),
-            "BookValue": BalanceSheetMetrics.get("book_value"),
-        }
-
+    def aggregate(self, group_column: list[str]) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
         return (
-            self._data.group_by(group_column)
-            .agg([metric.aggregation_expression.alias(name) for name, metric in metrics.items()])
-            .sort(by=group_column)
+            (
+                self._data.group_by(group_column)
+                .agg([metric.aggregation_expression.alias(name) for name, metric in BalanceSheetMetrics.items])
+                .sort(by=group_column)
+            ),
+            self.pnls,
+            self.cashflows,
         )
 
     @classmethod

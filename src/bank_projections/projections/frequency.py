@@ -32,14 +32,14 @@ class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
     @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
         expr = date
-        for name, freq in cls._registry.items():
+        for name, freq in cls.items.items():
             expr = pl.when(pl.col("CouponFrequency") == name).then(freq.advance_next(date, number)).otherwise(expr)
         return expr
 
     @classmethod
     def number_due(cls, coupon_date: pl.Expr, projection_date: pl.Expr) -> pl.Expr:
         expr = pl.lit(0)
-        for name, freq in cls._registry.items():
+        for name, freq in cls.items.items():
             expr = (
                 pl.when(pl.col("CouponFrequency") == name)
                 .then(freq.number_due(coupon_date, projection_date))
@@ -50,7 +50,7 @@ class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
     @classmethod
     def portion_passed(cls, next_coupon_date: pl.Expr, projection_date: datetime.date) -> pl.Expr:
         expr = pl.lit(0.0)
-        for name, freq in cls._registry.items():
+        for name, freq in cls.items.items():
             expr = (
                 pl.when(pl.col("CouponFrequency") == name)
                 .then(freq.portion_passed(next_coupon_date, projection_date))
@@ -61,7 +61,7 @@ class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
     @classmethod
     def portion_year(cls) -> pl.Expr:
         expr = pl.lit(0.0)
-        for name, freq in cls._registry.items():
+        for name, freq in cls.items.items():
             expr = pl.when(pl.col("CouponFrequency") == name).then(freq.portion_year()).otherwise(expr)
         return expr
 

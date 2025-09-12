@@ -18,6 +18,5 @@ if __name__ == "__main__":
         end_of_month=True,
     )
 
-    projection = Projection(start_bs, rules, horizon)
-
-    projection.run()
+    projection = Projection(rules, horizon)
+    projection.run(start_bs)

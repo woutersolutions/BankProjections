@@ -77,10 +77,10 @@ class EfficiencyAssessment:
             logger.info(f"Testing time horizon: {num_time_steps} steps")
 
             # Measure performance
-            projection = Projection(base_bs, rules, horizon)
+            projection = Projection(rules, horizon)
 
             start_time = time.perf_counter()
-            result = projection.run()
+            _ = projection.run(base_bs)
             end_time = time.perf_counter()
 
             processing_time = end_time - start_time
@@ -132,10 +132,10 @@ class EfficiencyAssessment:
             logger.info(f"Balance sheet positions: {num_positions}")
 
             # Measure performance
-            projection = Projection(bs, rules, horizon)
+            projection = Projection(rules, horizon)
 
             start_time = time.perf_counter()
-            result = projection.run()
+            _ = projection.run(bs)
             end_time = time.perf_counter()
 
             processing_time = end_time - start_time
@@ -150,7 +150,7 @@ class EfficiencyAssessment:
             )
 
             logger.info(
-                f"Completed in {processing_time:.3f}s with {len(result)} time steps balance sheets and {num_positions} positions"
+                f"Completed in {processing_time:.3f}s with {len(horizon)} time steps balance sheets and {num_positions} positions"
             )
 
     def _create_scaled_balance_sheet(self, current_date: datetime.date, multiplier: int):

@@ -19,20 +19,20 @@ class TestFrequencyRegistry:
 
     def setup_method(self) -> None:
         """Save registry state and clear for isolated testing."""
-        self._original_registry = FrequencyRegistry._registry.copy()
-        FrequencyRegistry._registry.clear()
+        self._original_registry = FrequencyRegistry.items.copy()
+        FrequencyRegistry.items.clear()
 
     def teardown_method(self) -> None:
         """Restore original registry state."""
-        FrequencyRegistry._registry.clear()
-        FrequencyRegistry._registry.update(self._original_registry)
+        FrequencyRegistry.items.clear()
+        FrequencyRegistry.items.update(self._original_registry)
 
     def test_register_valid_frequency(self) -> None:
         """Test registering a valid frequency class."""
         item = Monthly()
         FrequencyRegistry.register("Monthly", item)
-        assert "Monthly" in FrequencyRegistry._registry
-        assert item in FrequencyRegistry._registry.values()
+        assert "Monthly" in FrequencyRegistry.items
+        assert item in FrequencyRegistry.items.values()
 
     def test_advance_next_with_registered_frequency(self) -> None:
         """Test advance_next works with registered frequencies."""
