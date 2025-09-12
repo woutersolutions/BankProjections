@@ -143,7 +143,7 @@ def generate_synthetic_positions(
     positions = Positions(df)
 
     positions.validate()
-    assert abs(positions.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value) - book_value) < 1e-2, (
+    assert abs(positions.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value")) - book_value) < 1e-2, (
         f"Generated book value not equal to target {book_value}"
     )
 

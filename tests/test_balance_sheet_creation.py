@@ -18,7 +18,7 @@ def test_create_simple_balance_sheet():
     assert len(bs) > 0
 
     # Verify it's balanced (total book value should be ~0)
-    total_book_value = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
+    total_book_value = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
     assert abs(total_book_value) < 0.01, f"Balance sheet not balanced: {total_book_value}"
 
     # Verify balance sheet is valid
@@ -30,15 +30,15 @@ def test_balance_sheet_components():
     bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31))
 
     # Check assets
-    assets = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Assets"), BalanceSheetMetrics.book_value)
+    assets = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Assets"), BalanceSheetMetrics.get("book_value"))
     assert assets > 0, "Assets should be positive"
 
     # Check liabilities
-    liabilities = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Liabilities"), BalanceSheetMetrics.book_value)
+    liabilities = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Liabilities"), BalanceSheetMetrics.get("book_value"))
     assert liabilities < 0, "Liabilities should be negative"
 
     # Check equity
-    equity = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Equity"), BalanceSheetMetrics.book_value)
+    equity = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Equity"), BalanceSheetMetrics.get("book_value"))
     assert equity < 0, "Equity should be negative"
 
     # Verify balance sheet is valid

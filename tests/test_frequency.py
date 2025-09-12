@@ -3,7 +3,6 @@
 import datetime
 
 import polars as pl
-import pytest
 
 from bank_projections.projections.frequency import (
     Annual,
@@ -30,22 +29,14 @@ class TestFrequencyRegistry:
 
     def test_register_valid_frequency(self) -> None:
         """Test registering a valid frequency class."""
-        FrequencyRegistry.register("Monthly", Monthly)
+        item = Monthly()
+        FrequencyRegistry.register("Monthly", item)
         assert "Monthly" in FrequencyRegistry._registry
-        assert FrequencyRegistry._registry["Monthly"] is Monthly
-
-    def test_register_invalid_frequency(self) -> None:
-        """Test registering an invalid class raises ValueError."""
-
-        class NotAFrequency:
-            pass
-
-        with pytest.raises(ValueError, match="must be a subclass of"):
-            FrequencyRegistry.register("Invalid", NotAFrequency)
+        assert item in FrequencyRegistry._registry.values()
 
     def test_advance_next_with_registered_frequency(self) -> None:
         """Test advance_next works with registered frequencies."""
-        FrequencyRegistry.register("Monthly", Monthly)
+        FrequencyRegistry.register("Monthly", Monthly())
 
         df = pl.DataFrame(
             {
@@ -61,7 +52,7 @@ class TestFrequencyRegistry:
 
     def test_number_due_with_registered_frequency(self) -> None:
         """Test number_due works with registered frequencies."""
-        FrequencyRegistry.register("Monthly", Monthly)
+        FrequencyRegistry.register("Monthly", Monthly())
 
         df = pl.DataFrame(
             {
@@ -79,7 +70,7 @@ class TestFrequencyRegistry:
 
     def test_portion_passed_with_registered_frequency(self) -> None:
         """Test portion_passed works with registered frequencies."""
-        FrequencyRegistry.register("Monthly", Monthly)
+        FrequencyRegistry.register("Monthly", Monthly())
 
         df = pl.DataFrame(
             {

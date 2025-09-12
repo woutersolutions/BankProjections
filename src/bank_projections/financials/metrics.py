@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 
 import polars as pl
 
+from bank_projections.projections.base_registry import BaseRegistry
+
 
 class BalanceSheetMetric(ABC):
     @property
@@ -131,20 +133,22 @@ class BookValue(DerivedMetric):
         return self.get_expression.sum()
 
 
-# TODO: Make registry?
-class BalanceSheetMetrics:
-    quantity = CoreAmount("Quantity")
-    impairment = CoreAmount("Impairment")
-    accrued_interest = CoreAmount("AccruedInterest")
-    agio = CoreAmount("Agio")
-    clean_price = CoreWeight("CleanPrice")
+class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
+    pass
 
-    dirty_price = DirtyPrice()
 
-    coverage_rate = DerivedWeight("Impairment")
-    accrued_interest_rate = DerivedWeight("AccruedInterest")
-    agio_weight = DerivedWeight("Agio")
+BalanceSheetMetrics.register("quantity", CoreAmount("Quantity"))
+BalanceSheetMetrics.register("impairment", CoreAmount("Impairment"))
+BalanceSheetMetrics.register("accrued_interest", CoreAmount("AccruedInterest"))
+BalanceSheetMetrics.register("agio", CoreAmount("Agio"))
+BalanceSheetMetrics.register("clean_price", CoreWeight("CleanPrice"))
 
-    book_value = BookValue()
+BalanceSheetMetrics.register("dirty_price", DirtyPrice())
 
-    interest_rate = CoreWeight("InterestRate")
+BalanceSheetMetrics.register("coverage_rate", DerivedWeight("Impairment"))
+BalanceSheetMetrics.register("accrued_interest_rate", DerivedWeight("AccruedInterest"))
+BalanceSheetMetrics.register("agio_weight", DerivedWeight("Agio"))
+
+BalanceSheetMetrics.register("book_value", BookValue())
+
+BalanceSheetMetrics.register("interest_rate", CoreWeight("InterestRate"))

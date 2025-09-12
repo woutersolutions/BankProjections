@@ -9,7 +9,7 @@ from bank_projections.projections.base_registry import BaseRegistry
 class Frequency(ABC):
     @classmethod
     @abstractmethod
-    def advance_next(cls, date: pl.Expr, number: int) -> pl.Expr:
+    def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
         pass
 
     @classmethod
@@ -29,7 +29,6 @@ class Frequency(ABC):
 
 
 class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
-
     @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
         expr = date
@@ -152,10 +151,10 @@ class Never(Frequency):
         return pl.lit(0.0)
 
 
-FrequencyRegistry.register("Monthly", Monthly)
-FrequencyRegistry.register("Quarterly", Quarterly)
-FrequencyRegistry.register("SemiAnnual", SemiAnnual)
-FrequencyRegistry.register("Annual", Annual)
-FrequencyRegistry.register("Daily", Daily)
-FrequencyRegistry.register("Weekly", Weekly)
-FrequencyRegistry.register("Never", Never)
+FrequencyRegistry.register("Monthly", Monthly())
+FrequencyRegistry.register("Quarterly", Quarterly())
+FrequencyRegistry.register("SemiAnnual", SemiAnnual())
+FrequencyRegistry.register("Annual", Annual())
+FrequencyRegistry.register("Daily", Daily())
+FrequencyRegistry.register("Weekly", Weekly())
+FrequencyRegistry.register("Never", Never())

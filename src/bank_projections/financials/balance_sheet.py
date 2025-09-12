@@ -96,7 +96,7 @@ class BalanceSheet(Positions):
     def validate(self) -> None:
         super().validate()
 
-        total_book_value = self.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
+        total_book_value = self.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
         if abs(total_book_value) > 0.01:
             raise ValueError(
                 f"Balance sheet does not balance: total book value is {total_book_value:.4f}, "
@@ -157,7 +157,9 @@ class BalanceSheet(Positions):
                 )
 
         if offset_liquidity is not None or offset_pnl is not None:
-            calculations["BookValueBefore"] = BalanceSheetMetrics.book_value.get_expression.alias("BookValueBefore")
+            calculations["BookValueBefore"] = BalanceSheetMetrics.get("book_value").get_expression.alias(
+                "BookValueBefore"
+            )
 
         if self._data.filter(item.filter_expression).is_empty():
             raise ValueError("At least one position is required")
@@ -183,14 +185,14 @@ class BalanceSheet(Positions):
         if offset_pnl is not None:
             self.add_pnl(
                 self._data.filter(item.filter_expression),
-                BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore"),
+                BalanceSheetMetrics.get("book_value").get_expression - pl.col("BookValueBefore"),
                 offset_pnl,
             )
             self._data = self._data.drop("BookValueBefore")
         if offset_liquidity is not None:
             self.add_liquidity(
                 self._data.filter(item.filter_expression),
-                -(BalanceSheetMetrics.book_value.get_expression - pl.col("BookValueBefore")),
+                -(BalanceSheetMetrics.get("book_value").get_expression - pl.col("BookValueBefore")),
                 offset_liquidity,
             )
             self._data = self._data.drop("BookValueBefore")
@@ -199,14 +201,16 @@ class BalanceSheet(Positions):
         pnls = data.group_by(PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
-        self.mutate_metric(self.pnl_account, BalanceSheetMetrics.quantity, -pnls["Amount"].sum(), reason, relative=True)
+        self.mutate_metric(
+            self.pnl_account, BalanceSheetMetrics.get("quantity"), -pnls["Amount"].sum(), reason, relative=True
+        )
 
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason):
         cashflows = data.group_by(CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
-            self.cash_account, BalanceSheetMetrics.quantity, cashflows["Amount"].sum(), reason, relative=True
+            self.cash_account, BalanceSheetMetrics.get("quantity"), cashflows["Amount"].sum(), reason, relative=True
         )
 
     def copy(self):
@@ -217,11 +221,11 @@ class BalanceSheet(Positions):
     def aggregate(self, group_column: list[str]) -> pl.DataFrame:
         # TODO: Make it easier to get the metrics
         metrics = {
-            "Quantity": BalanceSheetMetrics.quantity,
-            "Impairment": BalanceSheetMetrics.impairment,
-            "Agio": BalanceSheetMetrics.agio,
-            "AccruedInterest": BalanceSheetMetrics.accrued_interest,
-            "BookValue": BalanceSheetMetrics.book_value,
+            "Quantity": BalanceSheetMetrics.get("quantity"),
+            "Impairment": BalanceSheetMetrics.get("impairment"),
+            "Agio": BalanceSheetMetrics.get("agio"),
+            "AccruedInterest": BalanceSheetMetrics.get("accrued_interest"),
+            "BookValue": BalanceSheetMetrics.get("book_value"),
         }
 
         return (

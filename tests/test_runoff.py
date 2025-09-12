@@ -30,13 +30,13 @@ class TestRunoff:
         bs_before = self.bs.copy()
 
         loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
         # Quantity should decrease slightly due to prepayments only
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
         assert new_quantity < initial_quantity  # Some prepayment occurred
         assert new_quantity > initial_quantity * 0.95  # But not much (small prepayment rate)
 
@@ -73,14 +73,14 @@ class TestRunoff:
         loans_item = BalanceSheetItem(
             ItemType="Mortgages",
         )
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
         result_bs.validate()
 
         # Quantity should go to zero for matured loans
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
         assert new_quantity < initial_quantity * 0.1  # Should be nearly zero
 
         # Should have principal repayment cashflow equal to initial quantity
@@ -100,13 +100,13 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
         loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
         # Quantity should decrease for annuity loans
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
         assert new_quantity < initial_quantity
 
         # Should have positive principal repayment cashflow
@@ -130,13 +130,13 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
         loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
         # Quantity should decrease for linear loans
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
         assert new_quantity < initial_quantity
 
         # Should have positive principal repayment cashflow
@@ -177,7 +177,7 @@ class TestRunoff:
         result_bs = rule.apply(self.bs, increment)
 
         # Accrued interest should be updated
-        new_accrued = result_bs.get_amount(loans_item, BalanceSheetMetrics.accrued_interest)
+        new_accrued = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("accrued_interest"))
         # The accrued interest may increase or decrease based on coupon payments and new accrual
         assert isinstance(new_accrued, float)
 
@@ -196,18 +196,18 @@ class TestRunoff:
 
         loans_item = BalanceSheetItem(ItemType="Mortgages", ValuationMethod="amortized cost")
         self.bs.mutate_metric(
-            loans_item, BalanceSheetMetrics.impairment, -10000.0, MutationReason(test="test"), offset_pnl=True
+            loans_item, BalanceSheetMetrics.get("impairment"), -10000.0, MutationReason(test="test"), offset_pnl=True
         )
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
-        initial_impairment = self.bs.get_amount(loans_item, BalanceSheetMetrics.impairment)
+        initial_impairment = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("impairment"))
 
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
         # Impairment should decrease proportionally to principal repayments
-        new_impairment = result_bs.get_amount(loans_item, BalanceSheetMetrics.impairment)
+        new_impairment = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("impairment"))
         assert new_impairment > initial_impairment
 
     def test_agio_linear_decrease(self) -> None:
@@ -215,7 +215,7 @@ class TestRunoff:
         # Set some initial agio to test the decrease
         self.bs.mutate_metric(
             BalanceSheetItem(ItemType="Mortgages"),
-            BalanceSheetMetrics.agio,
+            BalanceSheetMetrics.get("agio"),
             500.0,
             MutationReason(test="test"),
             offset_pnl=True,
@@ -225,13 +225,13 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
         loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_agio = self.bs.get_amount(loans_item, BalanceSheetMetrics.agio)
+        initial_agio = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("agio"))
 
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
         # Agio should decrease (linear amortization)
-        new_agio = result_bs.get_amount(loans_item, BalanceSheetMetrics.agio)
+        new_agio = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("agio"))
         assert new_agio < initial_agio
 
     def test_pnl_generation(self) -> None:
@@ -297,8 +297,8 @@ class TestRunoff:
         # Set interest rate to zero for all loans
         item = BalanceSheetItem(ItemType="Mortgages")
         reason = MutationReason(test="test")
-        self.bs.mutate_metric(item, BalanceSheetMetrics.interest_rate, 0.0, reason)
-        self.bs.mutate_metric(item, BalanceSheetMetrics.accrued_interest, 0.0, reason)
+        self.bs.mutate_metric(item, BalanceSheetMetrics.get("interest_rate"), 0.0, reason)
+        self.bs.mutate_metric(item, BalanceSheetMetrics.get("accrued_interest"), 0.0, reason)
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
@@ -307,7 +307,7 @@ class TestRunoff:
 
         # Should handle zero interest rates without error
         loans_item = BalanceSheetItem(ItemType="Mortgages")
-        new_accrued = result_bs.get_amount(loans_item, BalanceSheetMetrics.accrued_interest)
+        new_accrued = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("accrued_interest"))
         assert isinstance(new_accrued, float)
 
     def test_combined_repayment_types(self) -> None:
@@ -328,13 +328,13 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
         loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
         # Should handle mixed types without error
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
         # Some loans will repay (annuity/linear), others won't (bullet/perpetual)
         assert new_quantity < initial_quantity
 
@@ -369,13 +369,13 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2024, 12, 31), to_date=datetime.date(2025, 2, 15))
 
         loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
         result_bs = rule.apply(self.bs, increment)
 
         # Quantity should decrease due to prepayments only
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.quantity)
+        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
         assert new_quantity < initial_quantity
 
         # Should have no principal repayment cashflow (perpetual)
@@ -419,7 +419,7 @@ class TestRunoff:
         # Verify initial balance sheet is balanced
         self.bs.validate()
 
-        initial_total_book_value = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
+        initial_total_book_value = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
         initial_cashflows = len(self.bs.cashflows)
         initial_pnls = len(self.bs.pnls)
 
@@ -434,7 +434,7 @@ class TestRunoff:
         # Verify balance sheet remains balanced after runoff
         result_bs.validate()
 
-        final_total_book_value = result_bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.book_value)
+        final_total_book_value = result_bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
 
         # The total should remain close to zero (balanced)
         assert abs(final_total_book_value) < 0.01, (

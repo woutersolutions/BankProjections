@@ -23,7 +23,6 @@ class Redemption(ABC):
 
 
 class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
-
     @classmethod
     def redemption_factor(
         cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
@@ -134,7 +133,7 @@ class LinearRedemption(Redemption):
 
 
 # Register all redemption types
-RedemptionRegistry.register("bullet", BulletRedemption)
-RedemptionRegistry.register("annuity", AnnuityRedemption)
-RedemptionRegistry.register("perpetual", PerpetualRedemption)
-RedemptionRegistry.register("linear", LinearRedemption)
+RedemptionRegistry.register("bullet", BulletRedemption())
+RedemptionRegistry.register("annuity", AnnuityRedemption())
+RedemptionRegistry.register("perpetual", PerpetualRedemption())
+RedemptionRegistry.register("linear", LinearRedemption())
