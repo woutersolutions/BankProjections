@@ -7,7 +7,7 @@ from examples.synthetic_data import create_synthetic_balance_sheet
 
 if __name__ == "__main__":
     start_date = datetime.date(2024, 12, 31)
-    start_bs = create_synthetic_balance_sheet()
+    start_bs = create_synthetic_balance_sheet(start_date)
     rules = [Runoff()]
     horizon = TimeHorizon.from_numbers(
         start_date=start_date,

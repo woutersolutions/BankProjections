@@ -1,5 +1,7 @@
 """Test script for BalanceSheet get_amount and mutate methods."""
 
+import datetime
+
 import polars as pl
 import pytest
 
@@ -13,7 +15,7 @@ class TestBalanceSheetMethods:
 
     def setup_method(self) -> None:
         """Create a test balance sheet for each test."""
-        self.bs = create_synthetic_balance_sheet()
+        self.bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31))
         # Validate initial balance sheet
         self.bs.validate()
 

@@ -164,14 +164,18 @@ def generate_random_numbers(number: int, minimum: float, maximum: float, mean: f
     return random_numbers
 
 
-# TODO: Parametrize
-def create_synthetic_balance_sheet() -> BalanceSheet:
+def create_synthetic_balance_sheet(
+    current_date: datetime.date,
+    config_path: Optional[str] = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
+    config_table: pl.DataFrame = None,
+) -> BalanceSheet:
     # Iterate over synthetic_data.csv using polars to create each of the items
 
-    current_date = datetime.date(2024, 12, 31)
+    if config_table is None:
+        config_table = pl.read_csv(config_path)
 
     positions = []
-    for row in pl.read_csv(os.path.join(EXAMPLE_FOLDER, "synthetic_config.csv")).iter_rows(named=True):
+    for row in config_table.iter_rows(named=True):
         position_input = {name: read_range(value) if name.endswith("_range") else value for name, value in row.items()}
         if row["number"] > 0:
             positions.append(generate_synthetic_positions(current_date=current_date, **position_input))

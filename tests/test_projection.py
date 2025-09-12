@@ -53,7 +53,7 @@ class TestProjection:
 
         projection = Projection(mock_bs, [rule], horizon)
 
-        with patch('bank_projections.projections.projection.logger'):
+        with patch("bank_projections.projections.projection.logger"):
             result = projection.run()
 
         # TimeHorizon with 2 dates yields 2 increments: (start->start) and (start->end)
@@ -88,7 +88,7 @@ class TestProjection:
 
         projection = Projection(mock_bs, [rule1, rule2], horizon)
 
-        with patch('bank_projections.projections.projection.logger'):
+        with patch("bank_projections.projections.projection.logger"):
             result = projection.run()
 
         # TimeHorizon with 2 dates yields 2 increments, so 3 balance sheets total
@@ -106,16 +106,12 @@ class TestProjection:
         rule = MockRule("test_rule")
 
         # Create time horizon with multiple increments
-        dates = [
-            datetime.date(2024, 1, 1),
-            datetime.date(2024, 1, 15),
-            datetime.date(2024, 2, 1)
-        ]
+        dates = [datetime.date(2024, 1, 1), datetime.date(2024, 1, 15), datetime.date(2024, 2, 1)]
         horizon = TimeHorizon(dates)
 
         projection = Projection(mock_bs, [rule], horizon)
 
-        with patch('bank_projections.projections.projection.logger'):
+        with patch("bank_projections.projections.projection.logger"):
             result = projection.run()
 
         # TimeHorizon with 3 dates yields 3 increments, so 4 balance sheets total
@@ -132,16 +128,12 @@ class TestProjection:
         rule1 = MockRule("rule1")
         rule2 = MockRule("rule2")
 
-        dates = [
-            datetime.date(2024, 1, 1),
-            datetime.date(2024, 1, 15),
-            datetime.date(2024, 2, 1)
-        ]
+        dates = [datetime.date(2024, 1, 1), datetime.date(2024, 1, 15), datetime.date(2024, 2, 1)]
         horizon = TimeHorizon(dates)
 
         projection = Projection(mock_bs, [rule1, rule2], horizon)
 
-        with patch('bank_projections.projections.projection.logger'):
+        with patch("bank_projections.projections.projection.logger"):
             result = projection.run()
 
         # TimeHorizon with 3 dates yields 3 increments, so 4 balance sheets total
@@ -162,7 +154,7 @@ class TestProjection:
 
         projection = Projection(mock_bs, [], horizon)
 
-        with patch('bank_projections.projections.projection.logger'):
+        with patch("bank_projections.projections.projection.logger"):
             result = projection.run()
 
         # Should still return balance sheets even with no rules (3 total)
@@ -181,7 +173,7 @@ class TestProjection:
 
         projection = Projection(mock_bs, [rule], horizon)
 
-        with patch('bank_projections.projections.projection.logger'):
+        with patch("bank_projections.projections.projection.logger"):
             result = projection.run()
 
         # Should return start balance sheet plus one projection
@@ -191,7 +183,7 @@ class TestProjection:
         # Rule should have been called once for the zero-day increment
         assert len(rule.apply_calls) == 1
 
-    @patch('bank_projections.projections.projection.logger')
+    @patch("bank_projections.projections.projection.logger")
     def test_run_logs_progress(self, mock_logger) -> None:
         """Test that run method logs progress correctly."""
         mock_bs = Mock(spec=BalanceSheet)
@@ -199,11 +191,7 @@ class TestProjection:
 
         rule = MockRule("test_rule")
 
-        dates = [
-            datetime.date(2024, 1, 1),
-            datetime.date(2024, 1, 15),
-            datetime.date(2024, 2, 1)
-        ]
+        dates = [datetime.date(2024, 1, 1), datetime.date(2024, 1, 15), datetime.date(2024, 2, 1)]
         horizon = TimeHorizon(dates)
 
         projection = Projection(mock_bs, [rule], horizon)
@@ -223,7 +211,7 @@ class TestProjection:
         # Create a real balance sheet for this test
         from examples.synthetic_data import create_synthetic_balance_sheet
 
-        start_bs = create_synthetic_balance_sheet()
+        start_bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31))
 
         # Create a simple rule that tracks the number of times it's applied
         class CountingRule(Rule):
@@ -237,16 +225,12 @@ class TestProjection:
 
         rule = CountingRule()
 
-        dates = [
-            datetime.date(2024, 1, 1),
-            datetime.date(2024, 1, 15),
-            datetime.date(2024, 2, 1)
-        ]
+        dates = [datetime.date(2024, 1, 1), datetime.date(2024, 1, 15), datetime.date(2024, 2, 1)]
         horizon = TimeHorizon(dates)
 
         projection = Projection(start_bs, [rule], horizon)
 
-        with patch('bank_projections.projections.projection.logger'):
+        with patch("bank_projections.projections.projection.logger"):
             result = projection.run()
 
         # Should have 4 balance sheets (3 dates = 3 increments + original)
@@ -262,4 +246,3 @@ class TestProjection:
 
         # First balance sheet should be the original
         assert result[0] is start_bs
-

@@ -1,5 +1,7 @@
 """Test script for balance sheet creation with minimal code."""
 
+import datetime
+
 import pytest
 
 from bank_projections.financials.balance_sheet import BalanceSheetItem
@@ -10,7 +12,7 @@ from examples.synthetic_data import create_synthetic_balance_sheet
 def test_create_simple_balance_sheet():
     """Test that a balance sheet can be created with minimal code."""
     # Create a balanced balance sheet with default parameters
-    bs = create_synthetic_balance_sheet()
+    bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31))
 
     # Verify the balance sheet was created successfully
     assert len(bs) > 0
@@ -25,7 +27,7 @@ def test_create_simple_balance_sheet():
 
 def test_balance_sheet_components():
     """Test that the balance sheet has proper asset, liability, and equity components."""
-    bs = create_synthetic_balance_sheet()
+    bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31))
 
     # Check assets
     assets = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Assets"), BalanceSheetMetrics.book_value)
