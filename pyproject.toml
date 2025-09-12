@@ -28,6 +28,7 @@ dependencies = [
     "numpy",
     "openpyxl",
     "pyyaml",
+    "matplotlib",
 ]
 
 [project.optional-dependencies]
