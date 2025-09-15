@@ -1,6 +1,8 @@
 from abc import ABC
 from typing import Generic, TypeVar
 
+from loguru import logger
+
 T = TypeVar("T", bound=ABC)
 
 
@@ -12,8 +14,8 @@ class BaseRegistry(ABC, Generic[T]):
     @classmethod
     def register(cls, name: str, item: T) -> None:
         name = clean_identifier(name)
-        if cls.is_registered(name):
-            raise ValueError(f"{cls.__name__} '{name}' is already registered.")
+        if name in cls.items:
+            logger.warning(f"{cls.__name__} '{name}' was already registered.")
         cls.items[name] = item
 
     @classmethod

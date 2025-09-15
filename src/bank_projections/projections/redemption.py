@@ -92,7 +92,7 @@ class AnnuityRedemption(Redemption):
         return (
             pl.col("MaturityDate").is_not_null()
             & pl.col("CouponFrequency").is_not_null()
-            & pl.col("CouponFrequency").is_in(["Monthly", "Quarterly", "SemiAnnual", "Annual", "Daily", "Weekly"])
+            & pl.col("CouponFrequency").is_in(list(FrequencyRegistry.items.keys()))
             & pl.col("NextCouponDate").is_not_null()
             & pl.col("InterestRate").is_not_null()
         )

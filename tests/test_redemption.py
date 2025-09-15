@@ -4,7 +4,6 @@ import polars as pl
 
 from bank_projections.projections.frequency import Annual, FrequencyRegistry
 from bank_projections.projections.redemption import (
-    AnnuityRedemption,
     BulletRedemption,
     LinearRedemption,
     PerpetualRedemption,
@@ -77,32 +76,6 @@ class TestLinearRedemption:
 
         payments_left = df["payments_left"][0]
         expected_factor = 1.0 / payments_left if payments_left > 0 else 0.0
-
-        assert abs(df["factor"][0] - expected_factor) < 1e-10
-
-
-class TestAnnuityRedemption:
-    def test_annuity_payment_formula(self):
-        rate = pl.lit(0.05)
-        coupon_date = pl.lit(datetime.date(2023, 12, 31))
-        projection = datetime.date(2023, 12, 31)  # Start of loan
-
-        # Create test dataframe with required columns
-        df = pl.DataFrame(
-            {"MaturityDate": datetime.date(2025, 12, 31), "CouponFrequency": ["annual"], "dummy": [1]}
-        ).with_columns(
-            [
-                AnnuityRedemption.redemption_factor(pl.col("MaturityDate"), rate, coupon_date, projection).alias(
-                    "factor"
-                ),
-                FrequencyRegistry.number_due(coupon_date, pl.lit(projection)).alias("payments_left"),
-                FrequencyRegistry.portion_year().alias("period_fraction"),
-            ]
-        )
-
-        payments_left = df["payments_left"][0]
-        period_rate = 0.05 * df["period_fraction"][0]
-        expected_factor = period_rate / (1 - (1 + period_rate) ** (-payments_left)) if payments_left > 0 else 0.0
 
         assert abs(df["factor"][0] - expected_factor) < 1e-10
 

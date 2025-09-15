@@ -7,6 +7,7 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, Positions
 from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.projections.base_registry import clean_identifier
 from bank_projections.projections.frequency import FrequencyRegistry
 from examples import EXAMPLE_FOLDER
 
@@ -31,6 +32,10 @@ def generate_synthetic_positions(
     off_balance: float = 0.0,
     trea_weight: float = 0.0,
 ) -> Positions:
+    redemption_type = clean_identifier(redemption_type)
+    coupon_frequency = clean_identifier(coupon_frequency)
+    valuation_method = clean_identifier(valuation_method)
+
     # Generate random book values that sum to the target book value
     if book_value == 0 or number == 1:
         book_values = [book_value] * number
@@ -76,7 +81,7 @@ def generate_synthetic_positions(
     else:
         raise ValueError(f"Unknown redemption type: {redemption_type}")
 
-    match coupon_frequency.lower():
+    match coupon_frequency:
         case "daily":
             maximum_next_coupon_days = 1
         case "weekly":

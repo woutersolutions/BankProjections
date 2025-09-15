@@ -31,7 +31,7 @@ class TestFrequencyRegistry:
         """Test registering a valid frequency class."""
         item = Monthly()
         FrequencyRegistry.register("Monthly", item)
-        assert "Monthly" in FrequencyRegistry.items
+        assert "monthly" in FrequencyRegistry.items
         assert item in FrequencyRegistry.items.values()
 
     def test_advance_next_with_registered_frequency(self) -> None:
@@ -40,7 +40,7 @@ class TestFrequencyRegistry:
 
         df = pl.DataFrame(
             {
-                "CouponFrequency": ["Monthly"],
+                "CouponFrequency": ["monthly"],
                 "Date": [datetime.date(2025, 1, 15)],
             }
         )
@@ -56,7 +56,7 @@ class TestFrequencyRegistry:
 
         df = pl.DataFrame(
             {
-                "CouponFrequency": ["Monthly"],
+                "CouponFrequency": ["monthly"],
                 "CouponDate": [datetime.date(2025, 1, 15)],
                 "ProjectionDate": [datetime.date(2025, 4, 15)],
             }
@@ -74,7 +74,7 @@ class TestFrequencyRegistry:
 
         df = pl.DataFrame(
             {
-                "CouponFrequency": ["Monthly"],
+                "CouponFrequency": ["monthly"],
                 "NextCouponDate": [datetime.date(2025, 2, 15)],
             }
         )
