@@ -87,6 +87,7 @@ class BalanceSheetMutationRule(Rule):
 
         self.item = BalanceSheetItem()
         self.relative = True
+        self.multiplicative = False
         self.offset_liquidity = False
         self.offset_pnl = False
         self.reason = MutationReason(rule="BalanceSheetMutationRule")
@@ -100,6 +101,8 @@ class BalanceSheetMutationRule(Rule):
                     self.item = self.item.add_identifier(key, value)
                 case "relative":
                     self.relative = read_bool(value)
+                case "multiplicative":
+                    self.multiplicative = read_bool(value)
                 case "offsetliquidity":
                     self.offset_liquidity = read_bool(value)
                 case "offsetpnl":
@@ -115,8 +118,17 @@ class BalanceSheetMutationRule(Rule):
 
         if self.date is None or increment.contains(self.date):
             bs.mutate_metric(
-                self.item, self.metric, self.amount, self.reason, self.relative, self.offset_liquidity, self.offset_pnl
+                self.item,
+                self.metric,
+                self.amount,
+                self.reason,
+                self.relative,
+                self.multiplicative,
+                self.offset_liquidity,
+                self.offset_pnl,
             )
+
+        bs.validate()
 
         return bs
 

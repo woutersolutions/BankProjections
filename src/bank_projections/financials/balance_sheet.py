@@ -137,13 +137,20 @@ class BalanceSheet(Positions):
         amount: float,
         reason: MutationReason,
         relative: bool = False,
+        multiplicative: bool = False,
         offset_liquidity: bool = False,
         offset_pnl: bool = False,
     ) -> None:
-        if relative:
-            expr = metric.mutation_expression(amount, item.filter_expression) + pl.col(metric.mutation_column)
+        if multiplicative:
+            if relative:
+                expr = pl.col(metric.mutation_column) * (1 + amount)
+            else:
+                expr = pl.col(metric.mutation_column) * amount
         else:
-            expr = metric.mutation_expression(amount, item.filter_expression)
+            if relative:
+                expr = metric.mutation_expression(amount, item.filter_expression) + pl.col(metric.mutation_column)
+            else:
+                expr = metric.mutation_expression(amount, item.filter_expression)
 
         offset_pnl_reason = reason if offset_pnl else None
         offset_liquidity_reason = reason if offset_liquidity else None
