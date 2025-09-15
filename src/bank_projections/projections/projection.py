@@ -31,4 +31,6 @@ class Projection:
                 pnls_list.append(pnls)
                 cashflows_list.append(cashflows)
 
+            bs.validate()
+
         return balance_sheets, pnls_list, cashflows_list

@@ -1,5 +1,6 @@
 # Projected specific
 output/
+~$*
 
 # Claude
 settings.local.json

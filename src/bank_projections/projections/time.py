@@ -91,3 +91,9 @@ class TimeIncrement:
     @property
     def portion_year(self):
         return self.days / 365.25
+
+    def contains(self, date: datetime.date) -> bool:
+        if self.from_date == self.to_date:
+            return self.from_date == date
+        else:
+            return self.from_date < date <= self.to_date
