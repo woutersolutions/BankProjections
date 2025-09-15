@@ -17,7 +17,7 @@ class TimeHorizon:
     def end_date(self) -> datetime.date:
         return self.dates[-1]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.dates)
 
     @staticmethod
@@ -84,11 +84,11 @@ class TimeIncrement:
         self.to_date = to_date
 
     @property
-    def days(self):
+    def days(self) -> int:
         return (self.to_date - self.from_date).days
 
     @property
-    def portion_year(self):
+    def portion_year(self) -> float:
         return self.days / 365.25
 
     def contains(self, date: datetime.date) -> bool:

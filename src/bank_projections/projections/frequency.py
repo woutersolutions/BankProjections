@@ -67,7 +67,7 @@ class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
 
 
 class MonthlyBase(Frequency):
-    number_of_months = None  # Needs to be overridden
+    number_of_months: int = 0  # Needs to be overridden
 
     @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
@@ -106,7 +106,7 @@ class Annual(MonthlyBase):
 
 
 class DailyBase(Frequency):
-    number_of_days: int = None  # Needs to be overridden
+    number_of_days: int = 0  # Needs to be overridden
 
     @classmethod
     def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:

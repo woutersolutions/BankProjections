@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+import pandas as pd
 import polars as pl
 
 from bank_projections.config import (
@@ -68,7 +69,7 @@ class BalanceSheetItem:
         del identifiers[identifier]
         return BalanceSheetItem(**identifiers)
 
-    def copy(self):
+    def copy(self) -> "BalanceSheetItem":
         return BalanceSheetItem(**self.identifiers.copy())
 
     @property
@@ -235,7 +236,7 @@ class BalanceSheet(Positions):
             )
             self._data = self._data.drop("BookValueBefore")
 
-    def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason):
+    def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         pnls = data.group_by(PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
@@ -243,7 +244,7 @@ class BalanceSheet(Positions):
             self.pnl_account, BalanceSheetMetrics.get("quantity"), -pnls["Amount"].sum(), reason, relative=True
         )
 
-    def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason):
+    def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         cashflows = data.group_by(CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
@@ -251,7 +252,7 @@ class BalanceSheet(Positions):
             self.cash_account, BalanceSheetMetrics.get("quantity"), cashflows["Amount"].sum(), reason, relative=True
         )
 
-    def copy(self):
+    def copy(self) -> "BalanceSheet":
         return BalanceSheet(
             self._data.clone(), cash_account=self.cash_account.copy(), pnl_account=self.pnl_account.copy()
         )
@@ -279,7 +280,7 @@ class BalanceSheet(Positions):
         return diff_df
 
     @classmethod
-    def debug(cls, bs1: "BalanceSheet", bs2: "BalanceSheet"):
+    def debug(cls, bs1: "BalanceSheet", bs2: "BalanceSheet") -> dict[str, pd.DataFrame]:
         return {
             "bs1": bs1._data.to_pandas(),
             "bs2": bs2._data.to_pandas(),

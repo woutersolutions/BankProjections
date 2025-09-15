@@ -1,5 +1,6 @@
 from abc import ABC
-from typing import TypeVar
+from collections.abc import Iterable
+from typing import Any, ClassVar, TypeVar
 
 from loguru import logger
 
@@ -7,9 +8,11 @@ T = TypeVar("T", bound=ABC)
 
 
 class BaseRegistry[T](ABC):  # noqa: B024
-    def __init_subclass__(cls, **kwargs):
+    items: ClassVar[dict[str, Any]] = {}
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
-        cls.items: dict[str, T] = {}
+        cls.items = {}
 
     @classmethod
     def register(cls, name: str, item: T) -> None:
@@ -36,11 +39,11 @@ def clean_identifier(identifier: str) -> str:
     )
 
 
-def is_in_identifiers(identifier: str, identifiers: set[str]) -> bool:
+def is_in_identifiers(identifier: str, identifiers: Iterable[str]) -> bool:
     return clean_identifier(identifier) in [clean_identifier(id) for id in identifiers]
 
 
-def get_identifier(identifier: str, identifiers: set[str]) -> str:
+def get_identifier(identifier: str, identifiers: Iterable[str]) -> str:
     cleaned = clean_identifier(identifier)
     for id in identifiers:
         if cleaned == clean_identifier(id):

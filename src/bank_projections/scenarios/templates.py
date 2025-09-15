@@ -1,5 +1,6 @@
 import datetime
 from abc import ABC, abstractmethod
+from typing import Any
 
 import pandas as pd
 
@@ -22,9 +23,9 @@ class BalanceSheetMutations(ScenarioTemplate):
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
 
         # The first row must indicate the template name (later we can have multiple templates)
-        if clean_identifier(df_raw.iloc[0, 0]) != "template":
+        if clean_identifier(str(df_raw.iloc[0, 0])) != "template":
             raise ValueError(f"First cell must be 'Template', found {df_raw.iloc[0, 0]}")
-        if clean_identifier(df_raw.iloc[0, 1]) != "balancesheetmutations":
+        if clean_identifier(str(df_raw.iloc[0, 1])) != "balancesheetmutations":
             raise ValueError(f"First cell must be 'BalanceSheetMutations', found {df_raw.iloc[0, 0]}")
 
         # Find cell with '*' in it
@@ -67,7 +68,7 @@ class BalanceSheetMutationRuleSet(Rule):
         self.row_headers = row_headers
         self.general_tags = general_tags
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement):
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement) -> BalanceSheet:
         for idx, row in self.content.iterrows():
             for col in range(self.content.shape[1]):
                 # Combine the content row, header, and tags into one dictionary
@@ -81,7 +82,7 @@ class BalanceSheetMutationRuleSet(Rule):
 
 
 class BalanceSheetMutationRule(Rule):
-    def __init__(self, rule_input: dict, amount: float):
+    def __init__(self, rule_input: dict[str, Any], amount: float):
         self.amount = amount
 
         self.item = BalanceSheetItem()
