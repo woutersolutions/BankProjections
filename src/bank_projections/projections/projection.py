@@ -26,7 +26,7 @@ class Projection:
             for rule in self.rules:
                 bs = rule.apply(bs, increment)
 
-                agg_bs, pnls, cashflows = bs.aggregate(["BalanceSheetSide", "ItemType"])
+                agg_bs, pnls, cashflows = bs.aggregate()
                 balance_sheets.append(agg_bs)
                 pnls_list.append(pnls)
                 cashflows_list.append(cashflows)

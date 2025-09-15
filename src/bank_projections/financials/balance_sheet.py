@@ -3,7 +3,11 @@ from typing import Any, Optional
 
 import polars as pl
 
-from bank_projections.config import CASHFLOW_AGGREGATION_LABELS, PNL_AGGREGATION_LABELS
+from bank_projections.config import (
+    BALANCE_SHEET_AGGREGATION_LABELS,
+    CASHFLOW_AGGREGATION_LABELS,
+    PNL_AGGREGATION_LABELS,
+)
 from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
@@ -222,7 +226,9 @@ class BalanceSheet(Positions):
             self._data.clone(), cash_account=self.cash_account.copy(), pnl_account=self.pnl_account.copy()
         )
 
-    def aggregate(self, group_columns: list[str]) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    def aggregate(
+        self, group_columns: list[str] = BALANCE_SHEET_AGGREGATION_LABELS
+    ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
         return (
             (
                 self._data.group_by(group_columns)

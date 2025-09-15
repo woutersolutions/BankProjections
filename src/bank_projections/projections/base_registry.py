@@ -32,3 +32,7 @@ def clean_identifier(identifier: str) -> str:
     return (
         identifier.strip().lower().replace("_", "").replace(" ", "").replace("-", "").replace("/", "").replace("\\", "")
     )
+
+
+def in_clean_identifiers(identifier: str, identifiers: set[str]) -> bool:
+    return clean_identifier(identifier) in [clean_identifier(id) for id in identifiers]

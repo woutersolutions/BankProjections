@@ -4,9 +4,10 @@ from typing import Optional
 
 import pandas as pd
 
+from bank_projections.config import BALANCE_SHEET_LABELS
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.base_registry import clean_identifier
+from bank_projections.projections.base_registry import clean_identifier, in_clean_identifiers
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
 
@@ -32,10 +33,7 @@ class BalanceSheetMutations(ScenarioTemplate):
 
         col_header_start_row = df_raw[df_raw[2].notnull()].index[0]
         col_headers = df_raw.iloc[col_header_start_row : (star_row + 1), star_col:].set_index(0).T
-        col_headers.columns = [
-            str(col_headers.columns[0]).split("*")[-1] if idx == 0 else col
-            for idx, col in enumerate(col_headers.columns)
-        ]
+        col_headers.columns = [str(col).split("*")[-1] for idx, col in enumerate(col_headers.columns)]
 
         row_headers = df_raw.iloc[(star_row + 1) :, : (star_col + 1)]
         row_headers.columns = df_raw.iloc[star_row, : (star_col + 1)].values
@@ -98,7 +96,7 @@ class BalanceSheetMutationRule(Rule):
             match clean_identifier(key):
                 case "metric":
                     self.metric = BalanceSheetMetrics.get(value)
-                case "balancesheetside" | "itemtype":  # TODO: Parametrize balance sheet labels
+                case _ if in_clean_identifiers(key, BALANCE_SHEET_LABELS):
                     self.item = self.item.add_identifier(key, value)
                 case "relative":
                     self.relative = read_bool(value)
