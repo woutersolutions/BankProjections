@@ -88,7 +88,7 @@ python -m bank_projections     # Run the application
 2. **Scenarios**: Support multiple concurrent scenarios in projections
 3. **Input Formats**: Support YAML, CSV, and Excel for scenario definitions
 4. **Metrics**: Implement standard regulatory metrics (Basel III ratios, liquidity metrics)
-5. **Testing**: Test with pytest. When tests fail, judge wether the test is wrong or the source code, and fix accordingly.
+5. **Testing**: Test with pytest. When tests fail, judge whether the test is wrong or the source code, and fix accordingly.
 
 ## Synthetic Data Generation
 
@@ -97,3 +97,4 @@ The `examples/` directory should contain utilities to generate realistic but syn
 - Scenario definitions
 - Stress test scenarios
 - Example configuration files
+When creating testes, use the examples to generate data.
