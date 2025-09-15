@@ -28,6 +28,8 @@ def generate_synthetic_positions(
     minimum_maturity: Optional[int] = None,
     maximum_maturity: Optional[int] = None,
     accumulating: Optional[bool] = False,
+    off_balance: float = 0.0,
+    trea_weight: float = 0.0,
 ) -> Positions:
     # Generate random book values that sum to the target book value
     if book_value == 0 or number == 1:
@@ -118,6 +120,7 @@ def generate_synthetic_positions(
             "IsAccumulating": [accumulating] * number,
             "RedemptionType": [redemption_type] * number,
             "BalanceSheetSide": [balance_sheet_side] * number,
+            "TREAWeight": [trea_weight] * number,
         },
         schema_overrides={"NextCouponDate": pl.Date},
     )
@@ -136,6 +139,7 @@ def generate_synthetic_positions(
             Impairment=-pl.col("Quantity") * pl.col("CoverageRate"),
             AccruedInterest=pl.col("Quantity") * pl.col("AccruedInterestWeight"),
             Agio=pl.col("Quantity") * pl.col("AgioWeight"),
+            OffBalance=pl.col("Quantity") * off_balance,
         )
         .drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "BookValue"])
     )

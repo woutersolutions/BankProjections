@@ -53,19 +53,29 @@ class StoredColumn(BalanceSheetMetric, ABC):
         return self.column
 
 
-class CoreAmount(StoredColumn):
+class StoredAmount(StoredColumn):
+    def __init__(self, column: str, allocation_column: str = "Quantity"):
+        super().__init__(column)
+        self.allocation_column = allocation_column
+
     @property
     def aggregation_expression(self) -> pl.Expr:
         return self.get_expression.sum()
 
     def mutation_expression(self, amount: float, filter_expression: pl.Expr) -> pl.Expr:
-        return pl.lit(amount) * pl.col("Quantity") / (filter_expression * pl.col("Quantity")).sum()
+        return (
+            pl.lit(amount) * pl.col(self.allocation_column) / (filter_expression * pl.col(self.allocation_column)).sum()
+        )
 
 
-class CoreWeight(StoredColumn):
+class StoredWeight(StoredColumn):
+    def __init__(self, column: str, weight_expr: pl.Expr = pl.col("Quantity")):
+        super().__init__(column)
+        self.weight_expr = weight_expr
+
     @property
     def aggregation_expression(self) -> pl.Expr:
-        return (pl.col(self.column) * pl.col("Quantity")).sum() / pl.col("Quantity").sum()
+        return (pl.col(self.column) * self.weight_expr).sum() / self.weight_expr.sum()
 
     def mutation_expression(self, amount: float, filter_expression: pl.Expr) -> pl.Expr:
         return pl.lit(amount)
@@ -95,27 +105,63 @@ class DirtyPrice(DerivedMetric):
         return self.get_expression.sum()
 
 
-class DerivedWeight(DerivedMetric):
-    def __init__(self, amount_column: str):
-        self.amount_column = amount_column
+class DerivedAmount(DerivedMetric):
+    def __init__(self, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
+        self.weight_column = weight_column
+        self.allocation_expr = allocation_expr
 
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col(self.amount_column) / pl.col("Quantity")
+        return pl.col(self.weight_column) * self.allocation_expr
 
     def set_expression(self, amounts: pl.Expr) -> pl.Expr:
-        return amounts * pl.col("Quantity")
+        return amounts * self.allocation_expr
 
     @property
     def aggregation_expression(self) -> pl.Expr:
-        return pl.col(self.amount_column).sum() / pl.col("Quantity").sum()
+        return self.get_expression.sum()
 
     def mutation_expression(self, amount: float, filter_expression: pl.Expr) -> pl.Expr:
-        return pl.col("Quantity") * amount
+        return amount * self.allocation_expr / (filter_expression * self.allocation_expr).sum()
+
+    @property
+    def mutation_column(self) -> str:
+        return self.weight_column
+
+
+class DerivedWeight(DerivedMetric):
+    def __init__(self, amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
+        self.amount_column = amount_column
+        self.weight_expr = weight_expr
+
+    @property
+    def get_expression(self) -> pl.Expr:
+        return pl.col(self.amount_column) / self.weight_expr
+
+    def set_expression(self, amounts: pl.Expr) -> pl.Expr:
+        return amounts * self.weight_expr
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return pl.col(self.amount_column).sum() / self.weight_expr.sum()
+
+    def mutation_expression(self, amount: float, filter_expression: pl.Expr) -> pl.Expr:
+        return self.weight_expr * amount
 
     @property
     def mutation_column(self) -> str:
         return self.amount_column
+
+
+# TODO: Determine exposure for fair value items
+class Exposure(DerivedMetric):
+    @property
+    def get_expression(self) -> pl.Expr:
+        return pl.col("Quantity") + pl.col("OffBalance")
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return self.get_expression.sum()
 
 
 class BookValue(DerivedMetric):
@@ -137,11 +183,12 @@ class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
     pass
 
 
-BalanceSheetMetrics.register("quantity", CoreAmount("Quantity"))
-BalanceSheetMetrics.register("impairment", CoreAmount("Impairment"))
-BalanceSheetMetrics.register("accrued_interest", CoreAmount("AccruedInterest"))
-BalanceSheetMetrics.register("agio", CoreAmount("Agio"))
-BalanceSheetMetrics.register("clean_price", CoreWeight("CleanPrice"))
+BalanceSheetMetrics.register("quantity", StoredAmount("Quantity"))
+BalanceSheetMetrics.register("impairment", StoredAmount("Impairment"))
+BalanceSheetMetrics.register("accrued_interest", StoredAmount("AccruedInterest"))
+BalanceSheetMetrics.register("agio", StoredAmount("Agio"))
+BalanceSheetMetrics.register("clean_price", StoredWeight("CleanPrice"))
+BalanceSheetMetrics.register("off_balance", StoredWeight("OffBalance"))
 
 BalanceSheetMetrics.register("dirty_price", DirtyPrice())
 
@@ -150,5 +197,11 @@ BalanceSheetMetrics.register("accrued_interest_rate", DerivedWeight("AccruedInte
 BalanceSheetMetrics.register("agio_weight", DerivedWeight("Agio"))
 
 BalanceSheetMetrics.register("book_value", BookValue())
+BalanceSheetMetrics.register("exposure", Exposure())
 
-BalanceSheetMetrics.register("interest_rate", CoreWeight("InterestRate"))
+BalanceSheetMetrics.register("interest_rate", StoredWeight("InterestRate"))
+BalanceSheetMetrics.register("prepayment_rate", StoredWeight("PrepaymentRate"))
+
+
+BalanceSheetMetrics.register("trea_weight", StoredWeight("TREAWeight", Exposure().get_expression))
+BalanceSheetMetrics.register("trea", DerivedAmount("TREAWeight", Exposure().get_expression))
