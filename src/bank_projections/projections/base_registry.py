@@ -34,5 +34,13 @@ def clean_identifier(identifier: str) -> str:
     )
 
 
-def in_clean_identifiers(identifier: str, identifiers: set[str]) -> bool:
+def is_in_identifiers(identifier: str, identifiers: set[str]) -> bool:
     return clean_identifier(identifier) in [clean_identifier(id) for id in identifiers]
+
+
+def get_identifier(identifier: str, identifiers: set[str]) -> str:
+    cleaned = clean_identifier(identifier)
+    for id in identifiers:
+        if cleaned == clean_identifier(id):
+            return id
+    raise KeyError(f"{identifier} not found in identifiers")

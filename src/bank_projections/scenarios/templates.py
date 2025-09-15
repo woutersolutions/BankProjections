@@ -7,7 +7,7 @@ import pandas as pd
 from bank_projections.config import BALANCE_SHEET_LABELS
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.base_registry import clean_identifier, in_clean_identifiers
+from bank_projections.projections.base_registry import clean_identifier, is_in_identifiers
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
 
@@ -96,7 +96,7 @@ class BalanceSheetMutationRule(Rule):
             match clean_identifier(key):
                 case "metric":
                     self.metric = BalanceSheetMetrics.get(value)
-                case _ if in_clean_identifiers(key, BALANCE_SHEET_LABELS):
+                case _ if is_in_identifiers(key, BALANCE_SHEET_LABELS):
                     self.item = self.item.add_identifier(key, value)
                 case "relative":
                     self.relative = read_bool(value)

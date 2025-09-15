@@ -5,6 +5,7 @@ import polars as pl
 
 from bank_projections.config import (
     BALANCE_SHEET_AGGREGATION_LABELS,
+    BALANCE_SHEET_LABELS,
     CASHFLOW_AGGREGATION_LABELS,
     PNL_AGGREGATION_LABELS,
 )
@@ -12,6 +13,7 @@ from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
+from bank_projections.projections.base_registry import get_identifier, is_in_identifiers
 from bank_projections.projections.redemption import RedemptionRegistry
 
 
@@ -32,13 +34,30 @@ class BalanceSheetItem:
     identifiers: dict[str, Any] = field(default_factory=dict)
 
     def __init__(self, expr: Optional[pl.Expr] = None, **identifiers: Any) -> None:
-        self.identifiers = identifiers
+        self.identifiers = {}
+        for key, value in identifiers.items():
+            if is_in_identifiers(key, BALANCE_SHEET_LABELS):
+                key = get_identifier(key, BALANCE_SHEET_LABELS)
+            else:
+                raise ValueError(
+                    f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {BALANCE_SHEET_LABELS}"
+                )
+            self.identifiers[key] = value
+
         self.expr = expr
 
     def add_identifier(self, key: str, value: Any) -> "BalanceSheetItem":
         identifiers = self.identifiers.copy()
+
+        if is_in_identifiers(key, BALANCE_SHEET_LABELS):
+            key = get_identifier(key, BALANCE_SHEET_LABELS)
+        else:
+            raise ValueError(
+                f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {BALANCE_SHEET_LABELS}"
+            )
+
         identifiers[key] = value
-        return BalanceSheetItem(**identifiers)
+        return BalanceSheetItem(expr=self.expr, **identifiers)
 
     def remove_identifier(self, identifier: str) -> "BalanceSheetItem":
         identifiers = self.identifiers.copy()
