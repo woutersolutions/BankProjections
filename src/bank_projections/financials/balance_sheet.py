@@ -6,6 +6,7 @@ import polars as pl
 from bank_projections.config import (
     BALANCE_SHEET_AGGREGATION_LABELS,
     BALANCE_SHEET_LABELS,
+    CALCULATION_TAGS,
     CASHFLOW_AGGREGATION_LABELS,
     PNL_AGGREGATION_LABELS,
 )
@@ -13,7 +14,7 @@ from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
-from bank_projections.projections.base_registry import get_identifier, is_in_identifiers
+from bank_projections.projections.base_registry import clean_identifier, get_identifier, is_in_identifiers
 from bank_projections.projections.redemption import RedemptionRegistry
 
 
@@ -38,6 +39,9 @@ class BalanceSheetItem:
         for key, value in identifiers.items():
             if is_in_identifiers(key, BALANCE_SHEET_LABELS):
                 key = get_identifier(key, BALANCE_SHEET_LABELS)
+            elif is_in_identifiers(key, CALCULATION_TAGS):
+                key = get_identifier(key, CALCULATION_TAGS)
+                value = clean_identifier(value)
             else:
                 raise ValueError(
                     f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {BALANCE_SHEET_LABELS}"
