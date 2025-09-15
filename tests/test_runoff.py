@@ -27,8 +27,6 @@ class TestRunoff:
         """Test loans have no scheduled repayment before maturity, but may have prepayments."""
         increment = TimeIncrement(from_date=datetime.date(2024, 12, 31), to_date=datetime.date(2025, 1, 15))
 
-        bs_before = self.bs.copy()
-
         loans_item = BalanceSheetItem(ItemType="Mortgages")
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
@@ -95,7 +93,6 @@ class TestRunoff:
     def test_annuity_repayment(self) -> None:
         """Test annuity loans have regular principal repayments."""
         # Set redemption type to annuity
-        loan_filter = pl.col("ItemType") == "Mortgages"
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 

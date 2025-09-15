@@ -25,4 +25,4 @@ if __name__ == "__main__":
     )
 
     projection = Projection(rules, horizon)
-    projection.run(start_bs)
+    main = projection.run(start_bs)

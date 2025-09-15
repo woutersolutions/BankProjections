@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import polars as pl
 from loguru import logger
 
@@ -6,12 +8,19 @@ from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeHorizon
 
 
+@dataclass
+class ProjectionResult:
+    balance_sheets: list[pl.DataFrame]
+    pnls: list[pl.DataFrame]
+    cashflows: list[pl.DataFrame]
+
+
 class Projection:
     def __init__(self, rules: list[Rule], horizon: TimeHorizon):
         self.rules = rules
         self.horizon = horizon
 
-    def run(self, bs: BalanceSheet) -> tuple[list[pl.DataFrame], list[pl.DataFrame], list[pl.DataFrame]]:
+    def run(self, bs: BalanceSheet) -> ProjectionResult:
         """Run the projection over the defined time horizon."""
         balance_sheets = []
         pnls_list = []
@@ -33,4 +42,4 @@ class Projection:
 
             bs.validate()
 
-        return balance_sheets, pnls_list, cashflows_list
+        return ProjectionResult(balance_sheets, pnls_list, cashflows_list)

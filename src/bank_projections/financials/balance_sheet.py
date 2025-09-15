@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 import polars as pl
 
@@ -34,7 +34,7 @@ class MutationReason:
 class BalanceSheetItem:
     identifiers: dict[str, Any] = field(default_factory=dict)
 
-    def __init__(self, expr: Optional[pl.Expr] = None, **identifiers: Any) -> None:
+    def __init__(self, expr: pl.Expr | None = None, **identifiers: Any) -> None:
         self.identifiers = {}
         for key, value in identifiers.items():
             if is_in_identifiers(key, BALANCE_SHEET_LABELS):
@@ -168,10 +168,10 @@ class BalanceSheet(Positions):
     def mutate(
         self,
         item: BalanceSheetItem,
-        pnls: Optional[dict[MutationReason, pl.Expr]] = None,
-        cashflows: Optional[dict[MutationReason, pl.Expr]] = None,
-        offset_pnl: Optional[MutationReason] = None,
-        offset_liquidity: Optional[MutationReason] = None,
+        pnls: dict[MutationReason, pl.Expr] | None = None,
+        cashflows: dict[MutationReason, pl.Expr] | None = None,
+        offset_pnl: MutationReason | None = None,
+        offset_liquidity: MutationReason | None = None,
         **exprs: pl.Expr,
     ) -> None:
         # Assert all exprs keys are valid columns
@@ -271,7 +271,7 @@ class BalanceSheet(Positions):
 
     @classmethod
     def get_differences(cls, bs1: "BalanceSheet", bs2: "BalanceSheet") -> pl.DataFrame:
-        numeric_cols = [c for c, dt in zip(bs1._data.columns, bs2._data.dtypes) if dt.is_numeric()]
+        numeric_cols = [c for c, dt in zip(bs1._data.columns, bs2._data.dtypes, strict=False) if dt.is_numeric()]
 
         # Compute differences only on numeric cols
         diff_df = bs1._data.select([(pl.col(c) - bs2._data[c]).alias(f"Delta_{c}") for c in numeric_cols])

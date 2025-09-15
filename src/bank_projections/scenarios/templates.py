@@ -1,6 +1,5 @@
 import datetime
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import pandas as pd
 
@@ -91,7 +90,7 @@ class BalanceSheetMutationRule(Rule):
         self.offset_liquidity = False
         self.offset_pnl = False
         self.reason = MutationReason(rule="BalanceSheetMutationRule")
-        self.date: Optional[datetime.date] = None
+        self.date: datetime.date | None = None
 
         for key, value in rule_input.items():
             match clean_identifier(key):

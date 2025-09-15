@@ -1,7 +1,6 @@
 import datetime
 import os
 import random
-from typing import Optional
 
 import polars as pl
 
@@ -22,13 +21,13 @@ def generate_synthetic_positions(
     coupon_frequency: str,
     current_date: datetime.date,
     currency: str = "EUR",
-    coverage_rate_range: Optional[tuple[float, float]] = None,
-    interest_rate_range: Optional[tuple[float, float]] = None,
-    agio_range: Optional[tuple[float, float]] = None,
-    prepayment_rate: Optional[float] = 0.0,
-    minimum_maturity: Optional[int] = None,
-    maximum_maturity: Optional[int] = None,
-    accumulating: Optional[bool] = False,
+    coverage_rate_range: tuple[float, float] | None = None,
+    interest_rate_range: tuple[float, float] | None = None,
+    agio_range: tuple[float, float] | None = None,
+    prepayment_rate: float | None = 0.0,
+    minimum_maturity: int | None = None,
+    maximum_maturity: int | None = None,
+    accumulating: bool | None = False,
     off_balance: float = 0.0,
     trea_weight: float = 0.0,
 ) -> Positions:
@@ -175,7 +174,7 @@ def generate_random_numbers(number: int, minimum: float, maximum: float, mean: f
 
 def create_synthetic_balance_sheet(
     current_date: datetime.date,
-    config_path: Optional[str] = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
+    config_path: str | None = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
     config_table: pl.DataFrame = None,
 ) -> BalanceSheet:
     # Iterate over synthetic_data.csv using polars to create each of the items
@@ -199,7 +198,7 @@ def create_synthetic_balance_sheet(
     return bs
 
 
-def read_range(value: str) -> Optional[tuple]:
+def read_range(value: str) -> tuple | None:
     if value is None or len(value.strip()) == 0:
         return None
     else:

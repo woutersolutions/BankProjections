@@ -1,12 +1,12 @@
 from abc import ABC
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from loguru import logger
 
 T = TypeVar("T", bound=ABC)
 
 
-class BaseRegistry(ABC, Generic[T]):
+class BaseRegistry[T](ABC):  # noqa: B024
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.items: dict[str, T] = {}

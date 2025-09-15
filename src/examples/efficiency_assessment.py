@@ -11,7 +11,6 @@ import datetime
 import os
 import time
 from pathlib import Path
-from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -49,12 +48,12 @@ class EfficiencyAssessment:
         self.size_multipliers = size_multipliers
         self.number_of_projections = number_of_projections
 
-    def measure_time_horizon_performance(self) -> list[Dict]:
+    def measure_time_horizon_performance(self) -> list[dict]:
         """Measure performance across different time horizons."""
         logger.info("Starting time horizon performance assessment")
 
         # Results storage
-        time_horizon_results: List[Dict] = []
+        time_horizon_results: list[dict] = []
         self.output_dir.mkdir(exist_ok=True)
 
         # Base configuration for balance sheet

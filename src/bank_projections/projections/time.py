@@ -1,7 +1,6 @@
 import calendar
 import datetime
 from collections.abc import Iterator
-from typing import Optional
 
 from dateutil.relativedelta import relativedelta
 
@@ -29,7 +28,7 @@ class TimeHorizon:
         number_of_months: int = 0,
         number_of_quarters: int = 0,
         number_of_years: int = 0,
-        end_of_month: Optional[bool] = None,
+        end_of_month: bool | None = None,
     ) -> "TimeHorizon":
         dates = [start_date]
 
