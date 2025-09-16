@@ -18,7 +18,10 @@ class ScenarioTemplate(ABC):
         pass
 
 
-class BalanceSheetMutations(ScenarioTemplate):
+class MultiHeaderTemplate(ScenarioTemplate):
+    def __init__(self, rule_type: type["AmountRuleBase"]):
+        self.rule_type = rule_type
+
     def load_excel_sheet(self, file_path: str, sheet_name: str) -> Rule:
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
 
@@ -35,7 +38,7 @@ class BalanceSheetMutations(ScenarioTemplate):
 
         row_headers = df_raw.iloc[(star_row + 1) :, : (star_col + 1)]
         row_headers.columns = df_raw.iloc[star_row, : (star_col + 1)].values
-        row_headers = row_headers.rename(columns={row_headers.columns[-1]: row_headers.columns[-1].split("*")[0]})
+        row_headers = row_headers.rename(columns={row_headers.columns[-1]: str(row_headers.columns[-1]).split("*")[0]})
 
         # Read the table
         content = pd.read_excel(
@@ -54,17 +57,24 @@ class BalanceSheetMutations(ScenarioTemplate):
             if key and value:
                 general_tags[key] = value
 
-        return BalanceSheetMutationRuleSet(content, col_headers, row_headers, general_tags)
+        return MultiHeaderRule(content, col_headers, row_headers, general_tags, self.rule_type)
 
 
-class BalanceSheetMutationRuleSet(Rule):
+class MultiHeaderRule(Rule):
     def __init__(
-        self, content: pd.DataFrame, col_headers: pd.DataFrame, row_headers: pd.DataFrame, general_tags: dict[str, str]
+        self,
+        content: pd.DataFrame,
+        col_headers: pd.DataFrame,
+        row_headers: pd.DataFrame,
+        general_tags: dict[str, str],
+        rule_type: type["AmountRuleBase"],
     ):
         self.content = content
         self.col_headers = col_headers
         self.row_headers = row_headers
         self.general_tags = general_tags
+
+        self.rule_type = rule_type
 
     def apply(self, bs: BalanceSheet, increment: TimeIncrement) -> BalanceSheet:
         for idx, row in self.content.iterrows():
@@ -74,12 +84,18 @@ class BalanceSheetMutationRuleSet(Rule):
                 col_headers = self.col_headers.iloc[col].to_dict()
                 row_headers = self.row_headers.iloc[idx].to_dict()
                 rule_input = {**self.general_tags, **col_headers, **row_headers}
-                rule = BalanceSheetMutationRule(rule_input, amount)
+                rule = self.rule_type(rule_input, amount)
                 bs = rule.apply(bs, increment)
         return bs
 
 
-class BalanceSheetMutationRule(Rule):
+class AmountRuleBase(Rule):
+    @abstractmethod
+    def __init__(self, rule_input: dict[str, Any], amount: float):
+        pass
+
+
+class BalanceSheetMutationRule(AmountRuleBase):
     def __init__(self, rule_input: dict[str, Any], amount: float):
         self.amount = amount
 
@@ -184,4 +200,4 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
             )
 
 
-TemplateRegistry.register("balancesheetmutations", BalanceSheetMutations())
+TemplateRegistry.register("balancesheetmutations", MultiHeaderTemplate(BalanceSheetMutationRule))
