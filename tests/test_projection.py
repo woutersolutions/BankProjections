@@ -8,6 +8,7 @@ from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.projections.projection import Projection, ProjectionResult
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeHorizon, TimeIncrement
+from bank_projections.scenarios.scenario import Scenario
 
 
 class TestProjectionResult:
@@ -25,15 +26,15 @@ class TestProjectionResult:
 
 class TestProjection:
     def test_projection_initialization(self):
-        mock_rules = [Mock(spec=Rule), Mock(spec=Rule)]
+        mock_rule = Mock(spec=Rule)
         mock_horizon = Mock(spec=TimeHorizon)
 
-        projection = Projection(mock_rules, mock_horizon)
+        projection = Projection(mock_rule, mock_horizon)
 
-        assert projection.rules == mock_rules
+        assert projection.rule == mock_rule
         assert projection.horizon == mock_horizon
 
-    @patch('bank_projections.projections.projection.logger')
+    @patch("bank_projections.projections.projection.logger")
     def test_projection_run_single_increment(self, mock_logger):
         # Create mock dependencies
         mock_rule = Mock(spec=Rule)
@@ -60,7 +61,7 @@ class TestProjection:
         mock_horizon.__len__.return_value = 1
         mock_horizon.__iter__.return_value = iter([mock_increment])
 
-        projection = Projection([mock_rule], mock_horizon)
+        projection = Projection(mock_rule, mock_horizon)
         result = projection.run(mock_bs)
 
         # Verify calls
@@ -76,11 +77,9 @@ class TestProjection:
         assert len(result.cashflows) == 1
 
         # Verify logger call
-        mock_logger.info.assert_called_once_with(
-            "Time increment 1/1 - From 2023-01-01 to 2023-01-31"
-        )
+        mock_logger.info.assert_called_once_with("Time increment 1/1 - From 2023-01-01 to 2023-01-31")
 
-    @patch('bank_projections.projections.projection.logger')
+    @patch("bank_projections.projections.projection.logger")
     def test_projection_run_multiple_increments(self, mock_logger):
         # Create mock dependencies
         mock_rule1 = Mock(spec=Rule)
@@ -99,52 +98,58 @@ class TestProjection:
         mock_bs.clear_mutations.return_value = None
         mock_bs.validate.return_value = None
 
-        # Mock rule apply methods
-        mock_rule1.apply.return_value = mock_bs
-        mock_rule2.apply.return_value = mock_bs
-
         # Mock aggregate method
         mock_agg_bs = pl.DataFrame({"asset": [1000]})
         mock_pnl = pl.DataFrame({"income": [50]})
         mock_cashflow = pl.DataFrame({"cash": [100]})
         mock_bs.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
 
+        # Create a composite rule using RuleSet
+        composite_rule = Scenario({"1": mock_rule1, "2": mock_rule2})
+
+        # Mock the composite rule's apply method to simulate applying both rules
+        def mock_composite_apply(bs, increment):
+            mock_rule1.apply(bs, increment)
+            mock_rule2.apply(bs, increment)
+            return bs
+
+        composite_rule.apply = Mock(side_effect=mock_composite_apply)
+
         # Create horizon mock
         mock_horizon = MagicMock()
         mock_horizon.__len__.return_value = 2
         mock_horizon.__iter__.return_value = iter([mock_increment1, mock_increment2])
 
-        projection = Projection([mock_rule1, mock_rule2], mock_horizon)
+        projection = Projection(composite_rule, mock_horizon)
         result = projection.run(mock_bs)
 
         # Verify calls - clear_mutations should be called for each increment
         assert mock_bs.clear_mutations.call_count == 2
 
-        # Verify each rule is applied for each increment
-        assert mock_rule1.apply.call_count == 2
-        assert mock_rule2.apply.call_count == 2
+        # Verify the composite rule is applied for each increment
+        assert composite_rule.apply.call_count == 2
 
-        # Verify aggregate is called for each rule application
-        assert mock_bs.aggregate.call_count == 4  # 2 rules * 2 increments
+        # Verify aggregate is called for each increment
+        assert mock_bs.aggregate.call_count == 2
 
         # Verify validate is called for each increment
         assert mock_bs.validate.call_count == 2
 
-        # Verify result structure
+        # Verify result structure - now one result per increment (not per rule)
         assert isinstance(result, ProjectionResult)
-        assert len(result.balance_sheets) == 4  # 2 rules * 2 increments
-        assert len(result.pnls) == 4
-        assert len(result.cashflows) == 4
+        assert len(result.balance_sheets) == 2  # 2 increments
+        assert len(result.pnls) == 2
+        assert len(result.cashflows) == 2
 
         # Verify logger calls
         expected_calls = [
             "Time increment 1/2 - From 2023-01-01 to 2023-01-31",
-            "Time increment 2/2 - From 2023-02-01 to 2023-02-28"
+            "Time increment 2/2 - From 2023-02-01 to 2023-02-28",
         ]
         actual_calls = [call.args[0] for call in mock_logger.info.call_args_list]
         assert actual_calls == expected_calls
 
-    @patch('bank_projections.projections.projection.logger')
+    @patch("bank_projections.projections.projection.logger")
     def test_projection_run_no_rules(self, mock_logger):
         mock_bs = Mock(spec=BalanceSheet)
         mock_increment = Mock(spec=TimeIncrement)
@@ -155,25 +160,34 @@ class TestProjection:
         mock_bs.clear_mutations.return_value = None
         mock_bs.validate.return_value = None
 
+        # Mock aggregate method
+        mock_agg_bs = pl.DataFrame({"asset": [1000]})
+        mock_pnl = pl.DataFrame({"income": [50]})
+        mock_cashflow = pl.DataFrame({"cash": [100]})
+        mock_bs.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
+
         # Create horizon mock with single increment
         mock_horizon = MagicMock()
         mock_horizon.__len__.return_value = 1
         mock_horizon.__iter__.return_value = iter([mock_increment])
 
-        projection = Projection([], mock_horizon)
+        # Create an empty RuleSet for no rules scenario
+        empty_rule = Scenario({})
+        projection = Projection(empty_rule, mock_horizon)
         result = projection.run(mock_bs)
 
         # Verify calls
         mock_bs.clear_mutations.assert_called_once()
         mock_bs.validate.assert_called_once()
+        mock_bs.aggregate.assert_called_once()
 
-        # Verify result
+        # Verify result - even with empty rules, we still get one result per increment
         assert isinstance(result, ProjectionResult)
-        assert len(result.balance_sheets) == 0
-        assert len(result.pnls) == 0
-        assert len(result.cashflows) == 0
+        assert len(result.balance_sheets) == 1
+        assert len(result.pnls) == 1
+        assert len(result.cashflows) == 1
 
-    @patch('bank_projections.projections.projection.logger')
+    @patch("bank_projections.projections.projection.logger")
     def test_projection_run_empty_horizon(self, mock_logger):
         mock_rule = Mock(spec=Rule)
         mock_bs = Mock(spec=BalanceSheet)
@@ -183,7 +197,7 @@ class TestProjection:
         mock_horizon.__len__.return_value = 0
         mock_horizon.__iter__.return_value = iter([])
 
-        projection = Projection([mock_rule], mock_horizon)
+        projection = Projection(mock_rule, mock_horizon)
         result = projection.run(mock_bs)
 
         # Verify no calls were made
@@ -197,7 +211,7 @@ class TestProjection:
         assert len(result.pnls) == 0
         assert len(result.cashflows) == 0
 
-    @patch('bank_projections.projections.projection.logger')
+    @patch("bank_projections.projections.projection.logger")
     def test_projection_run_rule_exception_handling(self, mock_logger):
         """Test that exceptions in rule application are propagated."""
         mock_rule = Mock(spec=Rule)
@@ -217,7 +231,7 @@ class TestProjection:
         mock_horizon.__len__.return_value = 1
         mock_horizon.__iter__.return_value = iter([mock_increment])
 
-        projection = Projection([mock_rule], mock_horizon)
+        projection = Projection(mock_rule, mock_horizon)
 
         with pytest.raises(ValueError, match="Rule application failed"):
             projection.run(mock_bs)

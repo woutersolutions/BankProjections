@@ -8,7 +8,7 @@ from bank_projections.config import BALANCE_SHEET_LABELS
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import BaseRegistry, clean_identifier, is_in_identifiers
-from bank_projections.projections.rule import Rule, RuleSet
+from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
 
 
@@ -170,14 +170,6 @@ def read_date(value: str | datetime.date | datetime.datetime) -> datetime.date:
 
 
 class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
-    @classmethod
-    def load_excel(cls, file_path: str) -> RuleSet:
-        xls = pd.ExcelFile(file_path)
-        rules = []
-        for sheet_name in xls.sheet_names:
-            rules.append(cls.load_excel_sheet(file_path, sheet_name))
-        return RuleSet(rules)
-
     @classmethod
     def load_excel_sheet(cls, file_path: str, sheet_name: str) -> Rule:
         template = cls.get_excel_sheet_template(file_path, sheet_name)
