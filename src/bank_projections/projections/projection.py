@@ -16,8 +16,8 @@ class ProjectionResult:
 
 
 class Projection:
-    def __init__(self, rules: list[Rule], horizon: TimeHorizon):
-        self.rules = rules
+    def __init__(self, rule: Rule, horizon: TimeHorizon):
+        self.rule = rule
         self.horizon = horizon
 
     def run(self, bs: BalanceSheet) -> ProjectionResult:
@@ -31,14 +31,12 @@ class Projection:
         for i, increment in enumerate(self.horizon, 1):
             logger.info(f"Time increment {i}/{total_increments} - From {increment.from_date} to {increment.to_date}")
             bs.clear_mutations()
+            bs = self.rule.apply(bs, increment)
 
-            for rule in self.rules:
-                bs = rule.apply(bs, increment)
-
-                agg_bs, pnls, cashflows = bs.aggregate()
-                balance_sheets.append(agg_bs)
-                pnls_list.append(pnls)
-                cashflows_list.append(cashflows)
+            agg_bs, pnls, cashflows = bs.aggregate()
+            balance_sheets.append(agg_bs)
+            pnls_list.append(pnls)
+            cashflows_list.append(cashflows)
 
             bs.validate()
 

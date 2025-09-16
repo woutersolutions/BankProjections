@@ -7,26 +7,24 @@ import pandas as pd
 from bank_projections.config import BALANCE_SHEET_LABELS
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.base_registry import clean_identifier, is_in_identifiers
-from bank_projections.projections.rule import Rule
+from bank_projections.projections.base_registry import BaseRegistry, clean_identifier, is_in_identifiers
+from bank_projections.projections.rule import Rule, RuleSet
 from bank_projections.projections.time import TimeIncrement
 
 
 class ScenarioTemplate(ABC):
     @abstractmethod
-    def process_excel(self, file_path: str, sheet_name: str) -> Rule:
+    def load_excel_sheet(self, file_path: str, sheet_name: str) -> Rule:
         pass
 
 
 class BalanceSheetMutations(ScenarioTemplate):
-    def process_excel(self, file_path: str, sheet_name: str) -> Rule:
+    def load_excel_sheet(self, file_path: str, sheet_name: str) -> Rule:
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
 
         # The first row must indicate the template name (later we can have multiple templates)
         if clean_identifier(str(df_raw.iloc[0, 0])) != "template":
             raise ValueError(f"First cell must be 'Template', found {df_raw.iloc[0, 0]}")
-        if clean_identifier(str(df_raw.iloc[0, 1])) != "balancesheetmutations":
-            raise ValueError(f"First cell must be 'BalanceSheetMutations', found {df_raw.iloc[0, 0]}")
 
         # Find cell with '*' in it
         star_row, star_col = df_raw[df_raw.map(lambda x: isinstance(x, str) and "*" in x)].stack().index[0]
@@ -153,3 +151,37 @@ def read_date(value: str | datetime.date | datetime.datetime) -> datetime.date:
     if isinstance(value, str):
         return datetime.datetime.strptime(value, "%Y-%m-%d").date()
     raise ValueError(f"Cannot convert {value} to date")
+
+
+class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
+    @classmethod
+    def load_excel(cls, file_path: str) -> RuleSet:
+        xls = pd.ExcelFile(file_path)
+        rules = []
+        for sheet_name in xls.sheet_names:
+            rules.append(cls.load_excel_sheet(file_path, sheet_name))
+        return RuleSet(rules)
+
+    @classmethod
+    def load_excel_sheet(cls, file_path: str, sheet_name: str) -> Rule:
+        template = cls.get_excel_sheet_template(file_path, sheet_name)
+        return template.load_excel_sheet(file_path, sheet_name)
+
+    @classmethod
+    def get_excel_sheet_template(cls, file_path: str, sheet_name: str) -> ScenarioTemplate:
+        # Read the first cell to determine the template type
+        df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None, nrows=1, usecols=(0, 1))
+
+        if clean_identifier(str(df_raw.iloc[0, 0])) != "template":
+            raise ValueError(f"First cell must be 'Template', found {df_raw.iloc[0, 0]}")
+
+        template_name = str(df_raw.iloc[0, 1])
+        if is_in_identifiers(template_name, cls.items.keys()):
+            return cls.get(template_name)
+        else:
+            raise ValueError(
+                f"Template '{template_name}' not recognized. Available templates: {list(cls.items.keys())}"
+            )
+
+
+TemplateRegistry.register("balancesheetmutations", BalanceSheetMutations())

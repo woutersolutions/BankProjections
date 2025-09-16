@@ -242,7 +242,7 @@ class TestBalanceSheetMutationRuleSet:
 
 
 class TestBalanceSheetMutations:
-    def test_process_excel_with_example_file(self):
+    def test_load_excel_with_example_file(self):
         """Test processing with the example Excel file from the project"""
         import os
 
@@ -252,7 +252,7 @@ class TestBalanceSheetMutations:
         if os.path.exists(example_file):
             processor = BalanceSheetMutations()
             try:
-                result = processor.process_excel(example_file, "Sheet1")
+                result = processor.load_excel_sheet(example_file, "Sheet1")
                 assert isinstance(result, BalanceSheetMutationRuleSet)
             except Exception:
                 # If the file format is different, just check that we can instantiate the processor
@@ -262,7 +262,7 @@ class TestBalanceSheetMutations:
             processor = BalanceSheetMutations()
             assert isinstance(processor, BalanceSheetMutations)
 
-    def test_process_excel_invalid_template_name(self):
+    def test_load_excel_invalid_template_name(self):
         """Test with invalid template name using a mock"""
         test_data = pd.DataFrame(
             [
@@ -280,7 +280,7 @@ class TestBalanceSheetMutations:
         try:
             processor = BalanceSheetMutations()
             with pytest.raises(ValueError, match="First cell must be 'Template'"):
-                processor.process_excel(temp_name, "Sheet1")
+                processor.load_excel_sheet(temp_name, "Sheet1")
         finally:
             import contextlib
             import os
@@ -288,7 +288,7 @@ class TestBalanceSheetMutations:
             with contextlib.suppress(PermissionError):
                 os.unlink(temp_name)
 
-    def test_process_excel_invalid_scenario_type(self):
+    def test_load_excel_invalid_scenario_type(self):
         """Test with invalid scenario type using a mock"""
         test_data = pd.DataFrame(
             [
@@ -306,7 +306,7 @@ class TestBalanceSheetMutations:
         try:
             processor = BalanceSheetMutations()
             with pytest.raises(ValueError, match="First cell must be 'BalanceSheetMutations'"):
-                processor.process_excel(temp_name, "Sheet1")
+                processor.load_excel_sheet(temp_name, "Sheet1")
         finally:
             with contextlib.suppress(PermissionError):
                 os.unlink(temp_name)
