@@ -31,7 +31,7 @@ class TestProjection:
 
         projection = Projection(mock_rule, mock_horizon)
 
-        assert projection.rule == mock_rule
+        assert projection.scenario == mock_rule
         assert projection.horizon == mock_horizon
 
     @patch("bank_projections.projections.projection.logger")

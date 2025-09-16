@@ -33,8 +33,12 @@ class MultiHeaderTemplate(ScenarioTemplate):
         # Find cell with '*' in it
         star_row, star_col = df_raw[df_raw.map(lambda x: isinstance(x, str) and "*" in x)].stack().index[0]
 
-        col_header_start_row = df_raw[df_raw[2].notnull()].index[0]
-        col_headers = df_raw.iloc[col_header_start_row : (star_row + 1), star_col:].set_index(0).T
+        # Find the first row with non-empty cells from the third column
+        col_header_start_row = df_raw.iloc[:, 2:].apply(lambda row: row[2:].notna().any(), axis=1).idxmax()
+        assert col_header_start_row <= star_row
+        col_headers = (
+            df_raw.iloc[col_header_start_row : (star_row + 1), star_col:].set_index(star_col).T.reset_index(drop=True)
+        )
         col_headers.columns = [str(col).split("*")[-1] for idx, col in enumerate(col_headers.columns)]
 
         row_headers = df_raw.iloc[(star_row + 1) :, : (star_col + 1)]
@@ -52,7 +56,7 @@ class MultiHeaderTemplate(ScenarioTemplate):
 
         # Read the tags above the start row (key in A and value in B)
         general_tags = {}
-        for idx in range(1, star_row):
+        for idx in range(1, col_header_start_row):
             key = str(df_raw.iloc[idx, 0]).strip()
             value = str(df_raw.iloc[idx, 1]).strip()
             if key and value:
