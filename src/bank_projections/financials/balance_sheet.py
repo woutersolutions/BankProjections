@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import polars as pl
 
@@ -38,7 +39,9 @@ class BalanceSheetItem:
     def __init__(self, expr: pl.Expr | None = None, **identifiers: Any) -> None:
         self.identifiers = {}
         for key, value in identifiers.items():
-            if is_in_identifiers(key, BALANCE_SHEET_LABELS):
+            if value in [None, "", np.nan]:
+                raise ValueError(f"BalanceSheetItem {key} cannot be '{value}'")
+            elif is_in_identifiers(key, BALANCE_SHEET_LABELS):
                 key = get_identifier(key, BALANCE_SHEET_LABELS)
             elif is_in_identifiers(key, CALCULATION_TAGS):
                 key = get_identifier(key, CALCULATION_TAGS)
@@ -140,11 +143,12 @@ class BalanceSheet(Positions):
         item: BalanceSheetItem,
         metric: BalanceSheetMetric,
         amount: float,
-        reason: MutationReason,
+        reason: MutationReason | None = None,
         relative: bool = False,
         multiplicative: bool = False,
         offset_liquidity: bool = False,
         offset_pnl: bool = False,
+        counter_item: BalanceSheetItem | None = None,
     ) -> None:
         if multiplicative:
             if relative:
@@ -163,6 +167,7 @@ class BalanceSheet(Positions):
             item,
             offset_pnl=offset_pnl_reason,
             offset_liquidity=offset_liquidity_reason,
+            counter_item=counter_item,
             **{metric.mutation_column: expr},
         )
 
@@ -173,6 +178,7 @@ class BalanceSheet(Positions):
         cashflows: dict[MutationReason, pl.Expr] | None = None,
         offset_pnl: MutationReason | None = None,
         offset_liquidity: MutationReason | None = None,
+        counter_item: BalanceSheetItem | None = None,
         **exprs: pl.Expr,
     ) -> None:
         # Assert all exprs keys are valid columns
@@ -195,7 +201,11 @@ class BalanceSheet(Positions):
                     pl.when(item.filter_expression).then(cashflow_expr).otherwise(0.0).alias(cashflow_col)
                 )
 
-        if offset_liquidity is not None or offset_pnl is not None:
+        number_of_offsets = sum([offset_pnl is not None, offset_liquidity is not None, counter_item is not None])
+        if number_of_offsets > 1:
+            raise ValueError("Can offset with 1 thing only (pnl, cash, or counter balance sheet item")
+
+        if number_of_offsets > 0:
             calculations["BookValueBefore"] = BalanceSheetMetrics.get("book_value").get_expression.alias(
                 "BookValueBefore"
             )
@@ -219,21 +229,29 @@ class BalanceSheet(Positions):
                 self.add_liquidity(self._data.filter(item.filter_expression), pl.col(cashflow_col), mut_reason)
                 self._data = self._data.drop(cashflow_col)
 
-        if offset_pnl is not None and offset_liquidity is not None:
-            raise ValueError("Cannot offset with both cash and pnl")
         if offset_pnl is not None:
             self.add_pnl(
                 self._data.filter(item.filter_expression),
                 BalanceSheetMetrics.get("book_value").get_expression - pl.col("BookValueBefore"),
                 offset_pnl,
             )
-            self._data = self._data.drop("BookValueBefore")
         if offset_liquidity is not None:
             self.add_liquidity(
                 self._data.filter(item.filter_expression),
                 -(BalanceSheetMetrics.get("book_value").get_expression - pl.col("BookValueBefore")),
                 offset_liquidity,
             )
+
+        if counter_item is not None:
+            book_value_change = (
+                self._data.filter(item.filter_expression)
+                .select((BalanceSheetMetrics.get("book_value").get_expression - pl.col("BookValueBefore")).sum())
+                .item()
+            )
+
+            self.mutate_metric(counter_item, BalanceSheetMetrics.get("quantity"), -book_value_change, relative=True)
+
+        if number_of_offsets > 0:
             self._data = self._data.drop("BookValueBefore")
 
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:

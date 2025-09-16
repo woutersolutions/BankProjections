@@ -2,6 +2,7 @@ import datetime
 from abc import ABC, abstractmethod
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from bank_projections.config import BALANCE_SHEET_LABELS
@@ -100,6 +101,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
         self.amount = amount
 
         self.item = BalanceSheetItem()
+        self.counter_item: BalanceSheetItem | None = None
         self.relative = True
         self.multiplicative = False
         self.offset_liquidity = False
@@ -109,8 +111,19 @@ class BalanceSheetMutationRule(AmountRuleBase):
 
         for key, value in rule_input.items():
             match clean_identifier(key):
+                case _ if value in ["", np.nan, None]:
+                    pass
                 case "metric":
                     self.metric = BalanceSheetMetrics.get(value)
+                case _ if key.startswith("counter"):
+                    label = clean_identifier(key[len("counter") :])
+                    if is_in_identifiers(label, BALANCE_SHEET_LABELS):
+                        if self.counter_item is None:
+                            self.counter_item = BalanceSheetItem(**{label: value})
+                        else:
+                            self.counter_item = self.counter_item.add_identifier(label, value)
+                    else:
+                        raise KeyError(f"{key} not recognized as valid balance sheet label")
                 case _ if is_in_identifiers(key, BALANCE_SHEET_LABELS):
                     self.item = self.item.add_identifier(key, value)
                 case "relative":
@@ -140,6 +153,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
                 self.multiplicative,
                 self.offset_liquidity,
                 self.offset_pnl,
+                self.counter_item,
             )
 
         bs.validate()
