@@ -125,7 +125,7 @@ class TestDerivedMetric:
         metric = DirtyPrice()
 
         with pytest.raises(NotImplementedError, match="Derived metric cannot be modified"):
-            metric.mutation_column
+            _ = metric.mutation_column
 
 
 class TestDirtyPrice:

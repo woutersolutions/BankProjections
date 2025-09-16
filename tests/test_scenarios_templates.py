@@ -1,4 +1,6 @@
+import contextlib
 import datetime
+import os
 import tempfile
 from unittest.mock import Mock, patch
 
@@ -110,7 +112,7 @@ class TestBalanceSheetMutationRule:
             "relative": "false",
             "multiplicative": "true",
             "offsetliquidity": "yes",
-            "offsetpnl": "no"
+            "offsetpnl": "no",
         }
         amount = 1000.0
 
@@ -122,17 +124,14 @@ class TestBalanceSheetMutationRule:
         assert rule.offset_pnl is False
 
     def test_init_with_date(self):
-        rule_input = {
-            "metric": "quantity",
-            "date": "2023-01-15"
-        }
+        rule_input = {"metric": "quantity", "date": "2023-01-15"}
         amount = 1000.0
 
         rule = BalanceSheetMutationRule(rule_input, amount)
 
         assert rule.date == datetime.date(2023, 1, 15)
 
-    @patch('bank_projections.scenarios.templates.is_in_identifiers')
+    @patch("bank_projections.scenarios.templates.is_in_identifiers")
     def test_init_with_balance_sheet_labels(self, mock_is_in_identifiers):
         # Only return True for keys that match balance sheet labels
         def mock_is_in_identifiers_side_effect(key, labels):
@@ -140,25 +139,18 @@ class TestBalanceSheetMutationRule:
 
         mock_is_in_identifiers.side_effect = mock_is_in_identifiers_side_effect
 
-        rule_input = {
-            "metric": "quantity",
-            "asset_type": "Mortgages",
-            "maturity": "1-5Y"
-        }
+        rule_input = {"metric": "quantity", "asset_type": "Mortgages", "maturity": "1-5Y"}
         amount = 1000.0
 
-        with patch.object(BalanceSheetItem, 'add_identifier') as mock_add_identifier:
+        with patch.object(BalanceSheetItem, "add_identifier") as mock_add_identifier:
             mock_add_identifier.return_value = BalanceSheetItem()  # Return a new item
-            rule = BalanceSheetMutationRule(rule_input, amount)
+            BalanceSheetMutationRule(rule_input, amount)
 
             # Should be called for both asset_type and maturity
             assert mock_add_identifier.call_count == 2
 
     def test_init_with_unrecognized_key(self):
-        rule_input = {
-            "metric": "quantity",
-            "unknown_key": "some_value"
-        }
+        rule_input = {"metric": "quantity", "unknown_key": "some_value"}
         amount = 1000.0
 
         with pytest.raises(KeyError, match="unknown_key not recognized in BalanceSheetMutationRule"):
@@ -180,10 +172,7 @@ class TestBalanceSheetMutationRule:
         assert result == self.mock_bs
 
     def test_apply_with_date_constraint_matching(self):
-        rule_input = {
-            "metric": "quantity",
-            "date": "2023-01-15"
-        }
+        rule_input = {"metric": "quantity", "date": "2023-01-15"}
         amount = 1000.0
         rule = BalanceSheetMutationRule(rule_input, amount)
 
@@ -198,10 +187,7 @@ class TestBalanceSheetMutationRule:
         assert result == self.mock_bs
 
     def test_apply_with_date_constraint_not_matching(self):
-        rule_input = {
-            "metric": "quantity",
-            "date": "2023-01-15"
-        }
+        rule_input = {"metric": "quantity", "date": "2023-01-15"}
         amount = 1000.0
         rule = BalanceSheetMutationRule(rule_input, amount)
 
@@ -222,42 +208,30 @@ class TestBalanceSheetMutationRuleSet:
         self.mock_increment = Mock(spec=TimeIncrement)
 
         # Create sample data
-        self.content = pd.DataFrame({
-            0: [100.0, 200.0],
-            1: [150.0, 250.0]
-        })
+        self.content = pd.DataFrame({0: [100.0, 200.0], 1: [150.0, 250.0]})
 
-        self.col_headers = pd.DataFrame([
-            ['quantity', 'book_value']
-        ], columns=[0, 1]).T
+        self.col_headers = pd.DataFrame([["quantity", "book_value"]], columns=[0, 1]).T
 
-        self.row_headers = pd.DataFrame({
-            'asset_type': ['Mortgages', 'Securities'],
-            'relative': ['true', 'false']
-        })
+        self.row_headers = pd.DataFrame({"asset_type": ["Mortgages", "Securities"], "relative": ["true", "false"]})
 
-        self.general_tags = {'offset_pnl': 'false'}
+        self.general_tags = {"offset_pnl": "false"}
 
     def test_init(self):
-        rule_set = BalanceSheetMutationRuleSet(
-            self.content, self.col_headers, self.row_headers, self.general_tags
-        )
+        rule_set = BalanceSheetMutationRuleSet(self.content, self.col_headers, self.row_headers, self.general_tags)
 
         assert rule_set.content.equals(self.content)
         assert rule_set.col_headers.equals(self.col_headers)
         assert rule_set.row_headers.equals(self.row_headers)
         assert rule_set.general_tags == self.general_tags
 
-    @patch('bank_projections.scenarios.templates.BalanceSheetMutationRule')
+    @patch("bank_projections.scenarios.templates.BalanceSheetMutationRule")
     def test_apply(self, mock_rule_class):
         # Mock the BalanceSheetMutationRule instances
         mock_rule_instance = Mock()
         mock_rule_instance.apply.return_value = self.mock_bs
         mock_rule_class.return_value = mock_rule_instance
 
-        rule_set = BalanceSheetMutationRuleSet(
-            self.content, self.col_headers, self.row_headers, self.general_tags
-        )
+        rule_set = BalanceSheetMutationRuleSet(self.content, self.col_headers, self.row_headers, self.general_tags)
 
         result = rule_set.apply(self.mock_bs, self.mock_increment)
 
@@ -278,9 +252,9 @@ class TestBalanceSheetMutations:
         if os.path.exists(example_file):
             processor = BalanceSheetMutations()
             try:
-                result = processor.process_excel(example_file, 'Sheet1')
+                result = processor.process_excel(example_file, "Sheet1")
                 assert isinstance(result, BalanceSheetMutationRuleSet)
-            except Exception as e:
+            except Exception:
                 # If the file format is different, just check that we can instantiate the processor
                 assert isinstance(processor, BalanceSheetMutations)
         else:
@@ -290,48 +264,49 @@ class TestBalanceSheetMutations:
 
     def test_process_excel_invalid_template_name(self):
         """Test with invalid template name using a mock"""
-        test_data = pd.DataFrame([
-            ['InvalidTemplate', 'BalanceSheetMutations', '', ''],
-            ['param1', 'value1', '', ''],
-        ])
+        test_data = pd.DataFrame(
+            [
+                ["InvalidTemplate", "BalanceSheetMutations", "", ""],
+                ["param1", "value1", "", ""],
+            ]
+        )
 
-        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as temp_file:
             temp_name = temp_file.name
 
-        with pd.ExcelWriter(temp_name, engine='openpyxl') as writer:
-            test_data.to_excel(writer, sheet_name='Sheet1', index=False, header=False)
+        with pd.ExcelWriter(temp_name, engine="openpyxl") as writer:
+            test_data.to_excel(writer, sheet_name="Sheet1", index=False, header=False)
 
         try:
             processor = BalanceSheetMutations()
             with pytest.raises(ValueError, match="First cell must be 'Template'"):
-                processor.process_excel(temp_name, 'Sheet1')
+                processor.process_excel(temp_name, "Sheet1")
         finally:
+            import contextlib
             import os
-            try:
+
+            with contextlib.suppress(PermissionError):
                 os.unlink(temp_name)
-            except PermissionError:
-                pass  # File might still be open on Windows
 
     def test_process_excel_invalid_scenario_type(self):
         """Test with invalid scenario type using a mock"""
-        test_data = pd.DataFrame([
-            ['Template', 'InvalidScenario', '', ''],
-            ['param1', 'value1', '', ''],
-        ])
+        test_data = pd.DataFrame(
+            [
+                ["Template", "InvalidScenario", "", ""],
+                ["param1", "value1", "", ""],
+            ]
+        )
 
-        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as temp_file:
             temp_name = temp_file.name
 
-        with pd.ExcelWriter(temp_name, engine='openpyxl') as writer:
-            test_data.to_excel(writer, sheet_name='Sheet1', index=False, header=False)
+        with pd.ExcelWriter(temp_name, engine="openpyxl") as writer:
+            test_data.to_excel(writer, sheet_name="Sheet1", index=False, header=False)
 
         try:
             processor = BalanceSheetMutations()
             with pytest.raises(ValueError, match="First cell must be 'BalanceSheetMutations'"):
-                processor.process_excel(temp_name, 'Sheet1')
+                processor.process_excel(temp_name, "Sheet1")
         finally:
-            import os
-            try:
+            with contextlib.suppress(PermissionError):
                 os.unlink(temp_name)
-            except PermissionError:
-                pass  # File might still be open on Windows
