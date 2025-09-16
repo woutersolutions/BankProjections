@@ -34,31 +34,36 @@ pip install -e ".[dev]"
 
 ## Usage
 
-# TODO: Demo the usage (the code below is not real) here and refer to the examples folder
+Here's a simple example using the current API:
 
 ```python
-from bank_projections import ProjectionEngine
+import datetime
+from bank_projections.projections.projection import Projection
+from bank_projections.projections.runoff import Runoff
+from bank_projections.projections.time import TimeHorizon
+from examples.synthetic_data import create_synthetic_balance_sheet
 
-# Initialize the projection engine
-engine = ProjectionEngine()
+# Create a synthetic balance sheet
+start_date = datetime.date(2024, 12, 31)
+balance_sheet = create_synthetic_balance_sheet(start_date)
 
-# Load bank data and scenarios
-engine.load_data("path/to/balance_sheet.yaml")
-engine.load_scenarios("path/to/scenarios.yaml")
+# Define projection rules
+rules = [Runoff()]
 
-# Run projections
-results = engine.project(
-    start_date="2024-01-01",
-    end_date="2025-12-31",
-    frequency="quarterly"
+# Create time horizon
+horizon = TimeHorizon.from_numbers(
+    start_date=start_date,
+    number_of_months=12,
+    number_of_years=2,
+    end_of_month=True,
 )
 
-# Calculate metrics
-metrics = engine.calculate_metrics(results)
-
-# Export results
-engine.export_results(metrics, "output/projection_results.xlsx")
+# Run projection
+projection = Projection(rules, horizon)
+results = projection.run(balance_sheet)
 ```
+
+For more complete examples, see the `src/examples/` directory.
 
 ## Project Structure
 
