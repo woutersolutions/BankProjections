@@ -1,4 +1,5 @@
 import datetime
+import os
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -9,21 +10,30 @@ from bank_projections.config import BALANCE_SHEET_LABELS
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import BaseRegistry, clean_identifier, is_in_identifiers
+from bank_projections.projections.market_data import CurveData, MarketData
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
+from bank_projections.scenarios.scenario import Scenario
 
 
 class ScenarioTemplate(ABC):
     @abstractmethod
-    def load_excel_sheet(self, file_path: str, sheet_name: str) -> Rule:
+    def load_excel_sheet(self, file_path: str, sheet_name: str) -> Scenario:
         pass
+
+
+class CurveTemplate(ScenarioTemplate):
+    def load_excel_sheet(self, file_path: str, sheet_name: str) -> Scenario:
+        data = pd.read_excel(file_path, sheet_name=sheet_name, header=1)
+        curve_data = CurveData(data)
+        return Scenario(market_data=MarketData(curve_data))
 
 
 class MultiHeaderTemplate(ScenarioTemplate):
     def __init__(self, rule_type: type["AmountRuleBase"]):
         self.rule_type = rule_type
 
-    def load_excel_sheet(self, file_path: str, sheet_name: str) -> Rule:
+    def load_excel_sheet(self, file_path: str, sheet_name: str) -> Scenario:
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
 
         # The first row must indicate the template name (later we can have multiple templates)
@@ -62,7 +72,9 @@ class MultiHeaderTemplate(ScenarioTemplate):
             if key and value:
                 general_tags[key] = value
 
-        return MultiHeaderRule(content, col_headers, row_headers, general_tags, self.rule_type)
+        return Scenario(
+            rules={sheet_name: MultiHeaderRule(content, col_headers, row_headers, general_tags, self.rule_type)}
+        )
 
 
 class MultiHeaderRule(Rule):
@@ -81,7 +93,7 @@ class MultiHeaderRule(Rule):
 
         self.rule_type = rule_type
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement) -> BalanceSheet:
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
         for idx, row in self.content.iterrows():
             for col in range(self.content.shape[1]):
                 # Combine the content row, header, and tags into one dictionary
@@ -90,7 +102,7 @@ class MultiHeaderRule(Rule):
                 row_headers = self.row_headers.iloc[idx].to_dict()
                 rule_input = {**self.general_tags, **col_headers, **row_headers}
                 rule = self.rule_type(rule_input, amount)
-                bs = rule.apply(bs, increment)
+                bs = rule.apply(bs, increment, market_rates)
         return bs
 
 
@@ -143,7 +155,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
                 case _:
                     raise KeyError(f"{key} not recognized in BalanceSheetMutationRule")
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement) -> BalanceSheet:
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
         # Implement the logic to apply the mutation to the balance sheet based on rule_input
         # This is a placeholder implementation
 
@@ -189,7 +201,35 @@ def read_date(value: str | datetime.date | datetime.datetime) -> datetime.date:
 
 class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
     @classmethod
-    def load_excel_sheet(cls, file_path: str, sheet_name: str) -> Rule:
+    def load_folder(cls, folder_path: str) -> Scenario:
+        # Iterate over files in folder and load all Excel files
+        scenario_list = []
+        for file_name in os.listdir(folder_path):
+            scenario = cls.load_file(os.path.join(folder_path, file_name))
+            scenario_list.append(scenario)
+        return Scenario.combine_list(scenario_list)
+
+    @classmethod
+    def load_file(cls, file_path: str) -> Scenario:
+        name, extension = os.path.splitext(file_path)
+
+        match extension:
+            case ".xlsx" | ".xls":
+                return cls.load_excel(file_path)
+            case _:
+                raise ValueError(f"Unsupported file type: {extension}")
+
+    @classmethod
+    def load_excel(cls, file_path: str) -> Scenario:
+        xls = pd.ExcelFile(file_path)
+        scenario_list = []
+        for sheet_name in xls.sheet_names:
+            scenario = cls.load_excel_sheet(file_path, sheet_name)
+            scenario_list.append(scenario)
+        return Scenario.combine_list(scenario_list)
+
+    @classmethod
+    def load_excel_sheet(cls, file_path: str, sheet_name: str) -> Scenario:
         template = cls.get_excel_sheet_template(file_path, sheet_name)
         return template.load_excel_sheet(file_path, sheet_name)
 
@@ -211,3 +251,4 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
 
 
 TemplateRegistry.register("balancesheetmutations", MultiHeaderTemplate(BalanceSheetMutationRule))
+TemplateRegistry.register("interestrates", CurveTemplate())

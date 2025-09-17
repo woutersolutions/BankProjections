@@ -4,6 +4,7 @@ import datetime
 
 import pytest
 
+from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
 
@@ -11,7 +12,7 @@ from bank_projections.projections.time import TimeIncrement
 class MockRule(Rule):
     """Mock implementation of Rule for testing."""
 
-    def apply(self, bs, increment):
+    def apply(self, bs, increment, market_rates):
         return bs
 
 
@@ -73,5 +74,5 @@ class TestRule:
         increment = TimeIncrement(datetime.date(2025, 1, 1), datetime.date(2025, 1, 31))
 
         # Should not raise error
-        result = rule.apply(None, increment)
+        result = rule.apply(None, increment, MarketRates())
         assert result is None  # Mock implementation returns None

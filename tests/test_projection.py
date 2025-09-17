@@ -5,6 +5,7 @@ import polars as pl
 import pytest
 
 from bank_projections.financials.balance_sheet import BalanceSheet
+from bank_projections.projections.market_data import MarketData, MarketRates
 from bank_projections.projections.projection import Projection, ProjectionResult
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeHorizon, TimeIncrement
@@ -56,17 +57,23 @@ class TestProjection:
         mock_cashflow = pl.DataFrame({"cash": [100]})
         mock_bs.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
 
+        # Create scenario with market data
+        mock_market_data = Mock(spec=MarketData)
+        mock_market_rates = Mock(spec=MarketRates)
+        mock_market_data.get_market_rates.return_value = mock_market_rates
+        scenario = Scenario(rules={"rule1": mock_rule}, market_data=mock_market_data)
+
         # Create horizon mock
         mock_horizon = MagicMock()
         mock_horizon.__len__.return_value = 1
         mock_horizon.__iter__.return_value = iter([mock_increment])
 
-        projection = Projection(mock_rule, mock_horizon)
+        projection = Projection(scenario, mock_horizon)
         result = projection.run(mock_bs)
 
         # Verify calls
         mock_bs.clear_mutations.assert_called_once()
-        mock_rule.apply.assert_called_once_with(mock_bs, mock_increment)
+        mock_rule.apply.assert_called_once_with(mock_bs, mock_increment, mock_market_rates)
         mock_bs.aggregate.assert_called_once()
         mock_bs.validate.assert_called_once()
 
@@ -104,13 +111,16 @@ class TestProjection:
         mock_cashflow = pl.DataFrame({"cash": [100]})
         mock_bs.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
 
-        # Create a composite rule using RuleSet
-        composite_rule = Scenario({"1": mock_rule1, "2": mock_rule2})
+        # Create scenario with market data
+        mock_market_data = Mock(spec=MarketData)
+        mock_market_rates = Mock(spec=MarketRates)
+        mock_market_data.get_market_rates.return_value = mock_market_rates
+        composite_rule = Scenario(rules={"1": mock_rule1, "2": mock_rule2}, market_data=mock_market_data)
 
         # Mock the composite rule's apply method to simulate applying both rules
-        def mock_composite_apply(bs, increment):
-            mock_rule1.apply(bs, increment)
-            mock_rule2.apply(bs, increment)
+        def mock_composite_apply(bs, increment, market_rates):
+            mock_rule1.apply(bs, increment, market_rates)
+            mock_rule2.apply(bs, increment, market_rates)
             return bs
 
         composite_rule.apply = Mock(side_effect=mock_composite_apply)
@@ -171,8 +181,11 @@ class TestProjection:
         mock_horizon.__len__.return_value = 1
         mock_horizon.__iter__.return_value = iter([mock_increment])
 
-        # Create an empty RuleSet for no rules scenario
-        empty_rule = Scenario({})
+        # Create scenario with market data but no rules
+        mock_market_data = Mock(spec=MarketData)
+        mock_market_rates = Mock(spec=MarketRates)
+        mock_market_data.get_market_rates.return_value = mock_market_rates
+        empty_rule = Scenario(rules={}, market_data=mock_market_data)
         projection = Projection(empty_rule, mock_horizon)
         result = projection.run(mock_bs)
 
@@ -226,12 +239,18 @@ class TestProjection:
         # Make rule apply raise an exception
         mock_rule.apply.side_effect = ValueError("Rule application failed")
 
+        # Create scenario with market data
+        mock_market_data = Mock(spec=MarketData)
+        mock_market_rates = Mock(spec=MarketRates)
+        mock_market_data.get_market_rates.return_value = mock_market_rates
+        scenario = Scenario(rules={"rule1": mock_rule}, market_data=mock_market_data)
+
         # Create horizon mock
         mock_horizon = MagicMock()
         mock_horizon.__len__.return_value = 1
         mock_horizon.__iter__.return_value = iter([mock_increment])
 
-        projection = Projection(mock_rule, mock_horizon)
+        projection = Projection(scenario, mock_horizon)
 
         with pytest.raises(ValueError, match="Rule application failed"):
             projection.run(mock_bs)

@@ -8,7 +8,7 @@ from bank_projections.projections.time import TimeIncrement
 
 
 class Runoff(Rule):
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement) -> BalanceSheet:
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
         # Apply runoff to all instruments that have maturity dates
         item = BalanceSheetItem(expr=pl.col("MaturityDate").is_not_null())
 

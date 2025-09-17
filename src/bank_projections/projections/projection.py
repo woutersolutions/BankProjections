@@ -4,8 +4,8 @@ import polars as pl
 from loguru import logger
 
 from bank_projections.financials.balance_sheet import BalanceSheet
-from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeHorizon
+from bank_projections.scenarios.scenario import Scenario
 
 
 @dataclass
@@ -16,7 +16,7 @@ class ProjectionResult:
 
 
 class Projection:
-    def __init__(self, scenario: Rule, horizon: TimeHorizon):
+    def __init__(self, scenario: Scenario, horizon: TimeHorizon):
         self.scenario = scenario
         self.horizon = horizon
 
@@ -31,7 +31,8 @@ class Projection:
         for i, increment in enumerate(self.horizon, 1):
             logger.info(f"Time increment {i}/{total_increments} - From {increment.from_date} to {increment.to_date}")
             bs.clear_mutations()
-            bs = self.scenario.apply(bs, increment)
+            market_rates = self.scenario.market_data.get_market_rates(increment.to_date)
+            bs = self.scenario.apply(bs, increment, market_rates)
 
             agg_bs, pnls, cashflows = bs.aggregate()
             balance_sheets.append(agg_bs)

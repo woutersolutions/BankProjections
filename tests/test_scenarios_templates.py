@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
+from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.templates import (
     AmountRuleBase,
@@ -166,7 +167,7 @@ class TestBalanceSheetMutationRule:
         # Mock TimeIncrement
         self.mock_increment.contains.return_value = True
 
-        result = rule.apply(self.mock_bs, self.mock_increment)
+        result = rule.apply(self.mock_bs, self.mock_increment, MarketRates())
 
         # Should call mutate_metric on the balance sheet
         self.mock_bs.mutate_metric.assert_called_once()
@@ -181,7 +182,7 @@ class TestBalanceSheetMutationRule:
         # Mock TimeIncrement to contain the date
         self.mock_increment.contains.return_value = True
 
-        result = rule.apply(self.mock_bs, self.mock_increment)
+        result = rule.apply(self.mock_bs, self.mock_increment, MarketRates())
 
         # Should call mutate_metric on the balance sheet
         self.mock_bs.mutate_metric.assert_called_once()
@@ -196,7 +197,7 @@ class TestBalanceSheetMutationRule:
         # Mock TimeIncrement to NOT contain the date
         self.mock_increment.contains.return_value = False
 
-        result = rule.apply(self.mock_bs, self.mock_increment)
+        result = rule.apply(self.mock_bs, self.mock_increment, MarketRates())
 
         # Should NOT call mutate_metric on the balance sheet
         self.mock_bs.mutate_metric.assert_not_called()
@@ -239,7 +240,7 @@ class TestMultiHeaderRule:
 
         rule_set = MultiHeaderRule(self.content, self.col_headers, self.row_headers, self.general_tags, mock_rule_class)
 
-        result = rule_set.apply(self.mock_bs, self.mock_increment)
+        result = rule_set.apply(self.mock_bs, self.mock_increment, MarketRates())
 
         # Should create 4 rules (2 rows × 2 cols)
         assert mock_rule_class.call_count == 4
@@ -342,7 +343,7 @@ class TestRuleSetIntegration:
         rule1 = Mock(spec=BalanceSheetMutationRule)
         rule2 = Mock(spec=Runoff)
 
-        scenario = Scenario(rule1, rule2)
+        scenario = Scenario(rules={"rule1": rule1, "rule2": rule2})
         assert len(scenario.rules) == 2
-        assert rule1 in scenario.rules
-        assert rule2 in scenario.rules
+        assert rule1 in scenario.rules.values()
+        assert rule2 in scenario.rules.values()
