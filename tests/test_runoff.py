@@ -11,7 +11,7 @@ from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.time import TimeIncrement
 from examples import EXAMPLE_FOLDER
-from examples.synthetic_data import create_synthetic_balance_sheet
+from examples.synthetic_data import create_synthetic_balance_sheet, generate_synthetic_curves
 
 
 class TestRunoff:
@@ -23,6 +23,7 @@ class TestRunoff:
             current_date=datetime.date(2024, 12, 31), config_path=os.path.join(EXAMPLE_FOLDER, "test_bs.csv")
         )
         self.bs.validate()
+        self.market_rates = MarketRates(generate_synthetic_curves())
 
     def test_repayment_before_maturity(self) -> None:
         """Test loans have no scheduled repayment before maturity, but may have prepayments."""
@@ -32,7 +33,7 @@ class TestRunoff:
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Quantity should decrease slightly due to prepayments only
         new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
@@ -75,7 +76,7 @@ class TestRunoff:
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
         result_bs.validate()
 
         # Quantity should go to zero for matured loans
@@ -101,7 +102,7 @@ class TestRunoff:
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Quantity should decrease for annuity loans
         new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
@@ -131,7 +132,7 @@ class TestRunoff:
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Quantity should decrease for linear loans
         new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
@@ -154,7 +155,7 @@ class TestRunoff:
         initial_cashflows_len = len(self.bs.cashflows)
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Should generate coupon payment cashflows
         coupon_cashflows = result_bs.cashflows.filter(
@@ -172,7 +173,7 @@ class TestRunoff:
         loans_item = BalanceSheetItem(ItemType="Mortgages")
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Accrued interest should be updated
         new_accrued = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("accrued_interest"))
@@ -202,7 +203,7 @@ class TestRunoff:
         initial_impairment = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("impairment"))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Impairment should decrease proportionally to principal repayments
         new_impairment = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("impairment"))
@@ -226,7 +227,7 @@ class TestRunoff:
         initial_agio = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("agio"))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Agio should decrease (linear amortization)
         new_agio = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("agio"))
@@ -239,7 +240,7 @@ class TestRunoff:
         initial_pnl_len = len(self.bs.pnls)
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Should generate PnL for interest income and impairment
         assert len(result_bs.pnls) > initial_pnl_len
@@ -271,7 +272,7 @@ class TestRunoff:
         rule = Runoff()
         initial_pnl_len = len(self.bs.pnls)
 
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Should generate PnL for quarterly payments
         assert len(result_bs.pnls) > initial_pnl_len
@@ -284,7 +285,7 @@ class TestRunoff:
         initial_rows = len(self.bs._data)
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Should preserve row count and basic columns
         assert len(result_bs._data) == initial_rows
@@ -301,7 +302,7 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Should handle zero interest rates without error
         loans_item = BalanceSheetItem(ItemType="Mortgages")
@@ -329,7 +330,7 @@ class TestRunoff:
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Should handle mixed types without error
         new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
@@ -370,7 +371,7 @@ class TestRunoff:
         initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Quantity should decrease due to prepayments only
         new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
@@ -401,7 +402,7 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Should have zero prepayment cashflow
         prepayment_cashflows = result_bs.cashflows.filter(
@@ -423,7 +424,7 @@ class TestRunoff:
 
         # Apply runoff rule
         rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, MarketRates())
+        result_bs = rule.apply(self.bs, increment, self.market_rates)
 
         # Verify rule executed successfully and generated outputs
         assert len(result_bs.cashflows) > initial_cashflows, "Should generate cashflows"

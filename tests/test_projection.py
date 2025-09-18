@@ -1,4 +1,6 @@
 import datetime
+import os
+import tempfile
 from unittest.mock import MagicMock, Mock, patch
 
 import polars as pl
@@ -17,12 +19,54 @@ class TestProjectionResult:
         balance_sheets = [pl.DataFrame({"col1": [1, 2], "col2": [3, 4]})]
         pnls = [pl.DataFrame({"pnl_col": [10, 20]})]
         cashflows = [pl.DataFrame({"cf_col": [100, 200]})]
+        horizon = TimeHorizon([datetime.date(2023, 1, 31)])
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, horizon)
 
         assert result.balance_sheets == balance_sheets
         assert result.pnls == pnls
         assert result.cashflows == cashflows
+        assert result.horizon == horizon
+
+    def test_projection_result_to_dict(self):
+        """Test converting ProjectionResult to dictionary."""
+        balance_sheets = [
+            pl.DataFrame({"asset": [1000], "liability": [-800]}),
+            pl.DataFrame({"asset": [1100], "liability": [-900]}),
+        ]
+        pnls = [pl.DataFrame({"income": [50]}), pl.DataFrame({"income": [60]})]
+        cashflows = [pl.DataFrame({"cash_in": [100]}), pl.DataFrame({"cash_in": [110]})]
+        horizon = TimeHorizon([datetime.date(2023, 1, 31), datetime.date(2023, 2, 28)])
+
+        result = ProjectionResult(balance_sheets, pnls, cashflows, horizon)
+        result_dict = result.to_dict()
+
+        assert "BalanceSheets" in result_dict
+        assert "P&Ls" in result_dict
+        assert "Cashflows" in result_dict
+
+        # Check that ProjectionDate column was added
+        assert "ProjectionDate" in result_dict["BalanceSheets"].columns
+        assert "ProjectionDate" in result_dict["P&Ls"].columns
+        assert "ProjectionDate" in result_dict["Cashflows"].columns
+
+    def test_projection_result_to_excel(self):
+        """Test exporting ProjectionResult to Excel."""
+        balance_sheets = [pl.DataFrame({"asset": [1000]})]
+        pnls = [pl.DataFrame({"income": [50]})]
+        cashflows = [pl.DataFrame({"cash_in": [100]})]
+        horizon = TimeHorizon([datetime.date(2023, 1, 31)])
+
+        result = ProjectionResult(balance_sheets, pnls, cashflows, horizon)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_path = os.path.join(temp_dir, "test_output.xlsx")
+            result.to_excel(file_path)
+
+            # Check that a file was created (with timestamp suffix)
+            files = os.listdir(temp_dir)
+            excel_files = [f for f in files if f.startswith("test_output_") and f.endswith(".xlsx")]
+            assert len(excel_files) == 1
 
 
 class TestProjection:

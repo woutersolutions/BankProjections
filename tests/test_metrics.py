@@ -259,10 +259,7 @@ class TestMetricIntegration:
 
     def test_stored_amount_with_real_data(self):
         # Create test data
-        df = pl.DataFrame({
-            "Quantity": [1000.0, 2000.0, 1500.0],
-            "AssetType": ["Mortgages", "Securities", "Mortgages"]
-        })
+        df = pl.DataFrame({"Quantity": [1000.0, 2000.0, 1500.0], "AssetType": ["Mortgages", "Securities", "Mortgages"]})
 
         metric = StoredAmount("Quantity")
 
@@ -276,11 +273,13 @@ class TestMetricIntegration:
 
     def test_derived_weight_with_real_data(self):
         # Create test data
-        df = pl.DataFrame({
-            "Impairment": [10.0, 40.0, 15.0],
-            "Quantity": [1000.0, 2000.0, 1500.0],
-            "AssetType": ["Mortgages", "Securities", "Mortgages"]
-        })
+        df = pl.DataFrame(
+            {
+                "Impairment": [10.0, 40.0, 15.0],
+                "Quantity": [1000.0, 2000.0, 1500.0],
+                "AssetType": ["Mortgages", "Securities", "Mortgages"],
+            }
+        )
 
         metric = DerivedWeight("Impairment")
 
@@ -291,11 +290,7 @@ class TestMetricIntegration:
 
     def test_dirty_price_with_real_data(self):
         # Create test data
-        df = pl.DataFrame({
-            "Quantity": [1000.0, 2000.0],
-            "CleanPrice": [100.0, 95.0],
-            "AccruedInterest": [5.0, 10.0]
-        })
+        df = pl.DataFrame({"Quantity": [1000.0, 2000.0], "CleanPrice": [100.0, 95.0], "AccruedInterest": [5.0, 10.0]})
 
         metric = DirtyPrice()
 
@@ -306,10 +301,7 @@ class TestMetricIntegration:
 
     def test_exposure_with_real_data(self):
         # Create test data
-        df = pl.DataFrame({
-            "Quantity": [1000.0, 2000.0],
-            "OffBalance": [100.0, 150.0]
-        })
+        df = pl.DataFrame({"Quantity": [1000.0, 2000.0], "OffBalance": [100.0, 150.0]})
 
         metric = Exposure()
 

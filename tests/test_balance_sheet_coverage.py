@@ -2,8 +2,8 @@
 
 import datetime
 
-import pytest
 import polars as pl
+import pytest
 
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
 from bank_projections.financials.metrics import BalanceSheetMetrics

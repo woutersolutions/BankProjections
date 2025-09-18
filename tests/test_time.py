@@ -131,7 +131,7 @@ class TestTimeHorizon:
             datetime.date(2024, 1, 1),
             datetime.date(2024, 1, 2),
             datetime.date(2024, 1, 3),
-            datetime.date(2024, 1, 4)
+            datetime.date(2024, 1, 4),
         ]
         assert horizon.dates == expected_dates
 
@@ -140,11 +140,7 @@ class TestTimeHorizon:
         start_date = datetime.date(2024, 1, 1)
         horizon = TimeHorizon.from_numbers(start_date, number_of_weeks=2)
 
-        expected_dates = [
-            datetime.date(2024, 1, 1),
-            datetime.date(2024, 1, 8),
-            datetime.date(2024, 1, 15)
-        ]
+        expected_dates = [datetime.date(2024, 1, 1), datetime.date(2024, 1, 8), datetime.date(2024, 1, 15)]
         assert horizon.dates == expected_dates
 
     def test_from_numbers_months_only(self) -> None:
@@ -152,11 +148,7 @@ class TestTimeHorizon:
         start_date = datetime.date(2024, 1, 1)
         horizon = TimeHorizon.from_numbers(start_date, number_of_months=2)
 
-        expected_dates = [
-            datetime.date(2024, 1, 1),
-            datetime.date(2024, 2, 1),
-            datetime.date(2024, 3, 1)
-        ]
+        expected_dates = [datetime.date(2024, 1, 1), datetime.date(2024, 2, 1), datetime.date(2024, 3, 1)]
         assert horizon.dates == expected_dates
 
     def test_from_numbers_months_end_of_month_auto_detect(self) -> None:
@@ -167,7 +159,7 @@ class TestTimeHorizon:
         expected_dates = [
             datetime.date(2024, 1, 31),
             datetime.date(2024, 2, 29),  # Leap year
-            datetime.date(2024, 3, 31)
+            datetime.date(2024, 3, 31),
         ]
         assert horizon.dates == expected_dates
 
@@ -179,7 +171,7 @@ class TestTimeHorizon:
         expected_dates = [
             datetime.date(2024, 1, 15),
             datetime.date(2024, 2, 29),  # Leap year
-            datetime.date(2024, 3, 31)
+            datetime.date(2024, 3, 31),
         ]
         assert horizon.dates == expected_dates
 
@@ -191,7 +183,7 @@ class TestTimeHorizon:
         expected_dates = [
             datetime.date(2024, 1, 31),
             datetime.date(2024, 2, 29),  # Feb 31 -> Feb 29 (leap year)
-            datetime.date(2024, 3, 31)   # March has 31 days
+            datetime.date(2024, 3, 31),  # March has 31 days
         ]
         assert horizon.dates == expected_dates
 
@@ -203,7 +195,7 @@ class TestTimeHorizon:
         expected_dates = [
             datetime.date(2024, 1, 1),
             datetime.date(2024, 2, 1),  # 3 months = 1 quarter
-            datetime.date(2024, 5, 1)   # 6 months = 2 quarters
+            datetime.date(2024, 5, 1),  # 6 months = 2 quarters
         ]
         assert horizon.dates == expected_dates
 
@@ -212,30 +204,22 @@ class TestTimeHorizon:
         start_date = datetime.date(2024, 1, 1)
         horizon = TimeHorizon.from_numbers(start_date, number_of_years=2)
 
-        expected_dates = [
-            datetime.date(2024, 1, 1),
-            datetime.date(2025, 1, 1),
-            datetime.date(2026, 1, 1)
-        ]
+        expected_dates = [datetime.date(2024, 1, 1), datetime.date(2025, 1, 1), datetime.date(2026, 1, 1)]
         assert horizon.dates == expected_dates
 
     def test_from_numbers_mixed_periods(self) -> None:
         """Test from_numbers with mixed time periods."""
         start_date = datetime.date(2024, 1, 1)
         horizon = TimeHorizon.from_numbers(
-            start_date,
-            number_of_days=1,
-            number_of_weeks=1,
-            number_of_months=1,
-            number_of_years=1
+            start_date, number_of_days=1, number_of_weeks=1, number_of_months=1, number_of_years=1
         )
 
         expected_dates = [
-            datetime.date(2024, 1, 1),   # start
-            datetime.date(2024, 1, 2),   # +1 day
-            datetime.date(2024, 1, 8),   # +1 week
-            datetime.date(2024, 2, 1),   # +1 month
-            datetime.date(2025, 1, 1)    # +1 year
+            datetime.date(2024, 1, 1),  # start
+            datetime.date(2024, 1, 2),  # +1 day
+            datetime.date(2024, 1, 8),  # +1 week
+            datetime.date(2024, 2, 1),  # +1 month
+            datetime.date(2025, 1, 1),  # +1 year
         ]
         assert horizon.dates == expected_dates
 
@@ -303,4 +287,3 @@ class TestTimeHorizon:
 
         assert horizon.start_date == datetime.date(2024, 1, 1)
         assert horizon.end_date == datetime.date(2024, 3, 1)
-

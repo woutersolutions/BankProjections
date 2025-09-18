@@ -45,7 +45,7 @@ class TestBalanceSheetItem:
         assert copied_item is not item  # Different objects
 
         # Modifying copy shouldn't affect original
-        new_item = copied_item.add_identifier("BalanceSheetSide", "Liabilities")
+        copied_item.add_identifier("BalanceSheetSide", "Liabilities")
         assert item.identifiers["BalanceSheetSide"] == "Assets"
 
     def test_calculation_tag_identifier(self):
