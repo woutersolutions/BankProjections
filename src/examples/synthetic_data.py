@@ -7,6 +7,7 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, Positions
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import clean_identifier
+from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from examples import EXAMPLE_FOLDER
 
@@ -20,6 +21,7 @@ def generate_synthetic_positions(
     redemption_type: str,
     coupon_frequency: str,
     current_date: datetime.date,
+    coupon_type: str,
     currency: str = "EUR",
     coverage_rate_range: tuple[float, float] | None = None,
     interest_rate_range: tuple[float, float] | None = None,
@@ -69,18 +71,27 @@ def generate_synthetic_positions(
             (interest_rate_range[0] + interest_rate_range[1]) / 2,
         )
 
-    if redemption_type == "perpetual":
-        maturity_dates = [None] * number
-    elif redemption_type in ["bullet", "linear", "annuity"]:
-        # Generate uniform random based on current date and min/max maturity in years, by adding a random number of days
-        maturity_dates = [
-            current_date + datetime.timedelta(days=random.randint(minimum_maturity * 365, maximum_maturity * 365))
-            for _ in range(number)
-        ]
+    coupon_type = clean_identifier(coupon_type)
+    if coupon_type in CouponTypeRegistry.names():
+        coupon_types = [clean_identifier(coupon_type)] * number
+    elif coupon_type == "both":
+        coupon_types = [random.choice(["fixed", "floating"]) for _ in range(number)]
     else:
-        raise ValueError(f"Unknown redemption type: {redemption_type}")
+        raise ValueError(f"Unknown coupon type: {coupon_type}")
 
-    match coupon_frequency:
+    match clean_identifier(redemption_type):
+        case "perpetual":
+            maturity_dates = [None] * number
+        case "bullet" | "linear" | "annuity":
+            # Generate uniform random based on current date and min/max maturity in years, by adding a random number of days
+            maturity_dates = [
+                current_date + datetime.timedelta(days=random.randint(minimum_maturity * 365, maximum_maturity * 365))
+                for _ in range(number)
+            ]
+        case _:
+            raise ValueError(f"Unknown redemption type: {redemption_type}")
+
+    match clean_identifier(coupon_frequency):
         case "daily":
             maximum_next_coupon_days = 1
         case "weekly":
@@ -117,6 +128,7 @@ def generate_synthetic_positions(
             "Currency": [currency] * number,
             "ValuationMethod": [valuation_method] * number,
             "InterestRate": interest_rates,
+            "CouponType": coupon_types,
             "NextCouponDate": next_coupon_dates,
             "CouponFrequency": [coupon_frequency] * number,
             "MaturityDate": maturity_dates,

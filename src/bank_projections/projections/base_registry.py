@@ -32,6 +32,10 @@ class BaseRegistry[T](ABC):  # noqa: B024
     def is_registered(cls, name: str) -> bool:
         return clean_identifier(name) in cls.items
 
+    @classmethod
+    def names(cls) -> list[str]:
+        return list(cls.items.keys())
+
 
 def clean_identifier(identifier: str) -> str:
     return (
