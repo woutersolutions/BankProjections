@@ -18,6 +18,12 @@ class Runoff(Rule):
         )
         new_coupon_date = FrequencyRegistry.advance_next(pl.col("NextCouponDate"), number_of_payments)
         payments = pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
+        floating_rates = market_rates.curves.floating_rate_expr()
+        interest_rates = (
+            pl.when((pl.col("CouponType") == "floating") & number_of_payments > 0)
+            .then(floating_rates + pl.col("Spread"))
+            .otherwise(pl.col("InterestRate"))
+        )
 
         repayment_factors = (
             pl.when(matured)
@@ -41,7 +47,7 @@ class Runoff(Rule):
             pl.when(pl.col("MaturityDate") > pl.lit(increment.to_date))
             .then(
                 new_quantity
-                * pl.col("InterestRate")
+                * interest_rates
                 * FrequencyRegistry.portion_year()
                 * FrequencyRegistry.portion_passed(new_coupon_date, increment.to_date)
             )
@@ -83,6 +89,8 @@ class Runoff(Rule):
             Agio=new_agio,
             Impairment=new_impairment,
             NextCouponDate=new_coupon_date,
+            FloatingRate=floating_rates,
+            InterestRate=interest_rates,
         )
 
         return bs

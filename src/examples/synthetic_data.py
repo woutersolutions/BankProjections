@@ -169,11 +169,13 @@ def generate_synthetic_positions(
             AccruedInterest=pl.col("Quantity") * pl.col("AccruedInterestWeight"),
             Agio=pl.col("Quantity") * pl.col("AgioWeight"),
             OffBalance=pl.col("Quantity") * off_balance,
+            ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
         )
         .drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "BookValue"])
-    ).with_columns(ReferenceRate=pl.col("ReferenceRate").cast(pl.String))
+    ).with_columns(
+        FloatingRate=curves.floating_rate_expr(), Spread=pl.col("InterestRate") - curves.floating_rate_expr()
+    )
 
-    df = df.with_columns(Spread=pl.col("InterestRate") - curves.floating_rate_expr())
     positions = Positions(df)
 
     positions.validate()
