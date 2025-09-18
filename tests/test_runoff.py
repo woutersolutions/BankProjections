@@ -1,7 +1,6 @@
 """Unit tests for runoff module."""
 
 import datetime
-import os
 
 import polars as pl
 
@@ -10,7 +9,6 @@ from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.time import TimeIncrement
-from examples import EXAMPLE_FOLDER
 from examples.synthetic_data import create_synthetic_balance_sheet, generate_synthetic_curves
 
 
@@ -19,9 +17,7 @@ class TestRunoff:
 
     def setup_method(self) -> None:
         """Set up a synthetic balance sheet for each test."""
-        self.bs = create_synthetic_balance_sheet(
-            current_date=datetime.date(2024, 12, 31), config_path=os.path.join(EXAMPLE_FOLDER, "test_bs.csv")
-        )
+        self.bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31))
         self.bs.validate()
         self.market_rates = MarketRates(generate_synthetic_curves())
 
