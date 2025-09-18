@@ -20,7 +20,7 @@ from loguru import logger
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.time import TimeHorizon
-from examples import EXAMPLE_FOLDER
+from examples import EXAMPLE_FOLDER, OUTPUT_FOLDER
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 
@@ -29,7 +29,7 @@ class EfficiencyAssessment:
 
     def __init__(
         self,
-        output_dir: str = "output",
+        output_dir: str = OUTPUT_FOLDER,
         synthetic_data_config: str = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
         size_multipliers=(1, 5, 10, 100),
         number_of_projections=(1, 5, 10, 20, 50, 100),

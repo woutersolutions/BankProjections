@@ -29,6 +29,7 @@ dependencies = [
     "openpyxl",
     "pyyaml",
     "matplotlib",
+    "xlsxwriter",
 ]
 
 [project.optional-dependencies]
