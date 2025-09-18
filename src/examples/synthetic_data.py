@@ -2,6 +2,7 @@ import datetime
 import os
 import random
 
+import pandas as pd
 import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, Positions
@@ -9,7 +10,15 @@ from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import clean_identifier
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
+from bank_projections.projections.market_data import Curves
 from examples import EXAMPLE_FOLDER
+
+
+# TODO: Generate synthethic market data from csvs
+def generate_synthetic_curves() -> Curves:
+    return Curves(
+        pd.DataFrame({"Name": "euribor", "Tenor": ["3m", "6m"], "Type": ["spot", "spot"], "Rate": [0.0285, 0.0305]})
+    )
 
 
 def generate_synthetic_positions(
@@ -22,7 +31,9 @@ def generate_synthetic_positions(
     coupon_frequency: str,
     current_date: datetime.date,
     coupon_type: str,
+    curves: Curves = generate_synthetic_curves(),
     currency: str = "EUR",
+    reference_rate: str = None,
     coverage_rate_range: tuple[float, float] | None = None,
     interest_rate_range: tuple[float, float] | None = None,
     agio_range: tuple[float, float] | None = None,
@@ -36,6 +47,7 @@ def generate_synthetic_positions(
     redemption_type = clean_identifier(redemption_type)
     coupon_frequency = clean_identifier(coupon_frequency)
     valuation_method = clean_identifier(valuation_method)
+    reference_rate = clean_identifier(reference_rate)
 
     # Generate random book values that sum to the target book value
     if book_value == 0 or number == 1:
@@ -125,10 +137,11 @@ def generate_synthetic_positions(
             "CleanPrice": [1.0] * number,  # At par for balanced sheet
             "AgioWeight": agios,
             "ItemType": [item_type] * number,
-            "Currency": [currency] * number,
+            "Currency": [clean_identifier(currency)] * number,
             "ValuationMethod": [valuation_method] * number,
             "InterestRate": interest_rates,
             "CouponType": coupon_types,
+            "ReferenceRate": [reference_rate] * number,
             "NextCouponDate": next_coupon_dates,
             "CouponFrequency": [coupon_frequency] * number,
             "MaturityDate": maturity_dates,
@@ -158,8 +171,9 @@ def generate_synthetic_positions(
             OffBalance=pl.col("Quantity") * off_balance,
         )
         .drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "BookValue"])
-    )
+    ).with_columns(ReferenceRate=pl.col("ReferenceRate").cast(pl.String))
 
+    df = df.with_columns(Spread=pl.col("InterestRate") - curves.floating_rate_expr())
     positions = Positions(df)
 
     positions.validate()
@@ -194,11 +208,13 @@ def create_synthetic_balance_sheet(
     if config_table is None:
         config_table = pl.read_csv(config_path)
 
+    curves = generate_synthetic_curves()
+
     positions = []
     for row in config_table.iter_rows(named=True):
         position_input = {name: read_range(value) if name.endswith("_range") else value for name, value in row.items()}
         if row["number"] > 0:
-            positions.append(generate_synthetic_positions(current_date=current_date, **position_input))
+            positions.append(generate_synthetic_positions(current_date=current_date, curves=curves, **position_input))
 
     combined_positions = Positions.combine(*positions)
 

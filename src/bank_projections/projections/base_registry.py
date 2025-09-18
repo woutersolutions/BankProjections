@@ -37,10 +37,19 @@ class BaseRegistry[T](ABC):  # noqa: B024
         return list(cls.items.keys())
 
 
-def clean_identifier(identifier: str) -> str:
-    return (
-        identifier.strip().lower().replace("_", "").replace(" ", "").replace("-", "").replace("/", "").replace("\\", "")
-    )
+def clean_identifier(identifier: str | None) -> str | None:
+    if identifier is None:
+        return None
+    else:
+        return (
+            identifier.strip()
+            .lower()
+            .replace("_", "")
+            .replace(" ", "")
+            .replace("-", "")
+            .replace("/", "")
+            .replace("\\", "")
+        )
 
 
 def is_in_identifiers(identifier: str, identifiers: Iterable[str]) -> bool:

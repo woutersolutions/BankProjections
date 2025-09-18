@@ -205,6 +205,10 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
         # Iterate over files in folder and load all Excel files
         scenario_list = []
         for file_name in os.listdir(folder_path):
+            # Ignore temporary files
+            if file_name.startswith("~$"):
+                continue
+
             scenario = cls.load_file(os.path.join(folder_path, file_name))
             scenario_list.append(scenario)
         return Scenario.combine_list(scenario_list)
