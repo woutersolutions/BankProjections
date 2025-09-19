@@ -67,7 +67,7 @@ class Projection:
 
         for i, increment in enumerate(self.horizon, 1):
             logger.info(f"Time increment {i}/{total_increments} - From {increment.from_date} to {increment.to_date}")
-            bs.clear_mutations()
+            bs = bs.initialize_new_date(increment.to_date)
             market_rates = self.scenario.market_data.get_market_rates(increment.to_date)
             bs = self.scenario.apply(bs, increment, market_rates)
 

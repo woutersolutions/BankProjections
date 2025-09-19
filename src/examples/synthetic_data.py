@@ -38,6 +38,8 @@ def generate_synthetic_positions(
     interest_rate_range: tuple[float, float] | None = None,
     agio_range: tuple[float, float] | None = None,
     prepayment_rate: float | None = 0.0,
+    minimum_age: int | None = None,
+    maximum_age: int | None = None,
     minimum_maturity: int | None = None,
     maximum_maturity: int | None = None,
     accumulating: bool | None = False,
@@ -90,6 +92,18 @@ def generate_synthetic_positions(
         coupon_types = [random.choice(["fixed", "floating"]) for _ in range(number)]
     else:
         raise ValueError(f"Unknown coupon type: {coupon_type}")
+
+    if minimum_age is None and maximum_age is None:
+        origination_dates = [None] * number
+    elif maximum_age is None:
+        raise ValueError("If minimum_age is set, maximum_age must also be set")
+    else:
+        if minimum_age is None:
+            minimum_age = 0
+        origination_dates = [
+            current_date - datetime.timedelta(days=random.randint(minimum_age * 365, maximum_age * 365))
+            for _ in range(number)
+        ]
 
     match clean_identifier(redemption_type):
         case "perpetual":
@@ -144,6 +158,7 @@ def generate_synthetic_positions(
             "ReferenceRate": [reference_rate] * number,
             "NextCouponDate": next_coupon_dates,
             "CouponFrequency": [coupon_frequency] * number,
+            "OriginationDate": origination_dates,
             "MaturityDate": maturity_dates,
             "PrepaymentRate": [prepayment_rate] * number,
             "IsAccumulating": [accumulating] * number,
@@ -223,7 +238,7 @@ def create_synthetic_balance_sheet(
     cash_account = BalanceSheetItem(ItemType="Cash")
     pnl_account = BalanceSheetItem(ItemType="Unaudited earnings")
 
-    bs = BalanceSheet(combined_positions._data, cash_account, pnl_account)
+    bs = BalanceSheet(combined_positions._data, cash_account, pnl_account, current_date)
 
     return bs
 

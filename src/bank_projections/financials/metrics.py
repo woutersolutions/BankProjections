@@ -54,18 +54,16 @@ class StoredColumn(BalanceSheetMetric, ABC):
 
 
 class StoredAmount(StoredColumn):
-    def __init__(self, column: str, allocation_column: str = "Quantity"):
+    def __init__(self, column: str, allocation_col: str = "Quantity"):
         super().__init__(column)
-        self.allocation_column = allocation_column
+        self.allocation_expr = pl.col(allocation_col) + pl.lit(1e-12)  # Prevent division by zero
 
     @property
     def aggregation_expression(self) -> pl.Expr:
         return self.get_expression.sum()
 
     def mutation_expression(self, amount: float, filter_expression: pl.Expr) -> pl.Expr:
-        return (
-            pl.lit(amount) * pl.col(self.allocation_column) / (filter_expression * pl.col(self.allocation_column)).sum()
-        )
+        return pl.lit(amount) * self.allocation_expr / (filter_expression * self.allocation_expr).sum()
 
 
 class StoredWeight(StoredColumn):

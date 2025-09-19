@@ -1,3 +1,4 @@
+import datetime
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -114,15 +115,23 @@ class Positions:
 
 
 class BalanceSheet(Positions):
-    def __init__(self, data: pl.DataFrame, cash_account: BalanceSheetItem, pnl_account: BalanceSheetItem):
+    def __init__(
+        self, data: pl.DataFrame, cash_account: BalanceSheetItem, pnl_account: BalanceSheetItem, date: datetime.date
+    ):
         super().__init__(data)
         self.cash_account = cash_account
+        self.add_item(cash_account, OriginationDate=date)
         self.pnl_account = pnl_account
+        self.add_item(pnl_account, OriginationDate=date)
 
         self.cashflows = pl.DataFrame()
         self.pnls = pl.DataFrame()
+        self.date = date
 
         self.validate()
+
+    def initialize_new_date(self, date: datetime.date) -> "BalanceSheet":
+        return BalanceSheet(self._data, self.cash_account, self.pnl_account, date)
 
     def validate(self) -> None:
         super().validate()
@@ -134,9 +143,81 @@ class BalanceSheet(Positions):
                 f"expected 0.00 (assets should equal funding within 0.01 tolerance)"
             )
 
-    def clear_mutations(self) -> None:
-        self.cashflows = pl.DataFrame()
-        self.pnls = pl.DataFrame()
+        if self._data["Quantity"].is_null().any():
+            raise ValueError("Quantity column contains null values after adding new item.")
+
+        # Check total pnl in balance sheet and pnl table are the same
+        total_pnl_bs = self.get_amount(
+            self.pnl_account.add_identifier("OriginationDate", self.date), BalanceSheetMetrics.get("book_value")
+        )
+        total_pnl_table = self.pnls["Amount"].sum() if len(self.pnls) > 0 else 0.0
+        if abs(total_pnl_bs + total_pnl_table) > 0.01:
+            raise ValueError(
+                f"PnL in balance sheet and PnL table do not match: {total_pnl_bs:.4f} vs {-total_pnl_table:.4f}"
+            )
+
+        # Check total cash in balance sheet and cashflow table are the same
+        total_cash_bs = self.get_amount(
+            self.cash_account.add_identifier("OriginationDate", self.date), BalanceSheetMetrics.get("book_value")
+        )
+        total_cash_table = self.cashflows["Amount"].sum() if len(self.cashflows) > 0 else 0.0
+        if abs(total_cash_bs - total_cash_table) > 0.01:
+            raise ValueError(
+                f"Cash in balance sheet and cashflow table do not match: {total_cash_bs:.4f} vs {total_cash_table:.4f}"
+            )
+
+    def add_item(
+        self,
+        based_on_item: BalanceSheetItem,
+        quantity: float = 0.0,
+        accrued_interest: float = 0.0,
+        impairment: float = 0.0,
+        dirty_price: float = 0.0,
+        **new_values: Any,
+    ) -> None:
+        # Find the number of rows and total quantity of the based_on_item
+        based_on_quantity, based_on_count = (
+            self._data.filter(based_on_item.filter_expression).select(
+                [pl.col("Quantity").sum().alias("total"), pl.col("Quantity").count().alias("count")]
+            )
+        ).row(0)
+        if based_on_count == 0:
+            raise ValueError(f"No item found on balance sheet matching: {based_on_item}")
+        if based_on_quantity == 0:
+            raise ValueError(f"Cannot base new item on zero quantity item: {based_on_item}")
+
+        n_rows = len(self._data.filter(based_on_item.filter_expression))
+
+        # Find unique labels for non-numeric columns
+        non_numeric_cols = self._data.select([pl.col(pl.Utf8), pl.col(pl.Boolean)]).columns
+        n_uniques = self._data.filter(based_on_item.filter_expression).select(
+            [pl.col(col).n_unique().alias(col) for col in non_numeric_cols]
+        )
+        constant_cols = [c for c in non_numeric_cols if n_uniques[0, c] == 1]
+
+        new_row = (
+            self._data.filter(based_on_item.filter_expression)
+            .select(
+                [pl.col(col).first().alias(col) for col in constant_cols]
+                + [
+                    metric.aggregation_expression.alias(metric.column)
+                    for name, metric in BalanceSheetMetrics.items.items()
+                    if metric.is_stored
+                ],
+            )
+            .with_columns(
+                [pl.lit(value).alias(column) for column, value in new_values.items()],
+                Quantity=quantity,
+                AccruedInterest=accrued_interest,
+                Impairment=impairment,
+                CleanPrice=dirty_price,
+            )
+        )
+
+        # Check missing columns #TODO: Properly handle missing columns
+        missing_cols = set(self._data.columns) - set(new_row.columns)
+
+        self._data = pl.concat([self._data, new_row], how="diagonal")
 
     def mutate_metric(
         self,
@@ -211,7 +292,7 @@ class BalanceSheet(Positions):
             )
 
         if self._data.filter(item.filter_expression).is_empty():
-            raise ValueError("At least one position is required")
+            raise ValueError(f"No item found on balance sheet matching: {item}")
 
         self._data = self._data.with_columns(**calculations)
 
@@ -259,7 +340,11 @@ class BalanceSheet(Positions):
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
         self.mutate_metric(
-            self.pnl_account, BalanceSheetMetrics.get("quantity"), -pnls["Amount"].sum(), reason, relative=True
+            self.pnl_account.add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("quantity"),
+            -pnls["Amount"].sum(),
+            reason,
+            relative=True,
         )
 
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
@@ -267,12 +352,19 @@ class BalanceSheet(Positions):
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
-            self.cash_account, BalanceSheetMetrics.get("quantity"), cashflows["Amount"].sum(), reason, relative=True
+            self.cash_account.add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("quantity"),
+            cashflows["Amount"].sum(),
+            reason,
+            relative=True,
         )
 
     def copy(self) -> "BalanceSheet":
         return BalanceSheet(
-            self._data.clone(), cash_account=self.cash_account.copy(), pnl_account=self.pnl_account.copy()
+            self._data.clone(),
+            cash_account=self.cash_account.copy(),
+            pnl_account=self.pnl_account.copy(),
+            date=self.date,
         )
 
     def aggregate(
