@@ -1,3 +1,4 @@
+import copy
 import datetime
 from dataclasses import dataclass, field
 from typing import Any
@@ -124,8 +125,8 @@ class BalanceSheet(Positions):
         self.pnl_account = pnl_account
         self.add_item(pnl_account, OriginationDate=date)
 
-        self.cashflows = pl.DataFrame()
-        self.pnls = pl.DataFrame()
+        self.cashflows = pl.DataFrame(schema={"Amount": pl.Float64})
+        self.pnls = pl.DataFrame(schema={"Amount": pl.Float64})
         self.date = date
 
         self.validate()
@@ -347,6 +348,21 @@ class BalanceSheet(Positions):
             relative=True,
         )
 
+    def add_single_pnl(self, amount: float, reason: MutationReason, offset_liquidity: bool = False) -> None:
+        pnls = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
+
+        self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
+        self.mutate_metric(
+            self.pnl_account.add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("quantity"),
+            -amount,
+            reason,
+            relative=True,
+        )
+
+        if offset_liquidity:
+            self.add_single_liquidity(amount, reason)
+
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         cashflows = data.group_by(CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
@@ -359,13 +375,23 @@ class BalanceSheet(Positions):
             relative=True,
         )
 
-    def copy(self) -> "BalanceSheet":
-        return BalanceSheet(
-            self._data.clone(),
-            cash_account=self.cash_account.copy(),
-            pnl_account=self.pnl_account.copy(),
-            date=self.date,
+    def add_single_liquidity(self, amount: float, reason: MutationReason, offset_pnl: bool = False) -> None:
+        cashflows = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
+
+        self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
+        self.mutate_metric(
+            self.cash_account.add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("quantity"),
+            amount,
+            reason,
+            relative=True,
         )
+
+        if offset_pnl:
+            self.add_single_pnl(-amount, reason)
+
+    def copy(self) -> "BalanceSheet":
+        return copy.deepcopy(self)
 
     def aggregate(
         self, group_columns: list[str] = BALANCE_SHEET_AGGREGATION_LABELS

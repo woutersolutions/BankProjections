@@ -26,3 +26,4 @@ if __name__ == "__main__":
     projection = Projection(scenario, horizon)
     result = projection.run(start_bs)
     result.to_excel(os.path.join(OUTPUT_FOLDER, "main example.xlsx"))
+    os.startfile(os.path.join(OUTPUT_FOLDER, "main example.xlsx"))

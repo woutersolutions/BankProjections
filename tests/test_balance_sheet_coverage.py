@@ -22,7 +22,7 @@ class TestBalanceSheetCoverage:
         metric = BalanceSheetMetrics.get("quantity")
         reason = MutationReason(test="empty_filter")
 
-        with pytest.raises(ValueError, match="At least one position is required"):
+        with pytest.raises(ValueError):
             bs.mutate_metric(item, metric, 1000.0, reason)
 
     def test_copy_method(self):

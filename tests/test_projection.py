@@ -89,17 +89,19 @@ class TestProjection:
         mock_increment.to_date = datetime.date(2023, 1, 31)
 
         # Mock the balance sheet methods
-        mock_bs.clear_mutations.return_value = None
         mock_bs.validate.return_value = None
+        mock_bs_initialized = Mock(spec=BalanceSheet)
+        mock_bs.initialize_new_date.return_value = mock_bs_initialized
 
-        # Mock rule apply method
-        mock_rule.apply.return_value = mock_bs
+        # Mock rule apply method - note this receives the initialized balance sheet
+        mock_rule.apply.return_value = mock_bs_initialized
 
         # Mock aggregate method
         mock_agg_bs = pl.DataFrame({"asset": [1000]})
         mock_pnl = pl.DataFrame({"income": [50]})
         mock_cashflow = pl.DataFrame({"cash": [100]})
-        mock_bs.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
+        mock_bs_initialized.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
+        mock_bs_initialized.validate.return_value = None
 
         # Create scenario with market data
         mock_market_data = Mock(spec=MarketData)
@@ -116,10 +118,9 @@ class TestProjection:
         result = projection.run(mock_bs)
 
         # Verify calls
-        mock_bs.clear_mutations.assert_called_once()
-        mock_rule.apply.assert_called_once_with(mock_bs, mock_increment, mock_market_rates)
-        mock_bs.aggregate.assert_called_once()
-        mock_bs.validate.assert_called_once()
+        mock_rule.apply.assert_called_once_with(mock_bs_initialized, mock_increment, mock_market_rates)
+        mock_bs_initialized.aggregate.assert_called_once()
+        mock_bs_initialized.validate.assert_called_once()
 
         # Verify result
         assert isinstance(result, ProjectionResult)
@@ -146,14 +147,23 @@ class TestProjection:
         mock_increment2.to_date = datetime.date(2023, 2, 28)
 
         # Mock the balance sheet methods
-        mock_bs.clear_mutations.return_value = None
         mock_bs.validate.return_value = None
+        mock_bs_initialized1 = Mock(spec=BalanceSheet)
+        mock_bs_initialized2 = Mock(spec=BalanceSheet)
+
+        # Setup multiple initialize_new_date calls for multiple increments
+        # But we also need to set up chained calls as each iteration reassigns bs
+        mock_bs.initialize_new_date.return_value = mock_bs_initialized1
+        mock_bs_initialized1.initialize_new_date.return_value = mock_bs_initialized2
 
         # Mock aggregate method
         mock_agg_bs = pl.DataFrame({"asset": [1000]})
         mock_pnl = pl.DataFrame({"income": [50]})
         mock_cashflow = pl.DataFrame({"cash": [100]})
-        mock_bs.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
+        mock_bs_initialized1.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
+        mock_bs_initialized1.validate.return_value = None
+        mock_bs_initialized2.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
+        mock_bs_initialized2.validate.return_value = None
 
         # Create scenario with market data
         mock_market_data = Mock(spec=MarketData)
@@ -162,12 +172,8 @@ class TestProjection:
         composite_rule = Scenario(rules={"1": mock_rule1, "2": mock_rule2}, market_data=mock_market_data)
 
         # Mock the composite rule's apply method to simulate applying both rules
-        def mock_composite_apply(bs, increment, market_rates):
-            mock_rule1.apply(bs, increment, market_rates)
-            mock_rule2.apply(bs, increment, market_rates)
-            return bs
-
-        composite_rule.apply = Mock(side_effect=mock_composite_apply)
+        # The apply method should return the balance sheet that was passed in
+        composite_rule.apply = Mock(side_effect=lambda bs, increment, market_rates: bs)
 
         # Create horizon mock
         mock_horizon = MagicMock()
@@ -177,17 +183,16 @@ class TestProjection:
         projection = Projection(composite_rule, mock_horizon)
         result = projection.run(mock_bs)
 
-        # Verify calls - clear_mutations should be called for each increment
-        assert mock_bs.clear_mutations.call_count == 2
-
         # Verify the composite rule is applied for each increment
         assert composite_rule.apply.call_count == 2
 
         # Verify aggregate is called for each increment
-        assert mock_bs.aggregate.call_count == 2
+        mock_bs_initialized1.aggregate.assert_called_once()
+        mock_bs_initialized2.aggregate.assert_called_once()
 
         # Verify validate is called for each increment
-        assert mock_bs.validate.call_count == 2
+        mock_bs_initialized1.validate.assert_called_once()
+        mock_bs_initialized2.validate.assert_called_once()
 
         # Verify result structure - now one result per increment (not per rule)
         assert isinstance(result, ProjectionResult)
@@ -211,14 +216,16 @@ class TestProjection:
         mock_increment.to_date = datetime.date(2023, 1, 31)
 
         # Mock the balance sheet methods
-        mock_bs.clear_mutations.return_value = None
         mock_bs.validate.return_value = None
+        mock_bs_initialized = Mock(spec=BalanceSheet)
+        mock_bs.initialize_new_date.return_value = mock_bs_initialized
 
         # Mock aggregate method
         mock_agg_bs = pl.DataFrame({"asset": [1000]})
         mock_pnl = pl.DataFrame({"income": [50]})
         mock_cashflow = pl.DataFrame({"cash": [100]})
-        mock_bs.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
+        mock_bs_initialized.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow)
+        mock_bs_initialized.validate.return_value = None
 
         # Create horizon mock with single increment
         mock_horizon = MagicMock()
@@ -234,9 +241,8 @@ class TestProjection:
         result = projection.run(mock_bs)
 
         # Verify calls
-        mock_bs.clear_mutations.assert_called_once()
-        mock_bs.validate.assert_called_once()
-        mock_bs.aggregate.assert_called_once()
+        mock_bs_initialized.validate.assert_called_once()
+        mock_bs_initialized.aggregate.assert_called_once()
 
         # Verify result - even with empty rules, we still get one result per increment
         assert isinstance(result, ProjectionResult)
@@ -258,7 +264,6 @@ class TestProjection:
         result = projection.run(mock_bs)
 
         # Verify no calls were made
-        mock_bs.clear_mutations.assert_not_called()
         mock_rule.apply.assert_not_called()
         mock_bs.validate.assert_not_called()
 
@@ -276,9 +281,6 @@ class TestProjection:
         mock_increment = Mock(spec=TimeIncrement)
         mock_increment.from_date = datetime.date(2023, 1, 1)
         mock_increment.to_date = datetime.date(2023, 1, 31)
-
-        # Mock the balance sheet methods
-        mock_bs.clear_mutations.return_value = None
 
         # Make rule apply raise an exception
         mock_rule.apply.side_effect = ValueError("Rule application failed")
