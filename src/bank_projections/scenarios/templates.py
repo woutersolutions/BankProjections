@@ -8,7 +8,8 @@ import pandas as pd
 import polars as pl
 
 from bank_projections.config import BALANCE_SHEET_LABELS
-from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
+from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import BaseRegistry, clean_identifier, is_in_identifiers
 from bank_projections.projections.market_data import CurveData, MarketData
@@ -127,12 +128,10 @@ class AuditRule(KeyValueRuleBase):
             return bs
 
         closing_date = add_months(current_date, -((self.audit_month - self.closing_month) % 12), make_end_of_month=True)
-        item = bs.pnl_account.add_condition(
+        item = BalanceSheetItemRegistry.get("pnl account").add_condition(
             (pl.col("OriginationDate") <= closing_date) | pl.col("OriginationDate").is_null()
         )
-        counter_item = BalanceSheetItem(
-            ItemType="Retained earnings"
-        )  # TODO: Approach for storing important balance sheet items
+        counter_item = BalanceSheetItemRegistry.get("Retained earnings")
         reason = MutationReason(module="Audit", rule=f"Audit as of {audit_date}", date=audit_date)
         bs.mutate_metric(
             item, BalanceSheetMetrics.get("quantity"), 0, reason, relative=False, counter_item=counter_item

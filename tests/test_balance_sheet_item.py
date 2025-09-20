@@ -2,7 +2,7 @@
 
 import pytest
 
-from bank_projections.financials.balance_sheet import BalanceSheetItem
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 
 
 class TestBalanceSheetItem:

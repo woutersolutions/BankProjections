@@ -7,7 +7,8 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
-from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
+from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.templates import (

@@ -14,4 +14,5 @@ CET1 capital,-476751,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,,,FALSE,0
 Additional Tier 1 capital,-37437,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
 Unaudited earnings,-93965,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
 Retained earnings,-468004,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
-Other comprehensive income,0,0,Equity,amortized cost,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
+Other comprehensive income,0,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
+Dividends payable,0,1,Equity,amortized cost,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,

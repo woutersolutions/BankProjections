@@ -1,6 +1,7 @@
 import polars as pl
 
-from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
+from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.rule import Rule

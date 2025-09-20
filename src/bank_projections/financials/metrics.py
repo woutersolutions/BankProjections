@@ -69,7 +69,7 @@ class StoredAmount(StoredColumn):
 class StoredWeight(StoredColumn):
     def __init__(self, column: str, weight_expr: pl.Expr = pl.col("Quantity")):
         super().__init__(column)
-        self.weight_expr = weight_expr
+        self.weight_expr = weight_expr + pl.lit(1e-12)  # Prevent division by zero
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -106,7 +106,7 @@ class DirtyPrice(DerivedMetric):
 class DerivedAmount(DerivedMetric):
     def __init__(self, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
         self.weight_column = weight_column
-        self.allocation_expr = allocation_expr
+        self.allocation_expr = allocation_expr + pl.lit(1e-12)  # Prevent division by zero
 
     @property
     def get_expression(self) -> pl.Expr:
@@ -130,7 +130,7 @@ class DerivedAmount(DerivedMetric):
 class DerivedWeight(DerivedMetric):
     def __init__(self, amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
         self.amount_column = amount_column
-        self.weight_expr = weight_expr
+        self.weight_expr = weight_expr + pl.lit(1e-12)  # Prevent division by zero
 
     @property
     def get_expression(self) -> pl.Expr:

@@ -5,7 +5,8 @@ import random
 import pandas as pd
 import polars as pl
 
-from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, Positions
+from bank_projections.financials.balance_sheet import BalanceSheet, Positions
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import clean_identifier
 from bank_projections.projections.coupon_type import CouponTypeRegistry
@@ -14,7 +15,7 @@ from bank_projections.projections.market_data import Curves
 from examples import EXAMPLE_FOLDER
 
 
-# TODO: Generate synthethic market data from csvs
+# TODO: Generate synthetic market data from csvs
 def generate_synthetic_curves() -> Curves:
     return Curves(
         pd.DataFrame({"Name": "euribor", "Tenor": ["3m", "6m"], "Type": ["spot", "spot"], "Rate": [0.0285, 0.0305]})
@@ -54,12 +55,17 @@ def generate_synthetic_positions(
     # Generate random book values that sum to the target book value
     if book_value == 0 or number == 1:
         book_values = [book_value] * number
-    elif book_value > 0:
-        book_values = generate_random_numbers(number, 1, book_value * min(0.9, (100.0 / number)), book_value / number)
     else:
-        book_values = generate_random_numbers(number, book_value / number, -book_value * min(0.9, (100.0 / number)), -1)
-    # Scale so that the total book value matches exactly
-    book_values = [value * book_value / sum(book_values) for value in book_values]
+        if book_value > 0:
+            book_values = generate_random_numbers(
+                number, 1, book_value * min(0.9, (100.0 / number)), book_value / number
+            )
+        else:
+            book_values = generate_random_numbers(
+                number, book_value / number, -book_value * min(0.9, (100.0 / number)), -1
+            )
+        # Scale so that the total book value matches exactly
+        book_values = [value * book_value / sum(book_values) for value in book_values]
 
     if agio_range is None:
         agios = [0.0] * number
@@ -235,10 +241,7 @@ def create_synthetic_balance_sheet(
 
     combined_positions = Positions.combine(*positions)
 
-    cash_account = BalanceSheetItem(ItemType="Cash")
-    pnl_account = BalanceSheetItem(ItemType="Unaudited earnings")
-
-    bs = BalanceSheet(combined_positions._data, cash_account, pnl_account, current_date)
+    bs = BalanceSheet(combined_positions._data, current_date)
 
     return bs
 

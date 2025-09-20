@@ -5,7 +5,8 @@ import datetime
 import polars as pl
 import pytest
 
-from bank_projections.financials.balance_sheet import BalanceSheet, BalanceSheetItem, MutationReason
+from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from examples.synthetic_data import create_synthetic_balance_sheet
 

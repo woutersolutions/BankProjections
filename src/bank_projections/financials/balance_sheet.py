@@ -1,24 +1,21 @@
 import copy
 import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-import numpy as np
 import pandas as pd
 import polars as pl
 
 from bank_projections.config import (
     BALANCE_SHEET_AGGREGATION_LABELS,
-    BALANCE_SHEET_LABELS,
-    CALCULATION_TAGS,
     CASHFLOW_AGGREGATION_LABELS,
     PNL_AGGREGATION_LABELS,
 )
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
-from bank_projections.projections.base_registry import clean_identifier, get_identifier, is_in_identifiers
 from bank_projections.projections.redemption import RedemptionRegistry
 
 
@@ -32,65 +29,6 @@ class MutationReason:
 
     def __hash__(self) -> int:
         return hash(tuple(sorted(self.reasons.items())))
-
-
-@dataclass
-class BalanceSheetItem:
-    identifiers: dict[str, Any] = field(default_factory=dict)
-
-    def __init__(self, expr: pl.Expr | None = None, **identifiers: Any) -> None:
-        self.identifiers = {}
-        for key, value in identifiers.items():
-            if value in [None, "", np.nan]:
-                raise ValueError(f"BalanceSheetItem {key} cannot be '{value}'")
-            elif is_in_identifiers(key, BALANCE_SHEET_LABELS):
-                key = get_identifier(key, BALANCE_SHEET_LABELS)
-            elif is_in_identifiers(key, CALCULATION_TAGS):
-                key = get_identifier(key, CALCULATION_TAGS)
-                value = clean_identifier(value)
-            else:
-                raise ValueError(
-                    f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {BALANCE_SHEET_LABELS}"
-                )
-            self.identifiers[key] = value
-
-        self.expr = expr
-
-    def add_identifier(self, key: str, value: Any) -> "BalanceSheetItem":
-        identifiers = self.identifiers.copy()
-
-        if is_in_identifiers(key, BALANCE_SHEET_LABELS):
-            key = get_identifier(key, BALANCE_SHEET_LABELS)
-        else:
-            raise ValueError(
-                f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {BALANCE_SHEET_LABELS}"
-            )
-
-        identifiers[key] = value
-        return BalanceSheetItem(expr=self.expr, **identifiers)
-
-    def add_condition(self, expr: pl.Expr) -> "BalanceSheetItem":
-        if self.expr is None:
-            new_expr = expr
-        else:
-            new_expr = self.expr & expr
-        return BalanceSheetItem(expr=new_expr, **self.identifiers)
-
-    def remove_identifier(self, identifier: str) -> "BalanceSheetItem":
-        identifiers = self.identifiers.copy()
-        del identifiers[identifier]
-        return BalanceSheetItem(**identifiers)
-
-    def copy(self) -> "BalanceSheetItem":
-        return BalanceSheetItem(**self.identifiers.copy())
-
-    @property
-    def filter_expression(self) -> pl.Expr:
-        expr = pl.all_horizontal(
-            ([pl.lit(True)] if self.expr is None else [self.expr])
-            + [pl.col(col) == val for col, val in self.identifiers.items()]
-        )
-        return expr
 
 
 class Positions:
@@ -123,14 +61,10 @@ class Positions:
 
 
 class BalanceSheet(Positions):
-    def __init__(
-        self, data: pl.DataFrame, cash_account: BalanceSheetItem, pnl_account: BalanceSheetItem, date: datetime.date
-    ):
+    def __init__(self, data: pl.DataFrame, date: datetime.date):
         super().__init__(data)
-        self.cash_account = cash_account
-        self.add_item(cash_account, OriginationDate=date)
-        self.pnl_account = pnl_account
-        self.add_item(pnl_account, OriginationDate=date)
+        self.add_item(BalanceSheetItemRegistry.get("cash account"), OriginationDate=date)
+        self.add_item(BalanceSheetItemRegistry.get("pnl account"), OriginationDate=date)
 
         self.cashflows = pl.DataFrame(schema={"Amount": pl.Float64})
         self.pnls = pl.DataFrame(schema={"Amount": pl.Float64})
@@ -139,7 +73,7 @@ class BalanceSheet(Positions):
         self.validate()
 
     def initialize_new_date(self, date: datetime.date) -> "BalanceSheet":
-        return BalanceSheet(self._data, self.cash_account, self.pnl_account, date)
+        return BalanceSheet(self._data, date)
 
     def validate(self) -> None:
         super().validate()
@@ -156,7 +90,8 @@ class BalanceSheet(Positions):
 
         # Check total pnl in balance sheet and pnl table are the same
         total_pnl_bs = self.get_amount(
-            self.pnl_account.add_identifier("OriginationDate", self.date), BalanceSheetMetrics.get("book_value")
+            BalanceSheetItemRegistry.get("pnl account").add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("book_value"),
         )
         total_pnl_table = self.pnls["Amount"].sum() if len(self.pnls) > 0 else 0.0
         if abs(total_pnl_bs + total_pnl_table) > 0.01:
@@ -166,7 +101,8 @@ class BalanceSheet(Positions):
 
         # Check total cash in balance sheet and cashflow table are the same
         total_cash_bs = self.get_amount(
-            self.cash_account.add_identifier("OriginationDate", self.date), BalanceSheetMetrics.get("book_value")
+            BalanceSheetItemRegistry.get("cash account").add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("book_value"),
         )
         total_cash_table = self.cashflows["Amount"].sum() if len(self.cashflows) > 0 else 0.0
         if abs(total_cash_bs - total_cash_table) > 0.01:
@@ -348,7 +284,7 @@ class BalanceSheet(Positions):
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
         self.mutate_metric(
-            self.pnl_account.add_identifier("OriginationDate", self.date),
+            BalanceSheetItemRegistry.get("pnl account").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
             -pnls["Amount"].sum(),
             reason,
@@ -360,7 +296,7 @@ class BalanceSheet(Positions):
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
         self.mutate_metric(
-            self.pnl_account.add_identifier("OriginationDate", self.date),
+            BalanceSheetItemRegistry.get("pnl account").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
             -amount,
             reason,
@@ -375,7 +311,7 @@ class BalanceSheet(Positions):
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
-            self.cash_account.add_identifier("OriginationDate", self.date),
+            BalanceSheetItemRegistry.get("cash account").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
             cashflows["Amount"].sum(),
             reason,
@@ -387,7 +323,7 @@ class BalanceSheet(Positions):
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
-            self.cash_account.add_identifier("OriginationDate", self.date),
+            BalanceSheetItemRegistry.get("cash account").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
             amount,
             reason,
