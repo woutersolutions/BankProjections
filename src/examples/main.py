@@ -16,14 +16,12 @@ if __name__ == "__main__":
     scenario.rules["Runoff"] = Runoff()
     horizon = TimeHorizon.from_numbers(
         start_date=start_date,
-        number_of_days=7,
-        number_of_weeks=4,
-        number_of_months=12,
+        number_of_days=5,
+        number_of_months=25,
         number_of_years=5,
         end_of_month=True,
     )
 
     projection = Projection(scenario, horizon)
     result = projection.run(start_bs)
-    result.to_excel(os.path.join(OUTPUT_FOLDER, "main example.xlsx"))
-    os.startfile(os.path.join(OUTPUT_FOLDER, "main example.xlsx"))
+    result.to_excel(os.path.join(OUTPUT_FOLDER, "main example.xlsx"), open_after=True)

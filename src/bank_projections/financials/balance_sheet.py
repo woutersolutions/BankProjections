@@ -69,6 +69,13 @@ class BalanceSheetItem:
         identifiers[key] = value
         return BalanceSheetItem(expr=self.expr, **identifiers)
 
+    def add_condition(self, expr: pl.Expr) -> "BalanceSheetItem":
+        if self.expr is None:
+            new_expr = expr
+        else:
+            new_expr = self.expr & expr
+        return BalanceSheetItem(expr=new_expr, **self.identifiers)
+
     def remove_identifier(self, identifier: str) -> "BalanceSheetItem":
         identifiers = self.identifiers.copy()
         del identifiers[identifier]

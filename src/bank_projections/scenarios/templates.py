@@ -15,6 +15,7 @@ from bank_projections.projections.market_data import CurveData, MarketData
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.scenario import Scenario
+from bank_projections.utils.date import add_months, is_end_of_month
 
 
 class ScenarioTemplate(ABC):
@@ -76,6 +77,68 @@ class MultiHeaderTemplate(ScenarioTemplate):
         return Scenario(
             rules={sheet_name: MultiHeaderRule(content, col_headers, row_headers, general_tags, self.rule_type)}
         )
+
+
+class KeyValueTemplate(ScenarioTemplate):
+    def __init__(self, rule_type: type["KeyValueRuleBase"]):
+        self.rule_type = rule_type
+
+    def load_excel_sheet(self, file_path: str, sheet_name: str) -> Scenario:
+        df_raw = pd.read_excel(file_path, usecols="A:B", sheet_name=sheet_name, header=None)
+        rule_input = dict(zip(df_raw.iloc[1:, 0], df_raw.iloc[1:, 1], strict=False))
+        rule = self.rule_type(rule_input)
+        return Scenario(rules={sheet_name: rule})
+
+
+class KeyValueRuleBase(Rule):
+    @abstractmethod
+    def __init__(self, rule_input: dict[str, Any]):
+        pass
+
+
+class AuditRule(KeyValueRuleBase):
+    def __init__(self, rule_input: dict[str, Any]):
+        self.target = BalanceSheetItem()
+        for key, value in rule_input.items():
+            match clean_identifier(key):
+                case "closingmonth":
+                    self.closing_month = int(value)
+                case "auditmonth":
+                    self.audit_month = int(value)
+                case _ if clean_identifier(key).startswith("target"):
+                    label = clean_identifier(key[len("target") :])
+                    self.target = self.target.add_identifier(label, value)
+                case _:
+                    raise KeyError(f"{key} not recognized in AuditRule")
+
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
+        # Implement the logic to apply the mutation to the balance sheet based on rule_input
+        # This is a placeholder implementation
+
+        # See when (and if) in the increment an audit should be done
+        current_date = increment.to_date
+        while current_date > increment.from_date:
+            if current_date.month == self.audit_month and is_end_of_month(current_date):
+                audit_date = current_date
+                break
+            current_date = add_months(current_date, -1, make_end_of_month=True)
+        else:
+            # No audit in this increment
+            return bs
+
+        closing_date = add_months(current_date, -((self.audit_month - self.closing_month) % 12), make_end_of_month=True)
+        item = bs.pnl_account.add_condition(
+            (pl.col("OriginationDate") <= closing_date) | pl.col("OriginationDate").is_null()
+        )
+        counter_item = BalanceSheetItem(
+            ItemType="Retained earnings"
+        )  # TODO: Approach for storing important balance sheet items
+        reason = MutationReason(module="Audit", rule=f"Audit as of {audit_date}", date=audit_date)
+        bs.mutate_metric(
+            item, BalanceSheetMetrics.get("quantity"), 0, reason, relative=False, counter_item=counter_item
+        )
+
+        return bs
 
 
 class TaxTemplate(ScenarioTemplate):
@@ -286,3 +349,4 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
 TemplateRegistry.register("balancesheetmutations", MultiHeaderTemplate(BalanceSheetMutationRule))
 TemplateRegistry.register("interestrates", CurveTemplate())
 TemplateRegistry.register("tax", TaxTemplate())
+TemplateRegistry.register("audit", KeyValueTemplate(AuditRule))

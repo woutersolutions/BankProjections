@@ -1,4 +1,5 @@
 import datetime
+import os
 from dataclasses import dataclass
 
 import polars as pl
@@ -42,7 +43,7 @@ class ProjectionResult:
             ),
         }
 
-    def to_excel(self, file_path: str):
+    def to_excel(self, file_path: str, open_after: bool = False):
         date_tag = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         file_path = file_path.replace(".xlsx", f"_{date_tag}.xlsx")
 
@@ -50,6 +51,10 @@ class ProjectionResult:
             for name, df in self.to_dict().items():
                 logger.info("Writing {name} to {file_path}", name=name, file_path=file_path)
                 df.write_excel(workbook=workbook, worksheet=name)
+
+        if open_after:
+            logger.info("Opening {file_path}", file_path=file_path)
+            os.startfile(file_path)
 
 
 class Projection:
