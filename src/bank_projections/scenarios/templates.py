@@ -11,7 +11,7 @@ from bank_projections.config import BALANCE_SHEET_LABELS
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.base_registry import BaseRegistry, clean_identifier, is_in_identifiers
+from bank_projections.projections.base_registry import BaseRegistry, clean_identifier, get_identifier, is_in_identifiers
 from bank_projections.projections.market_data import CurveData, MarketData
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
@@ -206,9 +206,6 @@ class AmountRuleBase(Rule):
 class BalanceSheetMutationRule(AmountRuleBase):
     def __init__(self, rule_input: dict[str, Any], amount: float):
         self.amount = amount
-
-        self.item = BalanceSheetItem()
-        self.counter_item: BalanceSheetItem | None = None
         self.relative = True
         self.multiplicative = False
         self.offset_liquidity = False
@@ -216,9 +213,28 @@ class BalanceSheetMutationRule(AmountRuleBase):
         self.reason = MutationReason(rule="BalanceSheetMutationRule")
         self.date: datetime.date | None = None
 
+        if is_in_identifiers("item", list(rule_input.keys())):
+            value = rule_input[get_identifier("item", list(rule_input.keys()))]
+            if value in ["", np.nan, None]:
+                self.item = BalanceSheetItem()
+            else:
+                self.item = BalanceSheetItemRegistry.get(value)
+        else:
+            self.item = BalanceSheetItem()
+        if is_in_identifiers("counter item", list(rule_input.keys())):
+            value = rule_input[get_identifier("counter item", list(rule_input.keys()))]
+            if value in ["", np.nan, None]:
+                self.counter_item = None
+            else:
+                self.counter_item = BalanceSheetItemRegistry.get(value)
+        else:
+            self.counter_item = None
+
         for key, value in rule_input.items():
             match clean_identifier(key):
                 case _ if value in ["", np.nan, None]:
+                    pass
+                case "item" | "counteritem":
                     pass
                 case "metric":
                     self.metric = BalanceSheetMetrics.get(value)
