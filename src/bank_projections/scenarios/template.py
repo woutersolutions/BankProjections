@@ -6,10 +6,14 @@ import pandas as pd
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
-from bank_projections.scenarios.mutation import AmountRuleBase
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.parsing import clean_identifier
 
+
+class AmountRuleBase(Rule):
+    @abstractmethod
+    def __init__(self, rule_input: dict[str, Any], amount: float):
+        pass
 
 class ScenarioTemplate(ABC):
     @abstractmethod
