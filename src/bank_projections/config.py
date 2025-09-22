@@ -1,6 +1,34 @@
 # TODO: Properly arrange these configurations into a config file or environment variables
-CASHFLOW_AGGREGATION_LABELS = ["ItemType"]
-PNL_AGGREGATION_LABELS = ["ItemType"]
-BALANCE_SHEET_LABELS = ["BalanceSheetSide", "ItemType", "OriginationDate"]
-BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"]
-CALCULATION_TAGS = ["ValuationMethod", "CouponFrequency", "RedemptionType"]
+from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.projections.coupon_type import CouponTypeRegistry
+from bank_projections.projections.frequency import FrequencyRegistry
+from bank_projections.projections.redemption import RedemptionRegistry
+from bank_projections.projections.valuation import ValuationRegistry
+
+
+class Config:
+    CASHFLOW_AGGREGATION_LABELS = ["ItemType"]
+    PNL_AGGREGATION_LABELS = ["ItemType"]
+    BALANCE_SHEET_LABELS = [
+        "BalanceSheetSide",
+        "ItemType",
+        "OriginationDate",
+        "Currency",
+        "ReferenceRate",
+        "MaturityDate",
+        "NextCouponDate",
+        "IsAccumulating",
+    ]
+    BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"]
+
+    CLASSIFICATIONS: dict[str, BaseRegistry] = {
+        "ValuationMethod": ValuationRegistry,
+        "CouponFrequency": FrequencyRegistry,
+        "RedemptionType": RedemptionRegistry,
+        "CouponType": CouponTypeRegistry,
+    }
+
+    @classmethod
+    def required_columns(cls) -> list[str]:
+        return cls.BALANCE_SHEET_LABELS + list(cls.CLASSIFICATIONS.keys()) + BalanceSheetMetrics.stored_columns()

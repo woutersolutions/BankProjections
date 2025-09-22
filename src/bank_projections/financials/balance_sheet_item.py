@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from bank_projections.config import BALANCE_SHEET_LABELS, CALCULATION_TAGS
+from bank_projections.config import Config
 from bank_projections.projections.base_registry import BaseRegistry, clean_identifier, get_identifier, is_in_identifiers
 
 
@@ -17,14 +17,14 @@ class BalanceSheetItem:
         for key, value in identifiers.items():
             if value in [None, "", np.nan]:
                 raise ValueError(f"BalanceSheetItem {key} cannot be '{value}'")
-            elif is_in_identifiers(key, BALANCE_SHEET_LABELS):
-                key = get_identifier(key, BALANCE_SHEET_LABELS)
-            elif is_in_identifiers(key, CALCULATION_TAGS):
-                key = get_identifier(key, CALCULATION_TAGS)
+            elif is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
+                key = get_identifier(key, Config.BALANCE_SHEET_LABELS)
+            elif is_in_identifiers(key, Config.CLASSIFICATIONS):
+                key = get_identifier(key, Config.CLASSIFICATIONS)
                 value = clean_identifier(value)
             else:
                 raise ValueError(
-                    f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {BALANCE_SHEET_LABELS}"
+                    f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {Config.BALANCE_SHEET_LABELS}"
                 )
             self.identifiers[key] = value
 
@@ -33,11 +33,11 @@ class BalanceSheetItem:
     def add_identifier(self, key: str, value: Any) -> "BalanceSheetItem":
         identifiers = self.identifiers.copy()
 
-        if is_in_identifiers(key, BALANCE_SHEET_LABELS):
-            key = get_identifier(key, BALANCE_SHEET_LABELS)
+        if is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
+            key = get_identifier(key, Config.BALANCE_SHEET_LABELS)
         else:
             raise ValueError(
-                f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {BALANCE_SHEET_LABELS}"
+                f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {Config.BALANCE_SHEET_LABELS}"
             )
 
         identifiers[key] = value

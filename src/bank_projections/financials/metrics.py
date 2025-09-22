@@ -178,7 +178,9 @@ class BookValue(DerivedMetric):
 
 
 class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
-    pass
+    @classmethod
+    def stored_columns(cls) -> list[str]:
+        return [metric.column for name, metric in cls.items.items() if metric.is_stored]
 
 
 BalanceSheetMetrics.register("quantity", StoredAmount("Quantity"))
@@ -197,6 +199,8 @@ BalanceSheetMetrics.register("agio_weight", DerivedWeight("Agio"))
 BalanceSheetMetrics.register("book_value", BookValue())
 BalanceSheetMetrics.register("exposure", Exposure())
 
+BalanceSheetMetrics.register("floating_rate", StoredWeight("FloatingRate"))
+BalanceSheetMetrics.register("spread", StoredWeight("Spread"))
 BalanceSheetMetrics.register("interest_rate", StoredWeight("InterestRate"))
 BalanceSheetMetrics.register("prepayment_rate", StoredWeight("PrepaymentRate"))
 

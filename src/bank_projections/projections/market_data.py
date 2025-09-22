@@ -43,7 +43,7 @@ class Curves:
         return dict(zip(spot_rates["Name"] + spot_rates["Tenor"], spot_rates["Rate"], strict=False))
 
     def floating_rate_expr(self):
-        return pl.col("ReferenceRate").replace_strict(self.get_spot_rates(), default=pl.lit(None)).cast(pl.Float32)
+        return pl.col("ReferenceRate").replace_strict(self.get_spot_rates(), default=pl.lit(None)).cast(pl.Float64)
 
 
 class MarketData(Combinable):

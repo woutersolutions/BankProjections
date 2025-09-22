@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import polars as pl
 
-from bank_projections.config import BALANCE_SHEET_LABELS
+from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import BalanceSheetMetrics
@@ -240,14 +240,14 @@ class BalanceSheetMutationRule(AmountRuleBase):
                     self.metric = BalanceSheetMetrics.get(value)
                 case _ if key.startswith("counter"):
                     label = clean_identifier(key[len("counter") :])
-                    if is_in_identifiers(label, BALANCE_SHEET_LABELS):
+                    if is_in_identifiers(label, Config.BALANCE_SHEET_LABELS):
                         if self.counter_item is None:
                             self.counter_item = BalanceSheetItem(**{label: value})
                         else:
                             self.counter_item = self.counter_item.add_identifier(label, value)
                     else:
                         raise KeyError(f"{key} not recognized as valid balance sheet label")
-                case _ if is_in_identifiers(key, BALANCE_SHEET_LABELS):
+                case _ if is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
                     self.item = self.item.add_identifier(key, value)
                 case "relative":
                     self.relative = read_bool(value)

@@ -6,11 +6,7 @@ from typing import Any
 import pandas as pd
 import polars as pl
 
-from bank_projections.config import (
-    BALANCE_SHEET_AGGREGATION_LABELS,
-    CASHFLOW_AGGREGATION_LABELS,
-    PNL_AGGREGATION_LABELS,
-)
+from bank_projections.config import Config
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import (
     BalanceSheetMetric,
@@ -41,6 +37,26 @@ class Positions:
 
         if not self._data.select(RedemptionRegistry.required_columns_validation().all()).item():
             raise ValueError("Positions data is missing required columns for registered redemption types")
+
+        for column, registry in Config.CLASSIFICATIONS.items():
+            if not self._data.select(pl.col(column).is_in(registry.names()).all()).item():
+                invalid_values = (
+                    self._data.filter(~pl.col(column).is_in(registry.names()))
+                    .select(pl.col(column).unique())
+                    .to_series()
+                    .to_list()
+                )
+                raise ValueError(
+                    f"Positions data contains invalid values in column '{column}': {invalid_values}. "
+                    f"Valid values are: {list(registry.names())}"
+                )
+
+        missing_columns = set(Config.required_columns()) - set(self._data.columns)
+        if missing_columns:
+            raise ValueError(f"Positions data is missing required columns: {missing_columns}")
+        extra_columns = set(self._data.columns) - set(Config.required_columns())
+        if extra_columns:
+            raise ValueError(f"Positions data contains unexpected extra columns: {extra_columns}")
 
     def __len__(self) -> int:
         return len(self._data)
@@ -280,7 +296,7 @@ class BalanceSheet(Positions):
             self._data = self._data.drop("BookValueBefore")
 
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
-        pnls = data.group_by(PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+        pnls = data.group_by(Config.PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
         self.mutate_metric(
@@ -307,7 +323,7 @@ class BalanceSheet(Positions):
             self.add_single_liquidity(amount, reason)
 
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
-        cashflows = data.group_by(CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+        cashflows = data.group_by(Config.CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
@@ -337,7 +353,7 @@ class BalanceSheet(Positions):
         return copy.deepcopy(self)
 
     def aggregate(
-        self, group_columns: list[str] = BALANCE_SHEET_AGGREGATION_LABELS
+        self, group_columns: list[str] = Config.BALANCE_SHEET_AGGREGATION_LABELS
     ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
         return (
             (
