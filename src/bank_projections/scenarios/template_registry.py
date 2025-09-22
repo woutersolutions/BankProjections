@@ -71,6 +71,7 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
                 f"Template '{template_name}' not recognized. Available templates: {list(cls.items.keys())}"
             )
 
+
 TemplateRegistry.register("balancesheetmutations", MultiHeaderTemplate(BalanceSheetMutationRule))
 TemplateRegistry.register("interestrates", CurveTemplate())
 TemplateRegistry.register("tax", TaxTemplate())
