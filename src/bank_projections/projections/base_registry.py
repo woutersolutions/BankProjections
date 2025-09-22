@@ -1,8 +1,9 @@
 from abc import ABC
-from collections.abc import Iterable
 from typing import Any, ClassVar, TypeVar
 
 from loguru import logger
+
+from bank_projections.utils.parsing import clean_identifier
 
 T = TypeVar("T", bound=ABC)
 
@@ -37,28 +38,3 @@ class BaseRegistry[T](ABC):  # noqa: B024
         return list(cls.items.keys())
 
 
-def clean_identifier(identifier: str | None) -> str | None:
-    if identifier is None:
-        return None
-    else:
-        return (
-            identifier.strip()
-            .lower()
-            .replace("_", "")
-            .replace(" ", "")
-            .replace("-", "")
-            .replace("/", "")
-            .replace("\\", "")
-        )
-
-
-def is_in_identifiers(identifier: str, identifiers: Iterable[str]) -> bool:
-    return clean_identifier(identifier) in [clean_identifier(id) for id in identifiers]
-
-
-def get_identifier(identifier: str, identifiers: Iterable[str]) -> str:
-    cleaned = clean_identifier(identifier)
-    for id in identifiers:
-        if cleaned == clean_identifier(id):
-            return id
-    raise KeyError(f"{identifier} not found in identifiers")

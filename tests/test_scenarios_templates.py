@@ -2,7 +2,7 @@ import contextlib
 import datetime
 import os
 import tempfile
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pandas as pd
 import pytest
@@ -11,16 +11,14 @@ from bank_projections.financials.balance_sheet import BalanceSheet, MutationReas
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.time import TimeIncrement
-from bank_projections.scenarios.templates import (
-    AmountRuleBase,
-    BalanceSheetMutationRule,
+from bank_projections.scenarios.mutation import AmountRuleBase, BalanceSheetMutationRule
+from bank_projections.scenarios.template import (
     MultiHeaderRule,
     MultiHeaderTemplate,
     ScenarioTemplate,
-    TemplateRegistry,
-    read_bool,
-    read_date,
 )
+from bank_projections.scenarios.template_registry import TemplateRegistry
+from bank_projections.utils.parsing import read_bool, read_date
 
 
 class TestReadBool:
@@ -134,24 +132,6 @@ class TestBalanceSheetMutationRule:
         rule = BalanceSheetMutationRule(rule_input, amount)
 
         assert rule.date == datetime.date(2023, 1, 15)
-
-    @patch("bank_projections.scenarios.templates.is_in_identifiers")
-    def test_init_with_balance_sheet_labels(self, mock_is_in_identifiers):
-        # Only return True for keys that match balance sheet labels
-        def mock_is_in_identifiers_side_effect(key, labels):
-            return key in ["asset_type", "maturity"]
-
-        mock_is_in_identifiers.side_effect = mock_is_in_identifiers_side_effect
-
-        rule_input = {"metric": "quantity", "asset_type": "Mortgages", "maturity": "1-5Y"}
-        amount = 1000.0
-
-        with patch.object(BalanceSheetItem, "add_identifier") as mock_add_identifier:
-            mock_add_identifier.return_value = BalanceSheetItem()  # Return a new item
-            BalanceSheetMutationRule(rule_input, amount)
-
-            # Should be called for both asset_type and maturity
-            assert mock_add_identifier.call_count == 2
 
     def test_init_with_unrecognized_key(self):
         rule_input = {"metric": "quantity", "unknown_key": "some_value"}

@@ -5,7 +5,8 @@ import numpy as np
 import polars as pl
 
 from bank_projections.config import Config
-from bank_projections.projections.base_registry import BaseRegistry, clean_identifier, get_identifier, is_in_identifiers
+from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.utils.parsing import clean_identifier, get_identifier, is_in_identifiers
 
 
 @dataclass

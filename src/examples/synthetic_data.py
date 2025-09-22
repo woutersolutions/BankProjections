@@ -8,10 +8,10 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, Positions
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.base_registry import clean_identifier
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.market_data import Curves
+from bank_projections.utils.parsing import clean_identifier
 from examples import EXAMPLE_FOLDER
 
 

@@ -4,7 +4,7 @@ import os
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.time import TimeHorizon
-from bank_projections.scenarios.templates import TemplateRegistry
+from bank_projections.scenarios.template_registry import TemplateRegistry
 from examples import EXAMPLE_FOLDER, OUTPUT_FOLDER
 from examples.synthetic_data import create_synthetic_balance_sheet
 
