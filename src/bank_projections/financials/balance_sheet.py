@@ -61,7 +61,9 @@ class Positions:
     def __len__(self) -> int:
         return len(self._data)
 
-    def get_amount(self, item: BalanceSheetItem, metric: BalanceSheetMetric) -> float:
+    def get_amount(self, item: BalanceSheetItem, metric: BalanceSheetMetric | str) -> float:
+        if isinstance(metric, str):
+            metric = BalanceSheetMetrics.get(metric)
         result = self._data.filter(item.filter_expression).select(metric.aggregation_expression).item()
         return float(result)
 
@@ -182,7 +184,7 @@ class BalanceSheet(Positions):
     def mutate_metric(
         self,
         item: BalanceSheetItem,
-        metric: BalanceSheetMetric,
+        metric: BalanceSheetMetric | str,
         amount: float,
         reason: MutationReason | None = None,
         relative: bool = False,
@@ -191,6 +193,9 @@ class BalanceSheet(Positions):
         offset_pnl: bool = False,
         counter_item: BalanceSheetItem | None = None,
     ) -> None:
+        if isinstance(metric, str):
+            metric = BalanceSheetMetrics.get(metric)
+
         if multiplicative:
             if relative:
                 expr = pl.col(metric.mutation_column) * (1 + amount)

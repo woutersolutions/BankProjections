@@ -10,6 +10,7 @@ from bank_projections.projections.valuation import ValuationRegistry
 class Config:
     CASHFLOW_AGGREGATION_LABELS = ["ItemType"]
     PNL_AGGREGATION_LABELS = ["ItemType"]
+    # TODO: Three dates as separate label
     BALANCE_SHEET_LABELS = [
         "BalanceSheetSide",
         "ItemType",

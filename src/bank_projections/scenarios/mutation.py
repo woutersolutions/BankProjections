@@ -2,6 +2,7 @@ import datetime
 from typing import Any
 
 import numpy as np
+import pandas as pd
 
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
@@ -24,7 +25,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
 
         if is_in_identifiers("item", list(rule_input.keys())):
             value = rule_input[get_identifier("item", list(rule_input.keys()))]
-            if value in ["", np.nan, None]:
+            if pd.isna(value) or value == "":
                 self.item = BalanceSheetItem()
             else:
                 self.item = BalanceSheetItemRegistry.get(value)
@@ -32,7 +33,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
             self.item = BalanceSheetItem()
         if is_in_identifiers("counter item", list(rule_input.keys())):
             value = rule_input[get_identifier("counter item", list(rule_input.keys()))]
-            if value in ["", np.nan, None]:
+            if pd.isna(value) or value == "":
                 self.counter_item = None
             else:
                 self.counter_item = BalanceSheetItemRegistry.get(value)

@@ -6,11 +6,13 @@ from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.scenarios.audit import AuditRule
 from bank_projections.scenarios.curve import CurveTemplate
 from bank_projections.scenarios.mutation import BalanceSheetMutationRule
+from bank_projections.scenarios.production import ProductionRule
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.scenarios.tax import TaxTemplate
 from bank_projections.scenarios.template import (
     KeyValueTemplate,
     MultiHeaderTemplate,
+    OneHeaderTemplate,
     ScenarioTemplate,
 )
 from bank_projections.utils.parsing import clean_identifier, is_in_identifiers
@@ -75,3 +77,4 @@ TemplateRegistry.register("balancesheetmutations", MultiHeaderTemplate(BalanceSh
 TemplateRegistry.register("interestrates", CurveTemplate())
 TemplateRegistry.register("tax", TaxTemplate())
 TemplateRegistry.register("audit", KeyValueTemplate(AuditRule))
+TemplateRegistry.register("production", OneHeaderTemplate(ProductionRule))
