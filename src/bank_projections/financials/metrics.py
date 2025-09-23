@@ -10,6 +10,11 @@ SMALL_NUMBER = 1e-12
 class BalanceSheetMetric(ABC):
     @property
     @abstractmethod
+    def name(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
     def get_expression(self) -> pl.Expr:
         pass
 
@@ -42,6 +47,10 @@ class StoredColumn(BalanceSheetMetric, ABC):
 
     def __init__(self, column: str):
         self.column = column
+
+    @property
+    def name(self) -> str:
+        return self.column
 
     @property
     def get_expression(self) -> pl.Expr:
@@ -96,6 +105,9 @@ class DerivedMetric(BalanceSheetMetric, ABC):
 
 
 class DirtyPrice(DerivedMetric):
+
+    name = "DirtyPrice"
+
     @property
     def get_expression(self) -> pl.Expr:
         return pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest")
@@ -106,9 +118,14 @@ class DirtyPrice(DerivedMetric):
 
 
 class DerivedAmount(DerivedMetric):
-    def __init__(self, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, column:str, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
         self.weight_column = weight_column
         self.allocation_expr = allocation_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
+        self.column = column
+
+    @property
+    def name(self) -> str:
+        return self.column
 
     @property
     def get_expression(self) -> pl.Expr:
@@ -130,9 +147,14 @@ class DerivedAmount(DerivedMetric):
 
 
 class DerivedWeight(DerivedMetric):
-    def __init__(self, amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, column:str,amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
         self.amount_column = amount_column
         self.weight_expr = weight_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
+        self.column = column
+
+    @property
+    def name(self) -> str:
+        return self.column
 
     @property
     def get_expression(self) -> pl.Expr:
@@ -155,6 +177,9 @@ class DerivedWeight(DerivedMetric):
 
 # TODO: Determine exposure for fair value items
 class Exposure(DerivedMetric):
+
+    name = "Exposure"
+
     @property
     def get_expression(self) -> pl.Expr:
         return pl.col("Quantity") + pl.col("OffBalance")
@@ -165,6 +190,9 @@ class Exposure(DerivedMetric):
 
 
 class BookValue(DerivedMetric):
+
+    name = "BookValue"
+
     @property
     def get_expression(self) -> pl.Expr:
         return (
@@ -194,9 +222,9 @@ BalanceSheetMetrics.register("off_balance", StoredWeight("OffBalance"))
 
 BalanceSheetMetrics.register("dirty_price", DirtyPrice())
 
-BalanceSheetMetrics.register("coverage_rate", DerivedWeight("Impairment"))
-BalanceSheetMetrics.register("accrued_interest_rate", DerivedWeight("AccruedInterest"))
-BalanceSheetMetrics.register("agio_weight", DerivedWeight("Agio"))
+BalanceSheetMetrics.register("coverage_rate", DerivedWeight("CoverageRate", "Impairment"))
+BalanceSheetMetrics.register("accrued_interest_rate", DerivedWeight("AccruedInterestRate", "AccruedInterest"))
+BalanceSheetMetrics.register("agio_weight", DerivedWeight("AgioWeight", "Agio"))
 
 BalanceSheetMetrics.register("book_value", BookValue())
 BalanceSheetMetrics.register("exposure", Exposure())
@@ -208,4 +236,4 @@ BalanceSheetMetrics.register("prepayment_rate", StoredWeight("PrepaymentRate"))
 
 
 BalanceSheetMetrics.register("trea_weight", StoredWeight("TREAWeight", Exposure().get_expression))
-BalanceSheetMetrics.register("trea", DerivedAmount("TREAWeight", Exposure().get_expression))
+BalanceSheetMetrics.register("trea", DerivedAmount("TREA","TREAWeight", Exposure().get_expression))

@@ -432,7 +432,7 @@ class BalanceSheet(Positions):
         return (
             (
                 self._data.group_by(group_columns)
-                .agg([metric.aggregation_expression.alias(name) for name, metric in BalanceSheetMetrics.items.items()])
+                .agg([metric.aggregation_expression.alias(metric.name) for name, metric in BalanceSheetMetrics.items.items()])
                 .sort(by=group_columns)
             ),
             self.pnls,
