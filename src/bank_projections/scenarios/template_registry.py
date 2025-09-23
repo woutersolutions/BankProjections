@@ -15,7 +15,7 @@ from bank_projections.scenarios.template import (
     OneHeaderTemplate,
     ScenarioTemplate,
 )
-from bank_projections.utils.parsing import clean_identifier, is_in_identifiers
+from bank_projections.utils.parsing import is_in_identifiers, strip_identifier
 
 
 class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
@@ -61,7 +61,7 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
         # Read the first cell to determine the template type
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None, nrows=1, usecols=(0, 1))
 
-        if clean_identifier(str(df_raw.iloc[0, 0])) != "template":
+        if strip_identifier(str(df_raw.iloc[0, 0])) != "template":
             raise ValueError(f"First cell must be 'Template', found {df_raw.iloc[0, 0]}")
 
         template_name = str(df_raw.iloc[0, 1])

@@ -12,7 +12,9 @@ from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
+from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
+from bank_projections.utils.parsing import correct_identifier_keys, strip_identifier_keys
 
 
 @dataclass
@@ -81,12 +83,16 @@ class Positions:
 class BalanceSheet(Positions):
     def __init__(self, data: pl.DataFrame, date: datetime.date):
         super().__init__(data)
-        self.add_item(BalanceSheetItemRegistry.get("cash account"), OriginationDate=date)
-        self.add_item(BalanceSheetItemRegistry.get("pnl account"), OriginationDate=date)
+        self.date = date
+        self.add_item(
+            BalanceSheetItemRegistry.get("cash account"), labels={}, metrics={"Quantity": 0.0}, origination_date=date
+        )
+        self.add_item(
+            BalanceSheetItemRegistry.get("pnl account"), labels={}, metrics={"Quantity": 0.0}, origination_date=date
+        )
 
         self.cashflows = pl.DataFrame(schema={"Amount": pl.Float64})
         self.pnls = pl.DataFrame(schema={"Amount": pl.Float64})
-        self.date = date
 
         self.validate()
 
@@ -131,15 +137,20 @@ class BalanceSheet(Positions):
     def add_item(
         self,
         based_on_item: BalanceSheetItem | None,
-        quantity: float = 0.0,
-        accrued_interest: float = 0.0,
-        impairment: float = 0.0,
-        dirty_price: float = 0.0,
-        **new_values: Any,
+        labels: dict[str, Any],
+        metrics: dict[str, Any],
+        origination_date: datetime.date | None = None,
+        maturity_date: datetime.date | None = None,
+        pnls: dict[MutationReason, pl.Expr] | None = None,
+        cashflows: dict[MutationReason, pl.Expr] | None = None,
     ) -> None:
+        labels = correct_identifier_keys(labels, Config.label_columns())
+        metrics = strip_identifier_keys(metrics)
 
         if based_on_item is None:
             raise NotImplementedError("Based on no item not yet implement")
+        if origination_date is None:
+            origination_date = self.date
 
         # Find the number of rows and total quantity of the based_on_item
         based_on_quantity, based_on_count = (
@@ -159,29 +170,85 @@ class BalanceSheet(Positions):
         )
         constant_cols = [c for c in non_numeric_cols if n_uniques[0, c] == 1]
 
-        new_row = (
+        new_data = (
             self._data.filter(based_on_item.filter_expression)
-            .select(
-                [pl.col(col).first().alias(col) for col in constant_cols]
-                + [
+            .with_columns(**labels)
+            .group_by(
+                set(constant_cols)
+                | set(Config.BALANCE_SHEET_AGGREGATION_LABELS)
+                | set(Config.CLASSIFICATIONS.keys() | set(labels.keys()))
+            )
+            .agg(
+                [
                     metric.aggregation_expression.alias(metric.column)
                     for name, metric in BalanceSheetMetrics.items.items()
                     if metric.is_stored
-                ],
+                ]
             )
             .with_columns(
-                [pl.lit(value).alias(column) for column, value in new_values.items()],
-                Quantity=quantity,
-                AccruedInterest=accrued_interest,
-                Impairment=impairment,
-                CleanPrice=dirty_price,
+                OriginationDate=pl.lit(origination_date),
+                MaturityDate=pl.lit(maturity_date),
+                NextCouponDate=None
+                if maturity_date is None
+                else FrequencyRegistry.advance_next(pl.lit(self.date), pl.lit(1)),
+                AccruedInterest=pl.lit(0.0),  # TODO: calculate accrued interest
             )
         )
 
-        # Check missing columns #TODO: Properly handle missing columns
-        missing_cols = set(self._data.columns) - set(new_row.columns)
+        # process the metrics
+        if "quantity" in metrics:
+            new_data = self._process_metric(new_data, metrics, "quantity")
+        else:
+            raise ValueError("Must specify quantity when adding new item to balance sheet")
 
-        self._data = pl.concat([self._data, new_row], how="diagonal")
+        if "impairment" in metrics and "coveragerate" in metrics:
+            raise ValueError("Cannot specify both impairment and coverage rate in ProductionRule")
+        elif "impairment" not in metrics and "coverageRate" not in metrics:
+            # Assume the same coverage rate if not specified
+            metrics["coveragerate"] = self.get_amount(based_on_item, "CoverageRate")
+
+        if "agio" in metrics and "agioWeight" in metrics:
+            raise ValueError("Cannot specify both agio and agio weight in ProductionRule")
+        elif "agio" not in metrics and "agioWeight" not in metrics:
+            # Assume the same coverage rate if not specified
+            metrics["Agio"] = 0.0
+
+        new_data = new_data.with_columns(
+            [
+                BalanceSheetMetrics.get(metric_name)
+                .mutation_expression(metric_value, pl.lit(True))
+                .alias(BalanceSheetMetrics.get(metric_name).mutation_column)
+                for metric_name, metric_value in metrics.items()
+            ]
+        )
+
+        missing_columns = set(self._data.columns) - set(new_data.columns)
+        if missing_columns:
+            raise ValueError(f"Missing columns in new item: {missing_columns}")
+        extra_columns = set(new_data.columns) - set(self._data.columns)
+        if extra_columns:
+            raise ValueError(f"Extra columns in new item: {extra_columns}")
+
+        if cashflows is not None:
+            for mut_reason, cashflow_expr in cashflows.items():
+                self.add_liquidity(new_data, cashflow_expr, mut_reason)
+
+        if pnls is not None:
+            for mut_reason, pnl_expr in pnls.items():
+                self.add_pnl(new_data, pnl_expr, mut_reason)
+
+        self._data = pl.concat([self._data, new_data], how="diagonal")
+
+    @staticmethod
+    def _process_metric(data: pl.DataFrame, metrics: dict[str, Any] | float, metric_name: str) -> pl.DataFrame:
+        metric = BalanceSheetMetrics.get(metric_name)
+        if isinstance(metrics, float):
+            metric_value = metrics
+        else:
+            metric_value = metrics.pop(metric_name)
+        data = data.with_columns(metric.mutation_expression(metric_value, pl.lit(True)).alias(metric.mutation_column))
+
+        return data
 
     def mutate_metric(
         self,

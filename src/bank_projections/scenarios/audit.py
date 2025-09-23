@@ -8,20 +8,20 @@ from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.template import KeyValueRuleBase
 from bank_projections.utils.date import add_months, is_end_of_month
-from bank_projections.utils.parsing import clean_identifier
+from bank_projections.utils.parsing import strip_identifier
 
 
 class AuditRule(KeyValueRuleBase):
     def __init__(self, rule_input: dict[str, Any]):
         self.target = BalanceSheetItem()
         for key, value in rule_input.items():
-            match clean_identifier(key):
+            match strip_identifier(key):
                 case "closingmonth":
                     self.closing_month = int(value)
                 case "auditmonth":
                     self.audit_month = int(value)
-                case _ if clean_identifier(key).startswith("target"):
-                    label = clean_identifier(key[len("target") :])
+                case _ if strip_identifier(key).startswith("target"):
+                    label = strip_identifier(key[len("target") :])
                     self.target = self.target.add_identifier(label, value)
                 case _:
                     raise KeyError(f"{key} not recognized in AuditRule")

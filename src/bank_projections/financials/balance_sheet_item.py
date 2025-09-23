@@ -6,7 +6,7 @@ import polars as pl
 
 from bank_projections.config import Config
 from bank_projections.projections.base_registry import BaseRegistry
-from bank_projections.utils.parsing import clean_identifier, get_identifier, is_in_identifiers, read_date
+from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_date, strip_identifier
 
 
 @dataclass
@@ -31,7 +31,7 @@ class BalanceSheetItem:
             value = read_date(value)
         elif is_in_identifiers(key, Config.CLASSIFICATIONS):
             key = get_identifier(key, Config.CLASSIFICATIONS)
-            value = clean_identifier(value)
+            value = strip_identifier(value)
         else:
             raise ValueError(
                 f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {Config.label_columns()}"

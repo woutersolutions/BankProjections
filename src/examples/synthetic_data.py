@@ -11,9 +11,10 @@ from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.market_data import Curves
-from bank_projections.utils.parsing import clean_identifier
+from bank_projections.utils.parsing import strip_identifier
 from examples import EXAMPLE_FOLDER
 
+random.seed(42)
 
 # TODO: Generate synthetic market data from csvs
 def generate_synthetic_curves() -> Curves:
@@ -47,10 +48,10 @@ def generate_synthetic_positions(
     off_balance: float = 0.0,
     trea_weight: float = 0.0,
 ) -> Positions:
-    redemption_type = clean_identifier(redemption_type)
-    coupon_frequency = clean_identifier(coupon_frequency)
-    valuation_method = clean_identifier(valuation_method)
-    reference_rate = clean_identifier(reference_rate)
+    redemption_type = strip_identifier(redemption_type)
+    coupon_frequency = strip_identifier(coupon_frequency)
+    valuation_method = strip_identifier(valuation_method)
+    reference_rate = strip_identifier(reference_rate)
 
     # Generate random book values that sum to the target book value
     if book_value == 0 or number == 1:
@@ -91,9 +92,9 @@ def generate_synthetic_positions(
             (interest_rate_range[0] + interest_rate_range[1]) / 2,
         )
 
-    coupon_type = clean_identifier(coupon_type)
+    coupon_type = strip_identifier(coupon_type)
     if coupon_type in CouponTypeRegistry.names():
-        coupon_types = [clean_identifier(coupon_type)] * number
+        coupon_types = [strip_identifier(coupon_type)] * number
     elif coupon_type == "both":
         coupon_types = [random.choice(["fixed", "floating"]) for _ in range(number)]
     else:
@@ -111,7 +112,7 @@ def generate_synthetic_positions(
             for _ in range(number)
         ]
 
-    match clean_identifier(redemption_type):
+    match strip_identifier(redemption_type):
         case "perpetual":
             maturity_dates = [None] * number
         case "bullet" | "linear" | "annuity":
@@ -123,7 +124,7 @@ def generate_synthetic_positions(
         case _:
             raise ValueError(f"Unknown redemption type: {redemption_type}")
 
-    match clean_identifier(coupon_frequency):
+    match strip_identifier(coupon_frequency):
         case "daily":
             maximum_next_coupon_days = 1
         case "weekly":
@@ -157,7 +158,7 @@ def generate_synthetic_positions(
             "CleanPrice": [1.0] * number,  # At par for balanced sheet
             "AgioWeight": agios,
             "ItemType": [item_type] * number,
-            "Currency": [clean_identifier(currency)] * number,
+            "Currency": [strip_identifier(currency)] * number,
             "ValuationMethod": [valuation_method] * number,
             "InterestRate": interest_rates,
             "CouponType": coupon_types,

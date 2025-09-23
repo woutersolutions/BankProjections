@@ -10,7 +10,7 @@ from bank_projections.financials.balance_sheet_item import BalanceSheetItem, Bal
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.template import AmountRuleBase
-from bank_projections.utils.parsing import clean_identifier, get_identifier, is_in_identifiers, read_bool, read_date
+from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_bool, read_date, strip_identifier
 
 
 class BalanceSheetMutationRule(AmountRuleBase):
@@ -41,7 +41,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
             self.counter_item = None
 
         for key, value in rule_input.items():
-            match clean_identifier(key):
+            match strip_identifier(key):
                 case _ if value in ["", np.nan, None]:
                     pass
                 case "item" | "counteritem":
@@ -49,7 +49,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
                 case "metric":
                     self.metric = BalanceSheetMetrics.get(value)
                 case _ if key.startswith("counter"):
-                    label = clean_identifier(key[len("counter") :])
+                    label = strip_identifier(key[len("counter"):])
                     if is_in_identifiers(label, Config.label_columns()):
                         if self.counter_item is None:
                             self.counter_item = BalanceSheetItem(**{label: value})

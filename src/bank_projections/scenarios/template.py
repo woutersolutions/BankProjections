@@ -7,7 +7,7 @@ from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.scenario import Scenario
-from bank_projections.utils.parsing import clean_identifier
+from bank_projections.utils.parsing import strip_identifier
 
 
 class AmountRuleBase(Rule):
@@ -30,7 +30,7 @@ class MultiHeaderTemplate(ScenarioTemplate):
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
 
         # The first row must indicate the template name (later we can have multiple templates)
-        if clean_identifier(str(df_raw.iloc[0, 0])) != "template":
+        if strip_identifier(str(df_raw.iloc[0, 0])) != "template":
             raise ValueError(f"First cell must be 'Template', found {df_raw.iloc[0, 0]}")
 
         # Find cell with '*' in it
@@ -78,7 +78,7 @@ class OneHeaderTemplate(ScenarioTemplate):
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None)
 
         # The first row must indicate the template name (later we can have multiple templates)
-        if clean_identifier(str(df_raw.iloc[0, 0])) != "template":
+        if strip_identifier(str(df_raw.iloc[0, 0])) != "template":
             raise ValueError(f"First cell must be 'Template', found {df_raw.iloc[0, 0]}")
 
         # Find the first row with non-empty cells from the third column
