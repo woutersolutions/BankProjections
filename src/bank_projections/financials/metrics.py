@@ -4,6 +4,8 @@ import polars as pl
 
 from bank_projections.projections.base_registry import BaseRegistry
 
+SMALL_NUMBER = 1e-12
+
 
 class BalanceSheetMetric(ABC):
     @property
@@ -56,7 +58,7 @@ class StoredColumn(BalanceSheetMetric, ABC):
 class StoredAmount(StoredColumn):
     def __init__(self, column: str, allocation_col: str = "Quantity"):
         super().__init__(column)
-        self.allocation_expr = pl.col(allocation_col) + pl.lit(1e-12)  # Prevent division by zero
+        self.allocation_expr = pl.col(allocation_col) + pl.lit(SMALL_NUMBER)  # Prevent division by zero
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -69,7 +71,7 @@ class StoredAmount(StoredColumn):
 class StoredWeight(StoredColumn):
     def __init__(self, column: str, weight_expr: pl.Expr = pl.col("Quantity")):
         super().__init__(column)
-        self.weight_expr = weight_expr + pl.lit(1e-12)  # Prevent division by zero
+        self.weight_expr = weight_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -106,7 +108,7 @@ class DirtyPrice(DerivedMetric):
 class DerivedAmount(DerivedMetric):
     def __init__(self, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
         self.weight_column = weight_column
-        self.allocation_expr = allocation_expr + pl.lit(1e-12)  # Prevent division by zero
+        self.allocation_expr = allocation_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
 
     @property
     def get_expression(self) -> pl.Expr:
@@ -130,7 +132,7 @@ class DerivedAmount(DerivedMetric):
 class DerivedWeight(DerivedMetric):
     def __init__(self, amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
         self.amount_column = amount_column
-        self.weight_expr = weight_expr + pl.lit(1e-12)  # Prevent division by zero
+        self.weight_expr = weight_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
 
     @property
     def get_expression(self) -> pl.Expr:

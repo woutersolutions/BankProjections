@@ -42,13 +42,13 @@ class ProductionRule(AmountRuleBase):
                 case _ if is_in_identifiers(key, list(BalanceSheetMetrics.items.keys())):
                     self.metrics[clean_identifier(key)] = value
                 case _ if clean_identifier(key).startswith("reference"):
-                    label = get_identifier(clean_identifier(key).replace("reference", ""), Config.BALANCE_SHEET_LABELS)
+                    label = get_identifier(clean_identifier(key).replace("reference", ""), Config.label_columns())
                     if self.reference_item is None:
                         self.reference_item = BalanceSheetItem(**{label: value})
                     else:
                         self.reference_item = self.reference_item.add_identifier(label, value)
-                case _ if is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
-                    self.labels[get_identifier(key, Config.BALANCE_SHEET_LABELS)] = value
+                case _ if is_in_identifiers(key, Config.label_columns()):
+                    self.labels[get_identifier(key, Config.label_columns())] = value
                 case "multiplicative":
                     self.multiplicative = read_bool(value)
                 case "date":
@@ -153,7 +153,7 @@ class ProductionRule(AmountRuleBase):
                 bs._data = pl.concat([bs._data, data], how="diagonal")
 
                 # Offset the production in cash and pnl
-                reason = MutationReason(module="Production", rule=f"Production")
+                reason = MutationReason(module="Production", rule="Production")
                 bs.add_liquidity(data, -pl.col("Quantity") - pl.col("AccruedInterest") - pl.col("Agio"), reason)
                 bs.add_pnl(data, pl.col("Impairment"), reason)
 

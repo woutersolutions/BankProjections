@@ -130,13 +130,17 @@ class BalanceSheet(Positions):
 
     def add_item(
         self,
-        based_on_item: BalanceSheetItem,
+        based_on_item: BalanceSheetItem | None,
         quantity: float = 0.0,
         accrued_interest: float = 0.0,
         impairment: float = 0.0,
         dirty_price: float = 0.0,
         **new_values: Any,
     ) -> None:
+
+        if based_on_item is None:
+            raise NotImplementedError("Based on no item not yet implement")
+
         # Find the number of rows and total quantity of the based_on_item
         based_on_quantity, based_on_count = (
             self._data.filter(based_on_item.filter_expression).select(
@@ -147,8 +151,6 @@ class BalanceSheet(Positions):
             raise ValueError(f"No item found on balance sheet matching: {based_on_item}")
         if based_on_quantity == 0:
             raise ValueError(f"Cannot base new item on zero quantity item: {based_on_item}")
-
-        n_rows = len(self._data.filter(based_on_item.filter_expression))
 
         # Find unique labels for non-numeric columns
         non_numeric_cols = self._data.select([pl.col(pl.Utf8), pl.col(pl.Boolean)]).columns

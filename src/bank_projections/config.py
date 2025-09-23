@@ -10,17 +10,14 @@ from bank_projections.projections.valuation import ValuationRegistry
 class Config:
     CASHFLOW_AGGREGATION_LABELS = ["ItemType"]
     PNL_AGGREGATION_LABELS = ["ItemType"]
-    # TODO: Three dates as separate label
     BALANCE_SHEET_LABELS = [
         "BalanceSheetSide",
         "ItemType",
-        "OriginationDate",
         "Currency",
         "ReferenceRate",
-        "MaturityDate",
-        "NextCouponDate",
         "IsAccumulating",
     ]
+    DATE_COLUMNS = ["OriginationDate", "MaturityDate", "NextCouponDate"]
     BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"]
 
     CLASSIFICATIONS: dict[str, BaseRegistry] = {
@@ -31,5 +28,14 @@ class Config:
     }
 
     @classmethod
+    def label_columns(cls) -> list[str]:
+        return Config.BALANCE_SHEET_LABELS + Config.DATE_COLUMNS + list(Config.CLASSIFICATIONS.keys())
+
+    @classmethod
     def required_columns(cls) -> list[str]:
-        return cls.BALANCE_SHEET_LABELS + list(cls.CLASSIFICATIONS.keys()) + BalanceSheetMetrics.stored_columns()
+        return (
+            cls.BALANCE_SHEET_LABELS
+            + list(cls.CLASSIFICATIONS.keys())
+            + BalanceSheetMetrics.stored_columns()
+            + cls.DATE_COLUMNS
+        )

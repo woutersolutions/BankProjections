@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
+import pandas as pd
 import polars as pl
 
 from bank_projections.config import Config
 from bank_projections.projections.base_registry import BaseRegistry
-from bank_projections.utils.parsing import clean_identifier, get_identifier, is_in_identifiers
+from bank_projections.utils.parsing import clean_identifier, get_identifier, is_in_identifiers, read_date
 
 
 @dataclass
@@ -16,32 +16,31 @@ class BalanceSheetItem:
     def __init__(self, expr: pl.Expr | None = None, **identifiers: Any) -> None:
         self.identifiers = {}
         for key, value in identifiers.items():
-            if value in [None, "", np.nan]:
-                raise ValueError(f"BalanceSheetItem {key} cannot be '{value}'")
-            elif is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
-                key = get_identifier(key, Config.BALANCE_SHEET_LABELS)
-            elif is_in_identifiers(key, Config.CLASSIFICATIONS):
-                key = get_identifier(key, Config.CLASSIFICATIONS)
-                value = clean_identifier(value)
-            else:
-                raise ValueError(
-                    f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {Config.BALANCE_SHEET_LABELS}"
-                )
-            self.identifiers[key] = value
+            self._add_identifier(self.identifiers, key, value)
 
         self.expr = expr
 
-    def add_identifier(self, key: str, value: Any) -> "BalanceSheetItem":
-        identifiers = self.identifiers.copy()
-
-        if is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
+    @staticmethod
+    def _add_identifier(identifiers: dict[str, Any], key: str, value: Any):
+        if pd.isna(value) or value == "":
+            raise ValueError(f"BalanceSheetItem {key} cannot be '{value}'")
+        elif is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
             key = get_identifier(key, Config.BALANCE_SHEET_LABELS)
+        elif is_in_identifiers(key, Config.DATE_COLUMNS):
+            key = get_identifier(key, Config.DATE_COLUMNS)
+            value = read_date(value)
+        elif is_in_identifiers(key, Config.CLASSIFICATIONS):
+            key = get_identifier(key, Config.CLASSIFICATIONS)
+            value = clean_identifier(value)
         else:
             raise ValueError(
-                f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {Config.BALANCE_SHEET_LABELS}"
+                f"Invalid identifier '{key}' for BalanceSheetItem. Valid identifiers are: {Config.label_columns()}"
             )
-
         identifiers[key] = value
+
+    def add_identifier(self, key: str, value: Any) -> "BalanceSheetItem":
+        identifiers = self.identifiers.copy()
+        self._add_identifier(identifiers, key, value)
         return BalanceSheetItem(expr=self.expr, **identifiers)
 
     def add_condition(self, expr: pl.Expr) -> "BalanceSheetItem":
