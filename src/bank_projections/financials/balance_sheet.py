@@ -37,9 +37,6 @@ class Positions:
         if len(self) == 0:
             raise ValueError("Positions data cannot be empty")
 
-        if not self._data.select(RedemptionRegistry.required_columns_validation().all()).item():
-            raise ValueError("Positions data is missing required columns for registered redemption types")
-
         for column, registry in Config.CLASSIFICATIONS.items():
             if not self._data.select(pl.col(column).is_in(registry.names()).all()).item():
                 invalid_values = (
@@ -101,6 +98,8 @@ class BalanceSheet(Positions):
 
     def validate(self) -> None:
         super().validate()
+
+        RedemptionRegistry.validate_df(self._data, self.date)
 
         total_book_value = self.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
         if abs(total_book_value) > 0.01:
@@ -172,11 +171,12 @@ class BalanceSheet(Positions):
 
         new_data = (
             self._data.filter(based_on_item.filter_expression)
-            .with_columns(**labels)
+            .with_columns(**labels, OriginationDate=pl.lit(origination_date), MaturityDate=pl.lit(maturity_date))
             .group_by(
                 set(constant_cols)
                 | set(Config.BALANCE_SHEET_AGGREGATION_LABELS)
                 | set(Config.CLASSIFICATIONS.keys() | set(labels.keys()))
+                | {"OriginationDate", "MaturityDate"}
             )
             .agg(
                 [
@@ -186,11 +186,7 @@ class BalanceSheet(Positions):
                 ]
             )
             .with_columns(
-                OriginationDate=pl.lit(origination_date),
-                MaturityDate=pl.lit(maturity_date),
-                NextCouponDate=None
-                if maturity_date is None
-                else FrequencyRegistry.advance_next(pl.lit(self.date), pl.lit(1)),
+                NextCouponDate=None if maturity_date is None else FrequencyRegistry.next_coupon_date(origination_date),
                 AccruedInterest=pl.lit(0.0),  # TODO: calculate accrued interest
             )
         )
@@ -432,7 +428,12 @@ class BalanceSheet(Positions):
         return (
             (
                 self._data.group_by(group_columns)
-                .agg([metric.aggregation_expression.alias(metric.name) for name, metric in BalanceSheetMetrics.items.items()])
+                .agg(
+                    [
+                        metric.aggregation_expression.alias(metric.name)
+                        for name, metric in BalanceSheetMetrics.items.items()
+                    ]
+                )
                 .sort(by=group_columns)
             ),
             self.pnls,

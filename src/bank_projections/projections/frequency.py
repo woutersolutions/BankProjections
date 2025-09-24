@@ -4,12 +4,13 @@ from abc import ABC, abstractmethod
 import polars as pl
 
 from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.utils.date import is_end_of_month
 
 
 class Frequency(ABC):
     @classmethod
     @abstractmethod
-    def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
+    def next_coupon_date(cls, current_date: datetime.date):
         pass
 
     @classmethod
@@ -30,10 +31,10 @@ class Frequency(ABC):
 
 class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
     @classmethod
-    def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
-        expr = date
+    def next_coupon_date(cls, current_date: datetime.date):
+        expr = pl.lit(None)
         for name, freq in cls.items.items():
-            expr = pl.when(pl.col("CouponFrequency") == name).then(freq.advance_next(date, number)).otherwise(expr)
+            expr = pl.when(pl.col("CouponFrequency") == name).then(freq.next_coupon_date(current_date)).otherwise(expr)
         return expr
 
     @classmethod
@@ -70,8 +71,18 @@ class MonthlyBase(Frequency):
     number_of_months: int = 0  # Needs to be overridden
 
     @classmethod
-    def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
-        return date.dt.offset_by((number * cls.number_of_months).cast(pl.Utf8) + "mo")
+    def next_coupon_date(cls, current_date: datetime.date):
+        months_diff = (pl.col("MaturityDate").dt.year() - current_date.year) * 12 + (
+            pl.col("MaturityDate").dt.month() - current_date.month
+        )
+        if is_end_of_month(current_date):
+            day_passed = pl.lit(True)
+        else:
+            day_passed = current_date.day >= pl.col("MaturityDate").dt.day()
+        payments_left = (months_diff + pl.when(day_passed).then(0).otherwise(1)) // cls.number_of_months
+        return pl.col("MaturityDate").dt.offset_by(
+            by=(-payments_left.clip(lower_bound=0) * cls.number_of_months).cast(pl.Utf8) + "mo"
+        )
 
     @classmethod
     def portion_passed(cls, next_coupon_date: pl.Expr, projection_date: datetime.date) -> pl.Expr:
@@ -109,12 +120,12 @@ class DailyBase(Frequency):
     number_of_days: int = 0  # Needs to be overridden
 
     @classmethod
-    def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
-        return date + pl.duration(days=number * cls.number_of_days)
-
-    @classmethod
     def number_due(cls, coupon_date: pl.Expr, projection_date: pl.Expr) -> pl.Expr:
         return (projection_date - coupon_date).dt.total_days() // cls.number_of_days
+
+    @classmethod
+    def next_coupon_date(cls, current_date: datetime.date):
+        return pl.lit(current_date) + pl.duration(days=cls.number_of_days)
 
     @classmethod
     def portion_passed(cls, next_coupon_date: pl.Expr, projection_date: datetime.date) -> pl.Expr:
@@ -135,8 +146,8 @@ class Weekly(DailyBase):
 
 class Never(Frequency):
     @classmethod
-    def advance_next(cls, date: pl.Expr, number: pl.Expr) -> pl.Expr:
-        return date
+    def next_coupon_date(cls, current_date: datetime.date):
+        return pl.lit(None)
 
     @classmethod
     def number_due(cls, coupon_date: pl.Expr, projection_date: pl.Expr) -> pl.Expr:

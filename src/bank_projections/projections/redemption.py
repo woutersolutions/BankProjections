@@ -1,5 +1,6 @@
 import datetime
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 
 import polars as pl
 
@@ -17,8 +18,10 @@ class Redemption(ABC):
 
     @classmethod
     @abstractmethod
-    def required_columns_validation(cls) -> pl.Expr:
-        """Returns an expression that validates all required columns are available and have valid values."""
+    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
+        """Returns an expression that validates all required columns are available and have valid values.
+        :param date:
+        """
         pass
 
 
@@ -37,20 +40,29 @@ class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
         return expr
 
     @classmethod
-    def required_columns_validation(cls) -> pl.Expr:
-        """Returns an expression that validates all required columns for all registered redemption types."""
+    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
+        """Returns an expression that validates all required columns for all registered redemption types.
+        :param date:
+        """
         # Base requirement: RedemptionType column must exist and be non-null
-        base_validation = pl.col("RedemptionType").is_not_null()
-
-        specific_expr = pl.lit(True)
+        result = [pl.col("RedemptionType").is_in(RedemptionRegistry.names())]
         for name, redemption_cls in cls.items.items():
-            specific_expr = (
-                pl.when(pl.col("RedemptionType") == name)
-                .then(redemption_cls.required_columns_validation())
-                .otherwise(specific_expr)
-            )
+            for expr in redemption_cls.required_columns_validation(date):
+                result.append(pl.when(pl.col("RedemptionType") == name).then(expr).otherwise(True))
 
-        return base_validation & specific_expr
+        return result
+
+    @classmethod
+    def validate_df(
+        cls,
+        df: pl.DataFrame | pl.LazyFrame,
+        date: datetime.date,
+        sample_rows: int = 10,
+        id_cols: list[str] | None = None,
+    ) -> None:
+        """Validates that the DataFrame has all required columns for the registered redemption types."""
+        rules = cls.required_columns_validation(date)
+        validate_df(df, rules, sample_rows=sample_rows, id_cols=id_cols)
 
 
 class BulletRedemption(Redemption):
@@ -61,9 +73,11 @@ class BulletRedemption(Redemption):
         return pl.when(maturity_date <= pl.lit(projection_date)).then(pl.lit(1.0)).otherwise(pl.lit(0.0))
 
     @classmethod
-    def required_columns_validation(cls) -> pl.Expr:
-        """Validates that bullet redemption only needs maturity date."""
-        return pl.col("MaturityDate").is_not_null()
+    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
+        """Validates that bullet redemption only needs maturity date.
+        :param date:
+        """
+        return [pl.col("MaturityDate").is_not_null()]
 
 
 class AnnuityRedemption(Redemption):
@@ -86,16 +100,18 @@ class AnnuityRedemption(Redemption):
         )
 
     @classmethod
-    def required_columns_validation(cls) -> pl.Expr:
-        """Validates that CouponFrequency column exists and has valid values for annuity redemption."""
+    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
+        """Validates that CouponFrequency column exists and has valid values for annuity redemption.
+        :param date:
+        """
         # Check if CouponFrequency column exists and has valid values
-        return (
-            pl.col("MaturityDate").is_not_null()
-            & pl.col("CouponFrequency").is_not_null()
-            & pl.col("CouponFrequency").is_in(list(FrequencyRegistry.items.keys()))
-            & pl.col("NextCouponDate").is_not_null()
-            & pl.col("InterestRate").is_not_null()
-        )
+        return [
+            pl.col("MaturityDate").is_not_null(),
+            pl.col("CouponFrequency").is_not_null(),
+            pl.col("CouponFrequency").is_in(list(FrequencyRegistry.items.keys())),
+            pl.col("NextCouponDate").is_not_null() | (pl.col("MaturityDate") <= pl.lit(date)),
+            pl.col("InterestRate").is_not_null(),
+        ]
 
 
 class PerpetualRedemption(Redemption):
@@ -106,9 +122,11 @@ class PerpetualRedemption(Redemption):
         return pl.lit(0.0)
 
     @classmethod
-    def required_columns_validation(cls) -> pl.Expr:
-        """Validates that perpetual redemption needs no additional columns."""
-        return pl.col("MaturityDate").is_null()
+    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
+        """Validates that perpetual redemption needs no additional columns.
+        :param date:
+        """
+        return [pl.col("MaturityDate").is_null()]
 
 
 class LinearRedemption(Redemption):
@@ -127,9 +145,11 @@ class LinearRedemption(Redemption):
         )
 
     @classmethod
-    def required_columns_validation(cls) -> pl.Expr:
-        """Validates that CouponFrequency column exists and has valid values for linear redemption."""
-        return pl.col("MaturityDate").is_not_null()
+    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
+        """Validates that CouponFrequency column exists and has valid values for linear redemption.
+        :param date:
+        """
+        return [pl.col("MaturityDate").is_not_null()]
 
 
 # Register all redemption types
@@ -137,3 +157,47 @@ RedemptionRegistry.register("bullet", BulletRedemption())
 RedemptionRegistry.register("annuity", AnnuityRedemption())
 RedemptionRegistry.register("perpetual", PerpetualRedemption())
 RedemptionRegistry.register("linear", LinearRedemption())
+
+
+def validate_df(
+    df: pl.DataFrame | pl.LazyFrame,
+    rules: Sequence[pl.Expr],
+    sample_rows: int = 10,
+    id_cols: list[str] | None = None,
+) -> None:
+    """
+    rules: list of boolean pl.Expr objects (True = passes).
+    Raises ValueError if any rule has at least one failing row.
+    """
+
+    # Generate names from expression strings
+    names = [str(expr) for expr in rules]
+
+    # Count failures in one select
+    fail_exprs = [
+        (~expr.fill_null(False)).cast(pl.UInt32).sum().alias(name) for expr, name in zip(rules, names, strict=False)
+    ]
+    counts_df = df.select(fail_exprs) if isinstance(df, pl.DataFrame) else df.select(fail_exprs).collect()
+    counts = counts_df.row(0, named=True)
+
+    failing = {k: v for k, v in counts.items() if v > 0}
+    if not failing:
+        return  # all good
+
+    # Optional: include a few failing rows per rule
+    samples_txt = ""
+    if sample_rows and isinstance(df, pl.DataFrame):
+        show_cols = id_cols or df.columns
+        for expr, name in zip(rules, names, strict=False):
+            if counts[name] > 0:
+                sample = df.filter(~expr.fill_null(False)).select(show_cols).head(sample_rows)
+                samples_txt += f"\n\n{name} — first {min(sample_rows, counts[name])} failing rows:\n{sample}"
+
+    msg_lines = [
+        "Validation failed:",
+        *[f"- {k}: {v} failures" for k, v in sorted(failing.items(), key=lambda x: (-x[1], x[0]))],
+    ]
+    if samples_txt:
+        msg_lines.append(samples_txt)
+
+    raise ValueError("\n".join(msg_lines))

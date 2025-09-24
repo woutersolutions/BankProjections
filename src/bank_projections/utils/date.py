@@ -9,6 +9,10 @@ def end_of_month(date: datetime.date) -> datetime.date:
     return first_next_month - datetime.timedelta(days=1)
 
 
+def is_end_of_month(date: datetime.date) -> bool:
+    return date.day == end_of_month(date).day
+
+
 def add_months(date: datetime.date, months: int, make_end_of_month: bool = False) -> datetime.date:
     """Add (or subtract) months to a date, optionally snapping to end of month."""
     result = date + relativedelta(months=months)
