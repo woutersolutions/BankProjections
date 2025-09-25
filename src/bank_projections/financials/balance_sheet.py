@@ -12,7 +12,7 @@ from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
-from bank_projections.projections.frequency import FrequencyRegistry
+from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual, next_coupon_date
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.utils.parsing import correct_identifier_keys, strip_identifier_keys
 
@@ -171,7 +171,9 @@ class BalanceSheet(Positions):
 
         new_data = (
             self._data.filter(based_on_item.filter_expression)
-            .with_columns(**labels, OriginationDate=pl.lit(origination_date), MaturityDate=pl.lit(maturity_date))
+            .with_columns(
+                **labels, OriginationDate=pl.lit(origination_date), MaturityDate=pl.lit(maturity_date, dtype=pl.Date)
+            )
             .group_by(
                 set(constant_cols)
                 | set(Config.BALANCE_SHEET_AGGREGATION_LABELS)
@@ -186,8 +188,17 @@ class BalanceSheet(Positions):
                 ]
             )
             .with_columns(
-                NextCouponDate=None if maturity_date is None else FrequencyRegistry.next_coupon_date(origination_date),
-                AccruedInterest=pl.lit(0.0),  # TODO: calculate accrued interest
+                NextCouponDate=next_coupon_date(self.date),
+            )
+            .with_columns(
+                AccruedInterest=interest_accrual(
+                    pl.col("Quantity"),
+                    pl.col("InterestRate"),
+                    FrequencyRegistry.portion_passed(pl.col("NextCouponDate"), self.date),
+                    FrequencyRegistry.portion_year(),
+                    pl.col("MaturityDate"),
+                    self.date,
+                )
             )
         )
 

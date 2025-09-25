@@ -9,12 +9,13 @@ from bank_projections.financials.balance_sheet import BalanceSheet, Positions
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.coupon_type import CouponTypeRegistry
-from bank_projections.projections.frequency import FrequencyRegistry
+from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual, next_coupon_date
 from bank_projections.projections.market_data import Curves
 from bank_projections.utils.parsing import strip_identifier
 from examples import EXAMPLE_FOLDER
 
 random.seed(42)
+
 
 # TODO: Generate synthetic market data from csvs
 def generate_synthetic_curves() -> Curves:
@@ -124,63 +125,45 @@ def generate_synthetic_positions(
         case _:
             raise ValueError(f"Unknown redemption type: {redemption_type}")
 
-    match strip_identifier(coupon_frequency):
-        case "daily":
-            maximum_next_coupon_days = 1
-        case "weekly":
-            maximum_next_coupon_days = 7
-        case "monthly":
-            maximum_next_coupon_days = 30  # Average days in a month
-        case "quarterly":
-            maximum_next_coupon_days = 91  # Average days in a quarter
-        case "semiAnnual":
-            maximum_next_coupon_days = 182  # Average days in half a year
-        case "annual":
-            maximum_next_coupon_days = 365  # Average days in a year
-        case "never":
-            maximum_next_coupon_days = None
-        case _:
-            raise ValueError(f"Unknown coupon frequency: {coupon_frequency}")
-        # Generate next coupon dates within the next coupon period
-
-    if maximum_next_coupon_days is None:
-        next_coupon_dates = [None] * number
-    else:
-        next_coupon_dates = [
-            current_date + datetime.timedelta(days=random.randint(1, maximum_next_coupon_days)) for _ in range(number)
-        ]
-
     # Create polars dataframe with all the calculated fields
-    df = pl.DataFrame(
-        {
-            "BookValue": book_values,
-            "CoverageRate": coverage_rates,
-            "CleanPrice": [1.0] * number,  # At par for balanced sheet
-            "AgioWeight": agios,
-            "ItemType": [item_type] * number,
-            "Currency": [strip_identifier(currency)] * number,
-            "ValuationMethod": [valuation_method] * number,
-            "InterestRate": interest_rates,
-            "CouponType": coupon_types,
-            "ReferenceRate": [reference_rate] * number,
-            "NextCouponDate": next_coupon_dates,
-            "CouponFrequency": [coupon_frequency] * number,
-            "OriginationDate": origination_dates,
-            "MaturityDate": maturity_dates,
-            "PrepaymentRate": [prepayment_rate] * number,
-            "IsAccumulating": [accumulating] * number,
-            "RedemptionType": [redemption_type] * number,
-            "BalanceSheetSide": [balance_sheet_side] * number,
-            "TREAWeight": [trea_weight] * number,
-        },
-        schema_overrides={"NextCouponDate": pl.Date},
-    )
-
     df = (
-        df.with_columns(
-            AccruedInterestWeight=FrequencyRegistry.portion_year()
-            * FrequencyRegistry.portion_passed(pl.col("NextCouponDate"), current_date)
-            * pl.col("InterestRate")
+        pl.DataFrame(
+            {
+                "BookValue": book_values,
+                "CoverageRate": coverage_rates,
+                "CleanPrice": [1.0] * number,  # At par for balanced sheet
+                "AgioWeight": agios,
+                "ItemType": [item_type] * number,
+                "Currency": [strip_identifier(currency)] * number,
+                "ValuationMethod": [valuation_method] * number,
+                "InterestRate": interest_rates,
+                "CouponType": coupon_types,
+                "ReferenceRate": [reference_rate] * number,
+                "CouponFrequency": [coupon_frequency] * number,
+                "OriginationDate": origination_dates,
+                "MaturityDate": maturity_dates,
+                "PrepaymentRate": [prepayment_rate] * number,
+                "IsAccumulating": [accumulating] * number,
+                "RedemptionType": [redemption_type] * number,
+                "BalanceSheetSide": [balance_sheet_side] * number,
+                "TREAWeight": [trea_weight] * number,
+            },
+            schema_overrides={
+                "MaturityDate": pl.Date,
+            },
+        )
+        .with_columns(
+            NextCouponDate=next_coupon_date(current_date=current_date),
+        )
+        .with_columns(
+            AccruedInterestWeight=interest_accrual(
+                pl.lit(1.0),
+                pl.col("InterestRate"),
+                FrequencyRegistry.portion_passed(pl.col("NextCouponDate"), current_date),
+                FrequencyRegistry.portion_year(),
+                pl.col("MaturityDate"),
+                current_date,
+            )
         )
         .with_columns(
             Quantity=pl.col("BookValue")
@@ -194,8 +177,9 @@ def generate_synthetic_positions(
             ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
         )
         .drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "BookValue"])
-    ).with_columns(
-        FloatingRate=curves.floating_rate_expr(), Spread=pl.col("InterestRate") - curves.floating_rate_expr()
+        .with_columns(
+            FloatingRate=curves.floating_rate_expr(), Spread=pl.col("InterestRate") - curves.floating_rate_expr()
+        )
     )
 
     positions = Positions(df)

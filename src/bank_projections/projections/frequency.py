@@ -31,8 +31,8 @@ class Frequency(ABC):
 
 class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
     @classmethod
-    def next_coupon_date(cls, current_date: datetime.date):
-        expr = pl.lit(None)
+    def next_coupon_date(cls, current_date: datetime.date) -> pl.Expr:
+        expr = pl.lit(None, dtype=pl.Date)
         for name, freq in cls.items.items():
             expr = pl.when(pl.col("CouponFrequency") == name).then(freq.next_coupon_date(current_date)).otherwise(expr)
         return expr
@@ -147,7 +147,7 @@ class Weekly(DailyBase):
 class Never(Frequency):
     @classmethod
     def next_coupon_date(cls, current_date: datetime.date):
-        return pl.lit(None)
+        return pl.lit(None, dtype=pl.Date)
 
     @classmethod
     def number_due(cls, coupon_date: pl.Expr, projection_date: pl.Expr) -> pl.Expr:
@@ -169,3 +169,18 @@ FrequencyRegistry.register("Annual", Annual())
 FrequencyRegistry.register("Daily", Daily())
 FrequencyRegistry.register("Weekly", Weekly())
 FrequencyRegistry.register("Never", Never())
+
+
+def interest_accrual(
+    quantity: pl.Expr, interest_rate: pl.Expr, portion_passed: pl.Expr, portion_year: pl.Expr, maturity_date: pl.Expr, current_date:datetime.date,
+) -> pl.Expr:
+    return pl.when(maturity_date > pl.lit(current_date)).then(
+        quantity * interest_rate * portion_year * portion_passed.clip(0, 1)
+    ).otherwise(0.0)
+
+def next_coupon_date(current_date: datetime.date) -> pl.Expr:
+    return (
+            pl.when(pl.col("MaturityDate").is_null() | (pl.lit(current_date) >= pl.col("MaturityDate")))
+            .then(pl.lit(None, dtype=pl.Date))
+            .otherwise(FrequencyRegistry.next_coupon_date(current_date))
+        )

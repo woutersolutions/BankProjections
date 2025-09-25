@@ -2,7 +2,7 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.projections.frequency import FrequencyRegistry
+from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual, next_coupon_date
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
@@ -10,22 +10,18 @@ from bank_projections.projections.time import TimeIncrement
 
 class Runoff(Rule):
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
-        # Apply runoff to all instruments that have maturity dates
+        # Apply runoff to all instruments that have maturity dates # TODO: refine
         item = BalanceSheetItem(expr=pl.col("MaturityDate").is_not_null())
 
         matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
         number_of_payments = FrequencyRegistry.number_due(
             pl.col("NextCouponDate"), pl.min_horizontal(pl.col("NextCouponDate"), pl.lit(increment.to_date))
         )
-        new_coupon_date = (
-            pl.when(matured | pl.col("MaturityDate").is_null())
-            .then(None)
-            .otherwise(FrequencyRegistry.next_coupon_date(increment.to_date))
-        )
+        new_coupon_date = next_coupon_date(increment.to_date)
         payments = pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
         floating_rates = market_rates.curves.floating_rate_expr()
         interest_rates = (
-            pl.when((pl.col("CouponType") == "floating") & number_of_payments > 0)
+            pl.when((pl.col("CouponType") == "floating") & (number_of_payments > 0))
             .then(floating_rates + pl.col("Spread"))
             .otherwise(pl.col("InterestRate"))
         )
@@ -48,15 +44,13 @@ class Runoff(Rule):
 
         new_impairment = pl.when(matured).then(0.0).otherwise(pl.col("Impairment") * (1 - redemption_factors))
 
-        new_accrual = (
-            pl.when(pl.col("MaturityDate") > pl.lit(increment.to_date))
-            .then(
-                new_quantity
-                * interest_rates
-                * FrequencyRegistry.portion_year()
-                * FrequencyRegistry.portion_passed(new_coupon_date, increment.to_date)
-            )
-            .otherwise(0.0)
+        new_accrual = interest_accrual(
+            new_quantity,
+            interest_rates,
+            FrequencyRegistry.portion_passed(new_coupon_date, increment.to_date),
+            FrequencyRegistry.portion_year(),
+            pl.col("MaturityDate"),
+            increment.to_date,
         )
 
         # For now, assume agio decreases linear
