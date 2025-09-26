@@ -13,7 +13,7 @@ if __name__ == "__main__":
     start_bs = create_synthetic_balance_sheet(start_date)
 
     scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-    scenario.rules["Runoff"] = Runoff()
+    scenario.rules = {"Runoff": Runoff(), **scenario.rules}
     horizon = TimeHorizon.from_numbers(
         start_date=start_date,
         number_of_days=5,
