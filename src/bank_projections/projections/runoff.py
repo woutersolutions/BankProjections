@@ -15,7 +15,9 @@ class Runoff(Rule):
             return bs
 
         # Apply runoff to all instruments that have maturity dates # TODO: refine
-        item = BalanceSheetItem(expr=pl.col("MaturityDate").is_not_null())
+        item = BalanceSheetItem(
+            expr=(pl.col("OriginationDate").is_null() | (pl.col("OriginationDate") < increment.to_date))
+        )
 
         matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
         number_of_payments = FrequencyRegistry.number_due(
@@ -59,7 +61,9 @@ class Runoff(Rule):
 
         # For now, assume agio decreases linear
         new_agio = (
-            pl.when(matured)
+            pl.when(pl.col("MaturityDate").is_null())
+            .then(pl.col("Agio"))
+            .when(matured)
             .then(0.0)
             .otherwise(
                 pl.col("Agio")

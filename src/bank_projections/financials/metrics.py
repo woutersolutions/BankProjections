@@ -105,7 +105,6 @@ class DerivedMetric(BalanceSheetMetric, ABC):
 
 
 class DirtyPrice(DerivedMetric):
-
     name = "DirtyPrice"
 
     @property
@@ -118,7 +117,7 @@ class DirtyPrice(DerivedMetric):
 
 
 class DerivedAmount(DerivedMetric):
-    def __init__(self, column:str, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, column: str, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
         self.weight_column = weight_column
         self.allocation_expr = allocation_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
         self.column = column
@@ -147,7 +146,7 @@ class DerivedAmount(DerivedMetric):
 
 
 class DerivedWeight(DerivedMetric):
-    def __init__(self, column:str,amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, column: str, amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
         self.amount_column = amount_column
         self.weight_expr = weight_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
         self.column = column
@@ -177,7 +176,6 @@ class DerivedWeight(DerivedMetric):
 
 # TODO: Determine exposure for fair value items
 class Exposure(DerivedMetric):
-
     name = "Exposure"
 
     @property
@@ -190,7 +188,6 @@ class Exposure(DerivedMetric):
 
 
 class BookValue(DerivedMetric):
-
     name = "BookValue"
 
     @property

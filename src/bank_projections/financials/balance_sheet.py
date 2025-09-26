@@ -57,6 +57,10 @@ class Positions:
         if extra_columns:
             raise ValueError(f"Positions data contains unexpected extra columns: {extra_columns}")
 
+        for column in Config.non_null_columns():
+            if self._data[column].is_null().any():
+                raise ValueError(f"Positions data contains null values in non-nullable column: {column}")
+
     def __len__(self) -> int:
         return len(self._data)
 

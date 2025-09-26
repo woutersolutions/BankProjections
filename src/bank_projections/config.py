@@ -39,3 +39,7 @@ class Config:
             + BalanceSheetMetrics.stored_columns()
             + cls.DATE_COLUMNS
         )
+
+    @classmethod
+    def non_null_columns(cls):
+        return list(cls.CLASSIFICATIONS.keys()) + ["Quantity", "Impairment", "AccruedInterest", "Agio"]

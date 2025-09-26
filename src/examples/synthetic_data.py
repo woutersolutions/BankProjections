@@ -74,6 +74,9 @@ def generate_synthetic_positions(
     else:
         agios = generate_random_numbers(number, agio_range[0], agio_range[1], (agio_range[0] + agio_range[1]) / 2)
 
+    if prepayment_rate is None:
+        prepayment_rate = 0.0
+
     if coverage_rate_range is None:
         coverage_rates = [0.0] * number
     else:
