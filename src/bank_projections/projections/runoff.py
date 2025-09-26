@@ -2,6 +2,7 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
+from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual, next_coupon_date
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.rule import Rule
@@ -21,9 +22,9 @@ class Runoff(Rule):
         payments = pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
         floating_rates = market_rates.curves.floating_rate_expr()
         interest_rates = (
-            pl.when((pl.col("CouponType") == "floating") & (number_of_payments > 0))
-            .then(floating_rates + pl.col("Spread"))
-            .otherwise(pl.col("InterestRate"))
+            pl.when(number_of_payments > 0)
+            .then(CouponTypeRegistry.coupon_rate(floating_rates))
+            .otherwise("InterestRate")
         )
 
         repayment_factors = (
