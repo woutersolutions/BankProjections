@@ -7,6 +7,7 @@ import xlsxwriter
 from loguru import logger
 
 from bank_projections.financials.balance_sheet import BalanceSheet
+from bank_projections.metrics.metrics import calculate_metrics
 from bank_projections.projections.time import TimeHorizon
 from bank_projections.scenarios.scenario import Scenario
 
@@ -16,6 +17,7 @@ class ProjectionResult:
     balance_sheets: list[pl.DataFrame]
     pnls: list[pl.DataFrame]
     cashflows: list[pl.DataFrame]
+    metric_list: list[pl.DataFrame]
     horizon: TimeHorizon
 
     def to_dict(self):
@@ -37,6 +39,13 @@ class ProjectionResult:
             "Cashflows": pl.concat(
                 [
                     self.cashflows[i].with_columns(ProjectionDate=increment.to_date)
+                    for i, increment in enumerate(self.horizon)
+                ],
+                how="diagonal",
+            ),
+            "Metrics": pl.concat(
+                [
+                    self.metric_list[i].with_columns(ProjectionDate=increment.to_date)
                     for i, increment in enumerate(self.horizon)
                 ],
                 how="diagonal",
@@ -67,6 +76,7 @@ class Projection:
         balance_sheets = []
         pnls_list = []
         cashflows_list = []
+        metric_list = []
 
         total_increments = len(self.horizon)
 
@@ -76,11 +86,14 @@ class Projection:
             market_rates = self.scenario.market_data.get_market_rates(increment.to_date)
             bs = self.scenario.apply(bs, increment, market_rates)
 
+            metrics = calculate_metrics(bs)
+
             agg_bs, pnls, cashflows = bs.aggregate()
             balance_sheets.append(agg_bs)
             pnls_list.append(pnls)
             cashflows_list.append(cashflows)
+            metric_list.append(metrics)
 
             bs.validate()
 
-        return ProjectionResult(balance_sheets, pnls_list, cashflows_list, self.horizon)
+        return ProjectionResult(balance_sheets, pnls_list, cashflows_list, metric_list, self.horizon)
