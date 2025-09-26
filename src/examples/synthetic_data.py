@@ -154,19 +154,20 @@ def generate_synthetic_positions(
         )
         .with_columns(
             PreviousCouponDate=FrequencyRegistry.previous_coupon_date(
-                current_date=current_date, anchor_date=pl.coalesce("MaturityDate", "OriginationDate")
+                current_date=current_date,
+                anchor_date=pl.coalesce("MaturityDate", "OriginationDate", pl.lit(current_date)),
             ),
             NextCouponDate=FrequencyRegistry.next_coupon_date(
-                current_date=current_date, anchor_date=pl.coalesce("MaturityDate", "OriginationDate")
+                current_date=current_date,
+                anchor_date=pl.coalesce("MaturityDate", "OriginationDate", pl.lit(current_date)),
             ),
         )
         .with_columns(
             AccruedInterestWeight=interest_accrual(
                 pl.lit(1.0),
                 pl.col("InterestRate"),
-                FrequencyRegistry.portion_passed(pl.col("NextCouponDate"), current_date),
-                FrequencyRegistry.portion_year(),
-                pl.col("MaturityDate"),
+                pl.col("PreviousCouponDate"),
+                pl.col("NextCouponDate"),
                 current_date,
             )
         )

@@ -199,9 +199,8 @@ class BalanceSheet(Positions):
                 AccruedInterest=interest_accrual(
                     pl.col("Quantity"),
                     pl.col("InterestRate"),
-                    FrequencyRegistry.portion_passed(pl.col("NextCouponDate"), self.date),
-                    FrequencyRegistry.portion_year(),
-                    pl.col("MaturityDate"),
+                    pl.col("PreviousCouponDate"),
+                    pl.col("NextCouponDate"),
                     self.date,
                 )
             )

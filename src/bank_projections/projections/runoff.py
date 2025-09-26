@@ -49,9 +49,8 @@ class Runoff(Rule):
         new_accrual = interest_accrual(
             new_quantity,
             interest_rates,
-            FrequencyRegistry.portion_passed(new_coupon_date, increment.to_date),
-            FrequencyRegistry.portion_year(),
-            pl.col("MaturityDate"),
+            previous_coupon_date,
+            new_coupon_date,
             increment.to_date,
         )
 
