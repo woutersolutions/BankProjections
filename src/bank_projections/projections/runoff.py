@@ -3,7 +3,7 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.projections.coupon_type import CouponTypeRegistry
-from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual, next_coupon_date
+from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
@@ -18,7 +18,8 @@ class Runoff(Rule):
         number_of_payments = FrequencyRegistry.number_due(
             pl.col("NextCouponDate"), pl.min_horizontal(pl.col("NextCouponDate"), pl.lit(increment.to_date))
         )
-        new_coupon_date = next_coupon_date(increment.to_date)
+        previous_coupon_date = FrequencyRegistry.previous_coupon_date(increment.to_date)
+        new_coupon_date = FrequencyRegistry.next_coupon_date(increment.to_date)
         payments = pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
         floating_rates = market_rates.curves.floating_rate_expr()
         interest_rates = (
@@ -88,6 +89,7 @@ class Runoff(Rule):
             AccruedInterest=new_accrual,
             Agio=new_agio,
             Impairment=new_impairment,
+            PreviousCouponDate=previous_coupon_date,
             NextCouponDate=new_coupon_date,
             FloatingRate=floating_rates,
             InterestRate=interest_rates,

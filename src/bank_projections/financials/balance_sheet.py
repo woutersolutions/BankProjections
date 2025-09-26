@@ -12,7 +12,7 @@ from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
-from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual, next_coupon_date
+from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.utils.parsing import correct_identifier_keys, strip_identifier_keys
 
@@ -188,7 +188,12 @@ class BalanceSheet(Positions):
                 ]
             )
             .with_columns(
-                NextCouponDate=next_coupon_date(self.date),
+                PreviousCouponDate=FrequencyRegistry.previous_coupon_date(
+                    self.date, anchor_date=pl.coalesce("MaturityDate", "OriginationDate")
+                ),
+                NextCouponDate=FrequencyRegistry.next_coupon_date(
+                    self.date, anchor_date=pl.coalesce("MaturityDate", "OriginationDate")
+                ),
             )
             .with_columns(
                 AccruedInterest=interest_accrual(

@@ -17,7 +17,7 @@ class Config:
         "ReferenceRate",
         "IsAccumulating",
     ]
-    DATE_COLUMNS = ["OriginationDate", "MaturityDate", "NextCouponDate"]
+    DATE_COLUMNS = ["OriginationDate", "MaturityDate", "PreviousCouponDate", "NextCouponDate"]
     BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"]
 
     CLASSIFICATIONS: dict[str, BaseRegistry] = {

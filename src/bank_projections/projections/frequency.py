@@ -9,8 +9,32 @@ from bank_projections.utils.date import is_end_of_month
 
 class Frequency(ABC):
     @classmethod
+    def previous_coupon_date(
+        cls,
+        current_date: datetime.date,
+        anchor_date: pl.Expr = pl.coalesce("MaturityDate", "NextCouponDate", "PreviousCouponDate", "OriginationDate"),
+    ) -> pl.Expr:
+        return (
+            pl.when(pl.lit(current_date) >= pl.col("OriginationDate"))
+            .then(cls.step_coupon_date(current_date, anchor_date, -1))
+            .otherwise(pl.lit(None, dtype=pl.Date))
+        )
+
+    @classmethod
+    def next_coupon_date(
+        cls,
+        current_date: datetime.date,
+        anchor_date: pl.Expr = pl.coalesce("MaturityDate", "NextCouponDate", "PreviousCouponDate", "OriginationDate"),
+    ) -> pl.Expr:
+        return (
+            pl.when(pl.lit(current_date) < pl.col("MaturityDate"))
+            .then(cls.step_coupon_date(current_date, anchor_date, 0))
+            .otherwise(pl.lit(None, dtype=pl.Date))
+        )
+
+    @classmethod
     @abstractmethod
-    def next_coupon_date(cls, current_date: datetime.date):
+    def step_coupon_date(cls, current_date: datetime.date, anchor_date: pl.Expr, number: int) -> pl.Expr:
         pass
 
     @classmethod
@@ -31,10 +55,14 @@ class Frequency(ABC):
 
 class FrequencyRegistry(BaseRegistry[Frequency], Frequency):
     @classmethod
-    def next_coupon_date(cls, current_date: datetime.date) -> pl.Expr:
+    def step_coupon_date(cls, current_date: datetime.date, anchor_date: pl.Expr, number: int) -> pl.Expr:
         expr = pl.lit(None, dtype=pl.Date)
         for name, freq in cls.items.items():
-            expr = pl.when(pl.col("CouponFrequency") == name).then(freq.next_coupon_date(current_date)).otherwise(expr)
+            expr = (
+                pl.when(pl.col("CouponFrequency") == name)
+                .then(freq.step_coupon_date(current_date, anchor_date, number))
+                .otherwise(expr)
+            )
         return expr
 
     @classmethod
@@ -71,18 +99,16 @@ class MonthlyBase(Frequency):
     number_of_months: int = 0  # Needs to be overridden
 
     @classmethod
-    def next_coupon_date(cls, current_date: datetime.date):
-        months_diff = (pl.col("MaturityDate").dt.year() - current_date.year) * 12 + (
-            pl.col("MaturityDate").dt.month() - current_date.month
+    def step_coupon_date(cls, current_date: datetime.date, anchor_date: pl.Expr, number: int) -> pl.Expr:
+        months_to_anchor = (anchor_date.dt.year() - current_date.year) * 12 + (
+            anchor_date.dt.month() - current_date.month
         )
         if is_end_of_month(current_date):
             day_passed = pl.lit(True)
         else:
-            day_passed = current_date.day >= pl.col("MaturityDate").dt.day()
-        payments_left = (months_diff + pl.when(day_passed).then(0).otherwise(1)) // cls.number_of_months
-        return pl.col("MaturityDate").dt.offset_by(
-            by=(-payments_left.clip(lower_bound=0) * cls.number_of_months).cast(pl.Utf8) + "mo"
-        )
+            day_passed = current_date.day >= anchor_date.dt.day()
+        payments_to_anchor = (months_to_anchor + pl.when(day_passed).then(0).otherwise(1)) // cls.number_of_months
+        return anchor_date.dt.offset_by(by=(-(payments_to_anchor - number) * cls.number_of_months).cast(pl.Utf8) + "mo")
 
     @classmethod
     def portion_passed(cls, next_coupon_date: pl.Expr, projection_date: datetime.date) -> pl.Expr:
@@ -124,8 +150,11 @@ class DailyBase(Frequency):
         return (projection_date - coupon_date).dt.total_days() // cls.number_of_days
 
     @classmethod
-    def next_coupon_date(cls, current_date: datetime.date):
-        return pl.lit(current_date) + pl.duration(days=cls.number_of_days)
+    def step_coupon_date(cls, current_date: datetime.date, anchor_date: pl.Expr, number: int) -> pl.Expr:
+        days_to_anchor = (anchor_date - pl.lit(current_date)).dt.total_days()
+        payments_to_anchor = days_to_anchor // cls.number_of_days
+
+        return pl.lit(current_date) + pl.duration(days=-(payments_to_anchor - number) * cls.number_of_days)
 
     @classmethod
     def portion_passed(cls, next_coupon_date: pl.Expr, projection_date: datetime.date) -> pl.Expr:
@@ -146,7 +175,7 @@ class Weekly(DailyBase):
 
 class Never(Frequency):
     @classmethod
-    def next_coupon_date(cls, current_date: datetime.date):
+    def step_coupon_date(cls, current_date: datetime.date, anchor_date: pl.Expr, number: int) -> pl.Expr:
         return pl.lit(None, dtype=pl.Date)
 
     @classmethod
@@ -172,15 +201,15 @@ FrequencyRegistry.register("Never", Never())
 
 
 def interest_accrual(
-    quantity: pl.Expr, interest_rate: pl.Expr, portion_passed: pl.Expr, portion_year: pl.Expr, maturity_date: pl.Expr, current_date:datetime.date,
+    quantity: pl.Expr,
+    interest_rate: pl.Expr,
+    portion_passed: pl.Expr,
+    portion_year: pl.Expr,
+    maturity_date: pl.Expr,
+    current_date: datetime.date,
 ) -> pl.Expr:
-    return pl.when(maturity_date > pl.lit(current_date)).then(
-        quantity * interest_rate * portion_year * portion_passed.clip(0, 1)
-    ).otherwise(0.0)
-
-def next_coupon_date(current_date: datetime.date) -> pl.Expr:
     return (
-            pl.when(pl.col("MaturityDate").is_null() | (pl.lit(current_date) >= pl.col("MaturityDate")))
-            .then(pl.lit(None, dtype=pl.Date))
-            .otherwise(FrequencyRegistry.next_coupon_date(current_date))
-        )
+        pl.when(maturity_date > pl.lit(current_date))
+        .then(quantity * interest_rate * portion_year * portion_passed.clip(0, 1))
+        .otherwise(0.0)
+    )

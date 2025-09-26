@@ -9,7 +9,7 @@ from bank_projections.financials.balance_sheet import BalanceSheet, Positions
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.coupon_type import CouponTypeRegistry
-from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual, next_coupon_date
+from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
 from bank_projections.projections.market_data import Curves
 from bank_projections.utils.parsing import strip_identifier
 from examples import EXAMPLE_FOLDER
@@ -153,7 +153,12 @@ def generate_synthetic_positions(
             },
         )
         .with_columns(
-            NextCouponDate=next_coupon_date(current_date=current_date),
+            PreviousCouponDate=FrequencyRegistry.previous_coupon_date(
+                current_date=current_date, anchor_date=pl.coalesce("MaturityDate", "OriginationDate")
+            ),
+            NextCouponDate=FrequencyRegistry.next_coupon_date(
+                current_date=current_date, anchor_date=pl.coalesce("MaturityDate", "OriginationDate")
+            ),
         )
         .with_columns(
             AccruedInterestWeight=interest_accrual(
