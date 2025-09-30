@@ -92,11 +92,12 @@ python -m bank_projections     # Run the application
 
 ## Code Quality Standards
 
-The project maintains strict code quality standards:
+The project maintains code quality standards:
 
 ### Linting and Type Checking
-- **Ruff**: Must have 0 errors before committing
-- **Mypy**: Must have 0 errors with strict mode enabled
+
+- **Ruff**: Where possible, fix linting issues
+- **Mypy**: Where possible, fix type errors
 - **Test Coverage**: Target minimum 80% coverage
 
 ### Testing Best Practices
@@ -111,12 +112,6 @@ The project maintains strict code quality standards:
 - In unit tests, validation may fail if balance sheet date management isn't properly initialized
 - Use `strip_identifier()` when matching config labels (case-insensitive)
 - BalanceSheetItem identifiers are accessed via `.identifiers` dict, not direct attributes
-
-### Recent Improvements (2024)
-- All ruff linting errors resolved
-- All mypy type errors resolved (47 → 0)
-- Test coverage increased from 76% to 78%
-- Added comprehensive tests for scenario rules (audit, production, tax)
 
 ## Synthetic Data Generation
 

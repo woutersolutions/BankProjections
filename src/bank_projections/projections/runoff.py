@@ -25,17 +25,7 @@ class Runoff(Rule):
             pl.col("NextCouponDate"), pl.min_horizontal(pl.col("NextCouponDate"), pl.lit(increment.to_date))
         )
         previous_coupon_date = FrequencyRegistry.previous_coupon_date(increment.to_date)
-        new_coupon_date = (
-            pl.when(matured)
-            .then(None)
-            .when(pl.col("MaturityDate").is_null())
-            .then(FrequencyRegistry.next_coupon_date(increment.to_date))
-            .otherwise(
-                pl.min_horizontal(
-                    FrequencyRegistry.next_coupon_date(increment.to_date), pl.col("MaturityDate") + pl.duration(days=1)
-                )
-            )
-        )
+        new_coupon_date = pl.when(matured).then(None).otherwise(FrequencyRegistry.next_coupon_date(increment.to_date))
         payments = pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
         floating_rates = market_rates.curves.floating_rate_expr()
         interest_rates = (
