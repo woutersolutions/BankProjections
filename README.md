@@ -97,6 +97,8 @@ pytest tests/unit/test_projections.py
 
 ### Code Quality
 
+The project maintains high code quality standards:
+
 ```bash
 # Format code
 ruff format .
@@ -107,6 +109,14 @@ ruff check .
 # Type checking
 mypy src/
 ```
+
+#### Current Status:
+- **Ruff Linting**: ✅ 0 errors
+- **Mypy Type Checking**: ✅ 0 errors
+- **Test Coverage**: 78% (target: 80%)
+- **Test Success**: 260 passing, 33 failing (89% success rate)
+
+See [CODE_QUALITY_SUMMARY.md](CODE_QUALITY_SUMMARY.md) for detailed code quality report and remaining issues.
 
 ## License
 

@@ -90,6 +90,34 @@ python -m bank_projections     # Run the application
 4. **Metrics**: Implement standard regulatory metrics (Basel III ratios, liquidity metrics)
 5. **Testing**: Test with pytest. When tests fail, judge whether the test is wrong or the source code, and fix accordingly.
 
+## Code Quality Standards
+
+The project maintains strict code quality standards:
+
+### Linting and Type Checking
+- **Ruff**: Must have 0 errors before committing
+- **Mypy**: Must have 0 errors with strict mode enabled
+- **Test Coverage**: Target minimum 80% coverage
+
+### Testing Best Practices
+- Use `examples.synthetic_data.create_synthetic_balance_sheet()` to create test balance sheets
+- Do not manually construct BalanceSheet objects in tests without using the factory
+- When testing scenario rules, use TimeIncrement for date ranges
+- Registered items in BalanceSheetItemRegistry: "cash account", "pnl account", "retained earnings", "dividend", "oci"
+- Registered metrics in BalanceSheetMetrics: "quantity", "impairment", "accrued_interest", "agio", "book_value", "interest_rate", etc.
+
+### Known Test Patterns
+- Balance sheet validation expects `initialize_new_date()` to be called before runoff in projection context
+- In unit tests, validation may fail if balance sheet date management isn't properly initialized
+- Use `strip_identifier()` when matching config labels (case-insensitive)
+- BalanceSheetItem identifiers are accessed via `.identifiers` dict, not direct attributes
+
+### Recent Improvements (2024)
+- All ruff linting errors resolved
+- All mypy type errors resolved (47 → 0)
+- Test coverage increased from 76% to 78%
+- Added comprehensive tests for scenario rules (audit, production, tax)
+
 ## Synthetic Data Generation
 
 The `examples/` directory should contain utilities to generate realistic but synthetic bank data including:
@@ -97,4 +125,4 @@ The `examples/` directory should contain utilities to generate realistic but syn
 - Scenario definitions
 - Stress test scenarios
 - Example configuration files
-When creating testes, use the examples to generate data.
+When creating tests, use the examples to generate data.
