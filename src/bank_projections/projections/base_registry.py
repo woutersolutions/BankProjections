@@ -17,17 +17,21 @@ class BaseRegistry[T](ABC):  # noqa: B024
 
     @classmethod
     def register(cls, name: str, item: T) -> None:
-        name = strip_identifier(name)
-        if name in cls.items:
-            logger.warning(f"{cls.__name__} '{name}' was already registered.")
-        cls.items[name] = item
+        stripped_name = strip_identifier(name)
+        if stripped_name is None:
+            raise ValueError(f"Invalid identifier: {name}")
+        if stripped_name in cls.items:
+            logger.warning(f"{cls.__name__} '{stripped_name}' was already registered.")
+        cls.items[stripped_name] = item
 
     @classmethod
     def get(cls, name: str) -> T:
-        name = strip_identifier(name)
-        if name not in cls.items:
-            raise ValueError(f"{cls.__name__} '{name}' is not registered.")
-        return cls.items[name]
+        stripped_name = strip_identifier(name)
+        if stripped_name is None:
+            raise ValueError(f"Invalid identifier: {name}")
+        if stripped_name not in cls.items:
+            raise ValueError(f"{cls.__name__} '{stripped_name}' is not registered.")
+        return cls.items[stripped_name]
 
     @classmethod
     def is_registered(cls, name: str) -> bool:

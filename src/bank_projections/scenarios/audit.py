@@ -5,6 +5,7 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.template import KeyValueRuleBase
 from bank_projections.utils.date import add_months, is_end_of_month
@@ -20,13 +21,14 @@ class AuditRule(KeyValueRuleBase):
                     self.closing_month = int(value)
                 case "auditmonth":
                     self.audit_month = int(value)
-                case _ if strip_identifier(key).startswith("target"):
+                case _ if (stripped := strip_identifier(key)) is not None and stripped.startswith("target"):
                     label = strip_identifier(key[len("target") :])
-                    self.target = self.target.add_identifier(label, value)
+                    if label is not None:
+                        self.target = self.target.add_identifier(label, value)
                 case _:
                     raise KeyError(f"{key} not recognized in AuditRule")
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
         # Implement the logic to apply the mutation to the balance sheet based on rule_input
         # This is a placeholder implementation
 

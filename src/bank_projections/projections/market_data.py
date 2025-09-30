@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 import polars as pl
 
-from bank_projections.utils.combine import Combinable, T
+from bank_projections.utils.combine import Combinable
 
 
 class CurveData(Combinable):
@@ -42,7 +42,7 @@ class Curves:
 
         return dict(zip(spot_rates["Name"] + spot_rates["Tenor"], spot_rates["Rate"], strict=False))
 
-    def floating_rate_expr(self):
+    def floating_rate_expr(self) -> pl.Expr:
         return pl.col("ReferenceRate").replace_strict(self.get_spot_rates(), default=pl.lit(None)).cast(pl.Float64)
 
 
@@ -50,10 +50,10 @@ class MarketData(Combinable):
     def __init__(self, curves: CurveData | None = None):
         self.curves = curves or CurveData()
 
-    def combine(self, other: "MarketData") -> T:
+    def combine(self, other: "MarketData") -> "MarketData":
         return MarketData(self.curves.combine(other.curves))
 
-    def get_market_rates(self, date: datetime.date):
+    def get_market_rates(self, date: datetime.date) -> "MarketRates":
         return MarketRates(self.curves.get_curves(date))
 
 
@@ -70,7 +70,7 @@ TENOR_UNIT_MAP = {
 }
 
 
-def parse_tenor(tenor: str) -> float:
+def parse_tenor(tenor: str) -> float | None:
     if pd.isna(tenor):
         return None
     tenor = tenor.strip().lower()

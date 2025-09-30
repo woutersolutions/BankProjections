@@ -8,6 +8,7 @@ from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.template import AmountRuleBase
 from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_bool, read_date, strip_identifier
@@ -50,7 +51,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
                     self.metric = BalanceSheetMetrics.get(value)
                 case _ if key.startswith("counter"):
                     label = strip_identifier(key[len("counter") :])
-                    if is_in_identifiers(label, Config.label_columns()):
+                    if label is not None and is_in_identifiers(label, Config.label_columns()):
                         if self.counter_item is None:
                             self.counter_item = BalanceSheetItem(**{label: value})
                         else:
@@ -72,7 +73,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
                 case _:
                     raise KeyError(f"{key} not recognized in BalanceSheetMutationRule")
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
         # Implement the logic to apply the mutation to the balance sheet based on rule_input
         # This is a placeholder implementation
 

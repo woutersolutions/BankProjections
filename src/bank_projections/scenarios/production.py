@@ -8,6 +8,7 @@ from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.template import AmountRuleBase
 from bank_projections.utils.date import add_months
@@ -39,13 +40,17 @@ class ProductionRule(AmountRuleBase):
                 case "referenceitem":
                     pass
                 case _ if is_in_identifiers(key, list(BalanceSheetMetrics.items.keys())):
-                    self.metrics[strip_identifier(key)] = value
-                case _ if strip_identifier(key).startswith("reference"):
-                    label = get_identifier(strip_identifier(key).replace("reference", ""), Config.label_columns())
-                    if self.reference_item is None:
-                        self.reference_item = BalanceSheetItem(**{label: value})
-                    else:
-                        self.reference_item = self.reference_item.add_identifier(label, value)
+                    stripped_key = strip_identifier(key)
+                    if stripped_key is not None:
+                        self.metrics[stripped_key] = value
+                case _ if strip_identifier(key) is not None and strip_identifier(key).startswith("reference"):
+                    stripped_key = strip_identifier(key)
+                    if stripped_key is not None:
+                        label = get_identifier(stripped_key.replace("reference", ""), Config.label_columns())
+                        if self.reference_item is None:
+                            self.reference_item = BalanceSheetItem(**{label: value})
+                        else:
+                            self.reference_item = self.reference_item.add_identifier(label, value)
                 case _ if is_in_identifiers(key, Config.label_columns()):
                     self.labels[get_identifier(key, Config.label_columns())] = value
                 case "multiplicative":
@@ -57,7 +62,7 @@ class ProductionRule(AmountRuleBase):
                 case _:
                     raise KeyError(f"{key} not recognized in BalanceSheetMutationRule")
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
         # Implement the logic to apply the mutation to the balance sheet based on rule_input
         # This is a placeholder implementation
 
@@ -68,6 +73,8 @@ class ProductionRule(AmountRuleBase):
             else:
                 reason = MutationReason(module="Production", rule="Production")
 
+                if self.date is None:
+                    raise ValueError("Date must be specified for production")
                 maturity_date = None if self.maturity is None else add_months(self.date, 12 * self.maturity)
 
                 bs.add_item(

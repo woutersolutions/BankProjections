@@ -20,7 +20,7 @@ class ProjectionResult:
     metric_list: list[pl.DataFrame]
     horizon: TimeHorizon
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, pl.DataFrame]:
         return {
             "BalanceSheets": pl.concat(
                 [
@@ -52,7 +52,7 @@ class ProjectionResult:
             ),
         }
 
-    def to_excel(self, file_path: str, open_after: bool = False):
+    def to_excel(self, file_path: str, open_after: bool = False) -> None:
         date_tag = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         file_path = file_path.replace(".xlsx", f"_{date_tag}.xlsx")
 

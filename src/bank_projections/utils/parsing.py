@@ -46,7 +46,12 @@ def is_in_identifiers(identifier: str, identifiers: Iterable[str]) -> bool:
 
 
 def strip_identifier_keys(input_dict: dict[str, Any]) -> dict[str, Any]:
-    return {strip_identifier(key): value for key, value in input_dict.items()}
+    result = {}
+    for key, value in input_dict.items():
+        stripped = strip_identifier(key)
+        if stripped is not None:
+            result[stripped] = value
+    return result
 
 
 def strip_identifier(identifier: str | None) -> str | None:

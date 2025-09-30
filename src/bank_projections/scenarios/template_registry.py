@@ -52,9 +52,9 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
         return Scenario.combine_list(scenario_list)
 
     @classmethod
-    def load_excel_sheet(cls, file_path: str, sheet_name: str) -> Scenario:
+    def load_excel_sheet(cls, file_path: str, sheet_name: str | int) -> Scenario:
         template = cls.get_excel_sheet_template(file_path, sheet_name)
-        return template.load_excel_sheet(file_path, sheet_name)
+        return template.load_excel_sheet(file_path, str(sheet_name))
 
     @classmethod
     def get_excel_sheet_template(cls, file_path: str, sheet_name: str) -> ScenarioTemplate:

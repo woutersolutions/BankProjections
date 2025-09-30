@@ -20,7 +20,7 @@ class Config:
     DATE_COLUMNS = ["OriginationDate", "MaturityDate", "PreviousCouponDate", "NextCouponDate"]
     BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"]
 
-    CLASSIFICATIONS: dict[str, BaseRegistry] = {
+    CLASSIFICATIONS: dict[str, type[BaseRegistry]] = {
         "ValuationMethod": ValuationRegistry,
         "CouponFrequency": FrequencyRegistry,
         "RedemptionType": RedemptionRegistry,
@@ -41,5 +41,5 @@ class Config:
         )
 
     @classmethod
-    def non_null_columns(cls):
+    def non_null_columns(cls) -> list[str]:
         return list(cls.CLASSIFICATIONS.keys()) + ["Quantity", "Impairment", "AccruedInterest", "Agio"]

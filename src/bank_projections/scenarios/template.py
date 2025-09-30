@@ -4,6 +4,7 @@ from typing import Any
 import pandas as pd
 
 from bank_projections.financials.balance_sheet import BalanceSheet
+from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.scenario import Scenario
@@ -135,13 +136,13 @@ class MultiHeaderRule(Rule):
 
         self.rule_type = rule_type
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
         for idx, row in self.content.iterrows():
             for col in range(self.content.shape[1]):
                 # Combine the content row, header, and tags into one dictionary
                 amount = row.iloc[col]
                 col_headers = self.col_headers.iloc[col].to_dict()
-                row_headers = self.row_headers.iloc[idx].to_dict()
+                row_headers = self.row_headers.iloc[int(idx)].to_dict()
                 rule_input = {**self.general_tags, **col_headers, **row_headers}
                 rule = self.rule_type(rule_input, amount)
                 bs = rule.apply(bs, increment, market_rates)
@@ -160,7 +161,7 @@ class OneHeaderRule(Rule):
 
         self.rule_type = rule_type
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
         for _idx, row in self.content.iterrows():
             rule = self.rule_type({**self.general_tags, **row.to_dict()})
             bs = rule.apply(bs, increment, market_rates)

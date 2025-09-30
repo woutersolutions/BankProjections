@@ -21,7 +21,7 @@ class BalanceSheetItem:
         self.expr = expr
 
     @staticmethod
-    def _add_identifier(identifiers: dict[str, Any], key: str, value: Any):
+    def _add_identifier(identifiers: dict[str, Any], key: str, value: Any) -> None:
         if pd.isna(value) or value == "":
             raise ValueError(f"BalanceSheetItem {key} cannot be '{value}'")
         elif is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
