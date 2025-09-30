@@ -1,4 +1,6 @@
 # TODO: Properly arrange these configurations into a config file or environment variables
+from typing import Any
+
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
@@ -20,7 +22,7 @@ class Config:
     DATE_COLUMNS = ["OriginationDate", "MaturityDate", "PreviousCouponDate", "NextCouponDate"]
     BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"]
 
-    CLASSIFICATIONS: dict[str, type[BaseRegistry]] = {
+    CLASSIFICATIONS: dict[str, type[BaseRegistry[Any]]] = {
         "ValuationMethod": ValuationRegistry,
         "CouponFrequency": FrequencyRegistry,
         "RedemptionType": RedemptionRegistry,

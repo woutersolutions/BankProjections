@@ -142,7 +142,8 @@ class MultiHeaderRule(Rule):
                 # Combine the content row, header, and tags into one dictionary
                 amount = row.iloc[col]
                 col_headers = self.col_headers.iloc[col].to_dict()
-                row_headers = self.row_headers.iloc[int(idx)].to_dict()
+                # Type ignore for pandas iloc returning Series which has to_dict
+                row_headers = self.row_headers.iloc[int(idx)].to_dict()  # type: ignore[union-attr,call-overload]
                 rule_input = {**self.general_tags, **col_headers, **row_headers}
                 rule = self.rule_type(rule_input, amount)
                 bs = rule.apply(bs, increment, market_rates)
@@ -163,6 +164,7 @@ class OneHeaderRule(Rule):
 
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
         for _idx, row in self.content.iterrows():
-            rule = self.rule_type({**self.general_tags, **row.to_dict()})
+            # Type ignore for pandas Series.to_dict() method
+            rule = self.rule_type({**self.general_tags, **row.to_dict()})  # type: ignore[call-arg]
             bs = rule.apply(bs, increment, market_rates)
         return bs

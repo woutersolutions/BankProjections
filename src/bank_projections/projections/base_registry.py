@@ -31,7 +31,8 @@ class BaseRegistry[T](ABC):  # noqa: B024
             raise ValueError(f"Invalid identifier: {name}")
         if stripped_name not in cls.items:
             raise ValueError(f"{cls.__name__} '{stripped_name}' is not registered.")
-        return cls.items[stripped_name]
+        item: T = cls.items[stripped_name]
+        return item
 
     @classmethod
     def is_registered(cls, name: str) -> bool:

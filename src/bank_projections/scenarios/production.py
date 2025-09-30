@@ -43,7 +43,7 @@ class ProductionRule(AmountRuleBase):
                     stripped_key = strip_identifier(key)
                     if stripped_key is not None:
                         self.metrics[stripped_key] = value
-                case _ if strip_identifier(key) is not None and strip_identifier(key).startswith("reference"):
+                case _ if (stripped := strip_identifier(key)) is not None and stripped.startswith("reference"):
                     stripped_key = strip_identifier(key)
                     if stripped_key is not None:
                         label = get_identifier(stripped_key.replace("reference", ""), Config.label_columns())

@@ -53,8 +53,9 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
 
     @classmethod
     def load_excel_sheet(cls, file_path: str, sheet_name: str | int) -> Scenario:
-        template = cls.get_excel_sheet_template(file_path, sheet_name)
-        return template.load_excel_sheet(file_path, str(sheet_name))
+        sheet_name_str = str(sheet_name) if isinstance(sheet_name, int) else sheet_name
+        template = cls.get_excel_sheet_template(file_path, sheet_name_str)
+        return template.load_excel_sheet(file_path, sheet_name_str)
 
     @classmethod
     def get_excel_sheet_template(cls, file_path: str, sheet_name: str) -> ScenarioTemplate:

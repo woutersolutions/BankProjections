@@ -14,7 +14,8 @@ class TaxTemplate(ScenarioTemplate):
         df_raw = pd.read_excel(file_path, sheet_name=sheet_name, header=None).set_index(0)
 
         # TODO: More comprehensive tax rules
-        tax_rate = float(df_raw.iloc[1, 0])
+        # Type ignore for pandas iloc return type
+        tax_rate = float(df_raw.iloc[1, 0])  # type: ignore[arg-type]
 
         rule = TaxRule(tax_rate=tax_rate)
 

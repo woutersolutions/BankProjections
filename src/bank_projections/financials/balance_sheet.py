@@ -295,7 +295,7 @@ class BalanceSheet(Positions):
             offset_pnl=offset_pnl_reason,
             offset_liquidity=offset_liquidity_reason,
             counter_item=counter_item,
-            **{metric.mutation_column: expr},
+            **{metric.mutation_column: expr},  # type: ignore[arg-type]
         )
 
     def mutate(
