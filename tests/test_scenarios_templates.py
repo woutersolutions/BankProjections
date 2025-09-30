@@ -328,3 +328,73 @@ class TestRuleSetIntegration:
         assert len(scenario.rules) == 2
         assert rule1 in scenario.rules.values()
         assert rule2 in scenario.rules.values()
+
+
+class TestOneHeaderTemplate:
+    def test_initialization(self):
+        from bank_projections.scenarios.template import OneHeaderTemplate
+
+        template = OneHeaderTemplate(BalanceSheetMutationRule)
+        assert template.rule_type == BalanceSheetMutationRule
+
+    def test_one_header_rule_apply(self):
+        from bank_projections.scenarios.template import OneHeaderRule
+
+        mock_bs = Mock(spec=BalanceSheet)
+        mock_increment = Mock(spec=TimeIncrement)
+
+        content = pd.DataFrame({"metric": ["quantity", "book_value"], "date": ["2024-01-15", "2024-02-15"]})
+        general_tags = {"offset_pnl": "false"}
+
+        mock_rule_class = Mock()
+        mock_rule_instance = Mock()
+        mock_rule_instance.apply.return_value = mock_bs
+        mock_rule_class.return_value = mock_rule_instance
+
+        rule = OneHeaderRule(content, general_tags, mock_rule_class)
+        result = rule.apply(mock_bs, mock_increment, MarketRates())
+
+        assert mock_rule_class.call_count == 2
+        assert mock_rule_instance.apply.call_count == 2
+        assert result == mock_bs
+
+
+class TestTaxTemplate:
+    def test_tax_template_initialization(self):
+        from bank_projections.scenarios.tax import TaxTemplate
+
+        template = TaxTemplate()
+        assert isinstance(template, TaxTemplate)
+
+    def test_tax_rule_initialization(self):
+        from bank_projections.scenarios.tax import TaxRule
+
+        rule = TaxRule(tax_rate=0.25)
+        assert rule.tax_rate == 0.25
+
+    def test_tax_rule_apply(self):
+        import datetime
+
+        import polars as pl
+
+        from bank_projections.scenarios.tax import TaxRule
+        from examples.synthetic_data import create_synthetic_balance_sheet
+
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs.pnls = pl.DataFrame({"Amount": [100.0, -50.0, 75.0, -25.0]})
+
+        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
+        market_rates = MarketRates()
+
+        rule = TaxRule(tax_rate=0.25)
+        result = rule.apply(bs, increment, market_rates)
+
+        assert result is not None
+
+
+class TestKeyValueTemplate:
+    def test_key_value_template_initialization(self):
+        from bank_projections.scenarios.template import KeyValueRuleBase, KeyValueTemplate
+
+        template = KeyValueTemplate(KeyValueRuleBase)
+        assert template.rule_type == KeyValueRuleBase
