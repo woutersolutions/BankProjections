@@ -144,7 +144,8 @@ class EfficiencyAssessment:
             )
 
             logger.info(
-                f"Completed in {processing_time:.3f}s with {len(horizon)} time steps balance sheets and {num_positions} positions"
+                f"Completed in {processing_time:.3f}s with {len(horizon)} time steps balance sheets "
+                f"and {num_positions} positions"
             )
 
         return balance_sheet_results

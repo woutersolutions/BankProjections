@@ -120,7 +120,8 @@ def generate_synthetic_positions(
         case "perpetual":
             maturity_dates = [None] * number
         case "bullet" | "linear" | "annuity":
-            # Generate uniform random based on current date and min/max maturity in years, by adding a random number of days
+            # Generate uniform random based on current date and min/max maturity in years,
+            # by adding a random number of days
             maturity_dates = [
                 current_date + datetime.timedelta(days=random.randint(minimum_maturity * 365, maximum_maturity * 365))
                 for _ in range(number)

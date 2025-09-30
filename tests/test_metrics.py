@@ -4,9 +4,7 @@ import pytest
 from bank_projections.financials.metrics import (
     BalanceSheetMetric,
     BookValue,
-    DerivedAmount,
     DerivedMetric,
-    DerivedWeight,
     DirtyPrice,
     Exposure,
     StoredAmount,

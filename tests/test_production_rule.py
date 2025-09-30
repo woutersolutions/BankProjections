@@ -1,10 +1,8 @@
 import datetime
 
 import pandas as pd
-import polars as pl
 import pytest
 
-from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.production import ProductionRule
