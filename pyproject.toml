@@ -30,6 +30,8 @@ dependencies = [
     "pyyaml",
     "matplotlib",
     "xlsxwriter",
+    "streamlit",
+    "plotly",
 ]
 
 [project.optional-dependencies]
