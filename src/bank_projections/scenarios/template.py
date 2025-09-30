@@ -161,10 +161,7 @@ class OneHeaderRule(Rule):
         self.rule_type = rule_type
 
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates) -> BalanceSheet:
-        for idx, row in self.content.iterrows():
+        for _idx, row in self.content.iterrows():
             rule = self.rule_type({**self.general_tags, **row.to_dict()})
             bs = rule.apply(bs, increment, market_rates)
         return bs
-
-
-

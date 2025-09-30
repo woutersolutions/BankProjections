@@ -66,7 +66,8 @@ class TimeHorizon:
 
         return TimeHorizon(dates)
 
-    # Iterator to loop over the dates, returning TimeIncrements, by default returning the initial increment start_date to_start_date
+    # Iterator to loop over the dates, returning TimeIncrements
+    # By default returns the initial increment start_date to_start_date
     def __iter__(self) -> "Iterator[TimeIncrement]":
         yield TimeIncrement(self.dates[0], self.dates[0])
         for i in range(len(self.dates) - 1):

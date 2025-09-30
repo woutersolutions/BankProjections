@@ -233,4 +233,4 @@ BalanceSheetMetrics.register("prepayment_rate", StoredWeight("PrepaymentRate"))
 
 
 BalanceSheetMetrics.register("trea_weight", StoredWeight("TREAWeight", Exposure().get_expression))
-BalanceSheetMetrics.register("trea", DerivedAmount("TREA","TREAWeight", Exposure().get_expression))
+BalanceSheetMetrics.register("trea", DerivedAmount("TREA", "TREAWeight", Exposure().get_expression))

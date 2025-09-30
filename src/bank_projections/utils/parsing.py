@@ -1,5 +1,6 @@
 import datetime
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 
 def read_date(value: str | datetime.date | datetime.datetime) -> datetime.date:
@@ -37,14 +38,16 @@ def get_identifiers(input_identifiers: Iterable[str], reference_identifiers: lis
 
 
 def correct_identifier_keys(input_dict: dict[str, Any], reference_identifiers: list[str]) -> dict[str, Any]:
-    return dict(zip(get_identifiers(input_dict.keys(), reference_identifiers), input_dict.values()))
+    return dict(zip(get_identifiers(input_dict.keys(), reference_identifiers), input_dict.values(), strict=True))
 
 
 def is_in_identifiers(identifier: str, identifiers: Iterable[str]) -> bool:
     return strip_identifier(identifier) in [strip_identifier(id2) for id2 in identifiers]
 
+
 def strip_identifier_keys(input_dict: dict[str, Any]) -> dict[str, Any]:
     return {strip_identifier(key): value for key, value in input_dict.items()}
+
 
 def strip_identifier(identifier: str | None) -> str | None:
     if identifier is None:

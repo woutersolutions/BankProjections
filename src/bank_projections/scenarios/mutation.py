@@ -49,7 +49,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
                 case "metric":
                     self.metric = BalanceSheetMetrics.get(value)
                 case _ if key.startswith("counter"):
-                    label = strip_identifier(key[len("counter"):])
+                    label = strip_identifier(key[len("counter") :])
                     if is_in_identifiers(label, Config.label_columns()):
                         if self.counter_item is None:
                             self.counter_item = BalanceSheetItem(**{label: value})

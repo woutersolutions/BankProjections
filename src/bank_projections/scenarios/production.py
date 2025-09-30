@@ -68,10 +68,7 @@ class ProductionRule(AmountRuleBase):
             else:
                 reason = MutationReason(module="Production", rule="Production")
 
-                if self.maturity is None:
-                    maturity_date = None
-                else:
-                    maturity_date = add_months(self.date, 12 * self.maturity)
+                maturity_date = None if self.maturity is None else add_months(self.date, 12 * self.maturity)
 
                 bs.add_item(
                     self.reference_item,
@@ -88,10 +85,7 @@ class ProductionRule(AmountRuleBase):
     @staticmethod
     def _process_metric(data: pl.DataFrame, metrics: dict[str, Any] | float, metric_name: str) -> pl.DataFrame:
         metric = BalanceSheetMetrics.get(metric_name)
-        if isinstance(metrics, float):
-            metric_value = metrics
-        else:
-            metric_value = metrics.pop(metric_name)
+        metric_value = metrics if isinstance(metrics, float) else metrics.pop(metric_name)
         data = data.with_columns(metric.mutation_expression(metric_value, pl.lit(True)).alias(metric.mutation_column))
 
         return data

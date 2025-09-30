@@ -17,7 +17,3 @@ def add_months(date: datetime.date, months: int, make_end_of_month: bool = False
     """Add (or subtract) months to a date, optionally snapping to end of month."""
     result = date + relativedelta(months=months)
     return end_of_month(result) if make_end_of_month else result
-
-
-def is_end_of_month(date: datetime.date) -> bool:
-    return date.day == end_of_month(date).day

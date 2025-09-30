@@ -257,10 +257,7 @@ class BalanceSheet(Positions):
     @staticmethod
     def _process_metric(data: pl.DataFrame, metrics: dict[str, Any] | float, metric_name: str) -> pl.DataFrame:
         metric = BalanceSheetMetrics.get(metric_name)
-        if isinstance(metrics, float):
-            metric_value = metrics
-        else:
-            metric_value = metrics.pop(metric_name)
+        metric_value = metrics if isinstance(metrics, float) else metrics.pop(metric_name)
         data = data.with_columns(metric.mutation_expression(metric_value, pl.lit(True)).alias(metric.mutation_column))
 
         return data

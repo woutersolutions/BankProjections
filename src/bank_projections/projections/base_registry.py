@@ -36,5 +36,3 @@ class BaseRegistry[T](ABC):  # noqa: B024
     @classmethod
     def names(cls) -> list[str]:
         return list(cls.items.keys())
-
-

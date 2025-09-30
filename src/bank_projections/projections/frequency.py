@@ -87,10 +87,7 @@ class MonthlyBase(Frequency):
         months_to_anchor = (anchor_date.dt.year() - current_date.year) * 12 + (
             anchor_date.dt.month() - current_date.month
         )
-        if is_end_of_month(current_date):
-            day_passed = pl.lit(True)
-        else:
-            day_passed = current_date.day >= anchor_date.dt.day()
+        day_passed = pl.lit(True) if is_end_of_month(current_date) else current_date.day >= anchor_date.dt.day()
         payments_to_anchor = (months_to_anchor + pl.when(day_passed).then(0).otherwise(1)) // cls.number_of_months
         return anchor_date.dt.offset_by(by=(-(payments_to_anchor - number) * cls.number_of_months).cast(pl.Utf8) + "mo")
 
@@ -131,16 +128,13 @@ class DailyBase(Frequency):
 
     @classmethod
     def step_coupon_date(cls, current_date: datetime.date, anchor_date: pl.Expr, number: int) -> pl.Expr:
-
         # Completed d-day steps from anchor up to (and possibly including) current_date
         steps_completed = ((pl.lit(current_date) - anchor_date).dt.total_days()) // pl.lit(cls.number_of_days)
 
         # Next (> current) has index steps_completed + 1; add 'number' to step forward/backward
         k = steps_completed + pl.lit(1 + number)
 
-        return anchor_date.dt.offset_by(
-            by=((k * pl.lit(cls.number_of_days)).cast(pl.Utf8) + pl.lit("d"))
-        )
+        return anchor_date.dt.offset_by(by=((k * pl.lit(cls.number_of_days)).cast(pl.Utf8) + pl.lit("d")))
 
     @classmethod
     def portion_year(cls) -> pl.Expr:
@@ -185,4 +179,7 @@ def interest_accrual(
     next_coupon_date: pl.Expr,
     current_date: datetime.date,
 ) -> pl.Expr:
-    return ((current_date - previous_coupon_date).dt.total_days() / (next_coupon_date - previous_coupon_date).dt.total_days()).fill_null(0) * quantity * interest_rate
+    days_fraction = (current_date - previous_coupon_date).dt.total_days() / (
+        next_coupon_date - previous_coupon_date
+    ).dt.total_days()
+    return days_fraction.fill_null(0) * quantity * interest_rate

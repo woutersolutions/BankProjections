@@ -10,7 +10,7 @@ from bank_projections.projections.base_registry import BaseRegistry
 
 def calculate_metrics(bs: BalanceSheet) -> pl.DataFrame:
     metrics = {}
-    for name, metric in MetricRegistry.items.items():
+    for _name, metric in MetricRegistry.items.items():
         metrics[metric.name] = metric.calculate(bs)
 
     return pl.DataFrame(metrics)
