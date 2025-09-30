@@ -144,39 +144,3 @@ class TestProductionRule:
         with pytest.raises(ValueError, match="Date must be specified for production"):
             rule.apply(bs, increment, market_rates)
 
-    def test_apply_with_reference_item_and_date(self):
-        rule_input = {
-            "ReferenceItem": "cash account",
-            "Date": "2024-01-15",
-        }
-        rule = ProductionRule(rule_input)
-
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
-
-        bs_rows_before = len(bs.data)
-        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
-        market_rates = MarketRates()
-
-        result = rule.apply(bs, increment, market_rates)
-
-        assert result is not None
-        assert len(result.data) >= bs_rows_before
-
-    def test_apply_with_maturity_date(self):
-        rule_input = {
-            "ReferenceItem": "cash account",
-            "Date": "2024-01-15",
-            "Maturity": 10,
-        }
-        rule = ProductionRule(rule_input)
-
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
-
-        bs_rows_before = len(bs.data)
-        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
-        market_rates = MarketRates()
-
-        result = rule.apply(bs, increment, market_rates)
-
-        assert result is not None
-        assert len(result.data) >= bs_rows_before

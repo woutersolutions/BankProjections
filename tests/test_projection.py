@@ -19,13 +19,15 @@ class TestProjectionResult:
         balance_sheets = [pl.DataFrame({"col1": [1, 2], "col2": [3, 4]})]
         pnls = [pl.DataFrame({"pnl_col": [10, 20]})]
         cashflows = [pl.DataFrame({"cf_col": [100, 200]})]
+        metric_list = [pl.DataFrame({"metric": [5]})]
         horizon = TimeHorizon([datetime.date(2023, 1, 31)])
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, horizon)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, metric_list, horizon)
 
         assert result.balance_sheets == balance_sheets
         assert result.pnls == pnls
         assert result.cashflows == cashflows
+        assert result.metric_list == metric_list
         assert result.horizon == horizon
 
     def test_projection_result_to_dict(self):
@@ -36,9 +38,10 @@ class TestProjectionResult:
         ]
         pnls = [pl.DataFrame({"income": [50]}), pl.DataFrame({"income": [60]})]
         cashflows = [pl.DataFrame({"cash_in": [100]}), pl.DataFrame({"cash_in": [110]})]
+        metric_list = [pl.DataFrame({"metric": [5]}), pl.DataFrame({"metric": [6]})]
         horizon = TimeHorizon([datetime.date(2023, 1, 31), datetime.date(2023, 2, 28)])
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, horizon)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, metric_list, horizon)
         result_dict = result.to_dict()
 
         assert "BalanceSheets" in result_dict
@@ -55,9 +58,10 @@ class TestProjectionResult:
         balance_sheets = [pl.DataFrame({"asset": [1000]})]
         pnls = [pl.DataFrame({"income": [50]})]
         cashflows = [pl.DataFrame({"cash_in": [100]})]
+        metric_list = [pl.DataFrame({"metric": [5]})]
         horizon = TimeHorizon([datetime.date(2023, 1, 31)])
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, horizon)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, metric_list, horizon)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = os.path.join(temp_dir, "test_output.xlsx")

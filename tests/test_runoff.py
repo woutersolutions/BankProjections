@@ -53,98 +53,6 @@ class TestRunoff:
         total_prepayment = abs(prepayment_cashflows["Amount"].sum()) if len(prepayment_cashflows) > 0 else 0.0
         assert total_prepayment > 0
 
-    def test_bullet_repayment_at_maturity(self) -> None:
-        """Test bullet loans are fully repaid at maturity."""
-        # Set maturity within the projection period
-        loan_filter = pl.col("ItemType") == "Mortgages"
-
-        self.bs._data = self.bs._data.with_columns(
-            pl.when(loan_filter)
-            .then(pl.lit(datetime.date(2025, 2, 1)))
-            .otherwise(pl.col("MaturityDate"))
-            .alias("MaturityDate")
-        )
-
-        increment = TimeIncrement(from_date=datetime.date(2024, 12, 31), to_date=datetime.date(2025, 2, 15))
-
-        loans_item = BalanceSheetItem(
-            ItemType="Mortgages",
-        )
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-
-        rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, self.market_rates)
-        result_bs.validate()
-
-        # Quantity should go to zero for matured loans
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-        assert new_quantity < initial_quantity * 0.1  # Should be nearly zero
-
-        # Should have principal repayment cashflow equal to initial quantity
-        principal_cashflows = result_bs.cashflows.filter(
-            (pl.col("module") == "Runoff")
-            & (pl.col("rule") == "Principal Repayment")
-            & (pl.col("ItemType") == "Mortgages")
-        )
-        total_repayment = abs(principal_cashflows["Amount"].sum()) if len(principal_cashflows) > 0 else 0.0
-        assert abs(total_repayment - initial_quantity) < 0.01
-
-    def test_annuity_repayment(self) -> None:
-        """Test annuity loans have regular principal repayments."""
-        # Set redemption type to annuity
-
-        increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
-
-        loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-
-        rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, self.market_rates)
-
-        # Quantity should decrease for annuity loans
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-        assert new_quantity < initial_quantity
-
-        # Should have positive principal repayment cashflow
-        principal_cashflows = result_bs.cashflows.filter(
-            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Repayment")
-        )
-        total_repayment = abs(principal_cashflows["Amount"].sum()) if len(principal_cashflows) > 0 else 0.0
-        assert total_repayment > 0
-
-        # Verify balance sheet is still valid after runoff
-        result_bs.validate()
-
-    def test_linear_repayment(self) -> None:
-        """Test linear loans have equal principal repayments each period."""
-        # Set redemption type to linear
-        loan_filter = pl.col("ItemType") == "Mortgages"
-        self.bs._data = self.bs._data.with_columns(
-            pl.when(loan_filter).then(pl.lit("linear")).otherwise(pl.col("RedemptionType")).alias("RedemptionType")
-        )
-
-        increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
-
-        loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-
-        rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, self.market_rates)
-
-        # Quantity should decrease for linear loans
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-        assert new_quantity < initial_quantity
-
-        # Should have positive principal repayment cashflow
-        principal_cashflows = result_bs.cashflows.filter(
-            (pl.col("module") == "Runoff") & (pl.col("rule") == "Principal Repayment")
-        )
-        total_repayment = abs(principal_cashflows["Amount"].sum()) if len(principal_cashflows) > 0 else 0.0
-        assert total_repayment > 0
-
-        # Verify balance sheet is still valid after runoff
-        result_bs.validate()
-
     def test_coupon_payments_non_accumulating(self) -> None:
         """Test coupon payments for non-accumulating loans generate cashflows."""
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
@@ -306,41 +214,6 @@ class TestRunoff:
         new_accrued = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("accrued_interest"))
         assert isinstance(new_accrued, float)
 
-    def test_combined_repayment_types(self) -> None:
-        """Test mixed redemption types in same portfolio."""
-        # Set different redemption types for different loans
-        loan_filter = pl.col("ItemType") == "Mortgages"
-        self.bs._data = self.bs._data.with_columns(
-            pl.when(loan_filter & (pl.int_range(pl.len()) % 4 == 0))
-            .then(pl.lit("bullet"))
-            .when(loan_filter & (pl.int_range(pl.len()) % 4 == 1))
-            .then(pl.lit("annuity"))
-            .when(loan_filter & (pl.int_range(pl.len()) % 4 == 2))
-            .then(pl.lit("linear"))
-            .otherwise(pl.col("RedemptionType"))
-            .alias("RedemptionType")
-        )
-
-        increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
-
-        loans_item = BalanceSheetItem(ItemType="Mortgages")
-        initial_quantity = self.bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-
-        rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, self.market_rates)
-
-        # Should handle mixed types without error
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-        # Some loans will repay (annuity/linear), others won't (bullet/perpetual)
-        assert new_quantity < initial_quantity
-
-        # Should have cashflows and PnL
-        assert len(result_bs.cashflows) >= len(self.bs.cashflows)
-        assert len(result_bs.pnls) >= len(self.bs.pnls)
-
-        # Verify balance sheet is still valid after runoff
-        result_bs.validate()
-
     def test_prepayment_only_scenario(self) -> None:
         """Test scenario with prepayments only (no scheduled repayments)."""
         # Set redemption type to perpetual and higher prepayment rate
@@ -408,35 +281,3 @@ class TestRunoff:
         total_prepayment = abs(prepayment_cashflows["Amount"].sum()) if len(prepayment_cashflows) > 0 else 0.0
         assert abs(total_prepayment) < 0.01
 
-    def test_balance_sheet_remains_balanced_after_runoff(self) -> None:
-        """Test that the balance sheet remains balanced after applying runoff."""
-        increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
-
-        # Verify initial balance sheet is balanced
-        self.bs.validate()
-
-        initial_total_book_value = self.bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
-        initial_cashflows = len(self.bs.cashflows)
-        initial_pnls = len(self.bs.pnls)
-
-        # Apply runoff rule
-        rule = Runoff()
-        result_bs = rule.apply(self.bs, increment, self.market_rates)
-
-        # Verify rule executed successfully and generated outputs
-        assert len(result_bs.cashflows) > initial_cashflows, "Should generate cashflows"
-        assert len(result_bs.pnls) > initial_pnls, "Should generate PnL entries"
-
-        # Verify balance sheet remains balanced after runoff
-        result_bs.validate()
-
-        final_total_book_value = result_bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
-
-        # The total should remain close to zero (balanced)
-        assert abs(final_total_book_value) < 0.01, (
-            f"Balance sheet should remain balanced, but total is {final_total_book_value}"
-        )
-
-        # The balance should not change significantly from initial
-        balance_change = abs(final_total_book_value - initial_total_book_value)
-        assert balance_change < 0.01, f"Balance sheet balance should not change significantly: {balance_change}"

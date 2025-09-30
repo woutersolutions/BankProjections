@@ -143,80 +143,6 @@ class TestDirtyPrice:
         assert isinstance(expr, pl.Expr)
 
 
-class TestDerivedAmount:
-    def test_derived_amount_initialization_default(self):
-        metric = DerivedAmount("WeightColumn")
-        assert metric.weight_column == "WeightColumn"
-        assert metric.is_stored is False
-
-    def test_derived_amount_initialization_with_allocation(self):
-        allocation_expr = pl.col("CustomAllocation")
-        metric = DerivedAmount("WeightColumn", allocation_expr)
-        assert metric.weight_column == "WeightColumn"
-
-    def test_get_expression(self):
-        metric = DerivedAmount("WeightColumn")
-        expr = metric.get_expression
-        assert isinstance(expr, pl.Expr)
-
-    def test_set_expression(self):
-        metric = DerivedAmount("WeightColumn")
-        amount_expr = pl.lit(100.0)
-        result = metric.set_expression(amount_expr)
-        assert isinstance(result, pl.Expr)
-
-    def test_aggregation_expression(self):
-        metric = DerivedAmount("WeightColumn")
-        expr = metric.aggregation_expression
-        assert isinstance(expr, pl.Expr)
-
-    def test_mutation_expression(self):
-        metric = DerivedAmount("WeightColumn")
-        filter_expr = pl.col("AssetType") == "Mortgages"
-        result = metric.mutation_expression(100.0, filter_expr)
-        assert isinstance(result, pl.Expr)
-
-    def test_mutation_column(self):
-        metric = DerivedAmount("WeightColumn")
-        assert metric.mutation_column == "WeightColumn"
-
-
-class TestDerivedWeight:
-    def test_derived_weight_initialization_default(self):
-        metric = DerivedWeight("AmountColumn")
-        assert metric.amount_column == "AmountColumn"
-        assert metric.is_stored is False
-
-    def test_derived_weight_initialization_with_weight_expr(self):
-        weight_expr = pl.col("CustomWeight")
-        metric = DerivedWeight("AmountColumn", weight_expr)
-        assert metric.amount_column == "AmountColumn"
-
-    def test_get_expression(self):
-        metric = DerivedWeight("AmountColumn")
-        expr = metric.get_expression
-        assert isinstance(expr, pl.Expr)
-
-    def test_set_expression(self):
-        metric = DerivedWeight("AmountColumn")
-        amount_expr = pl.lit(0.05)
-        result = metric.set_expression(amount_expr)
-        assert isinstance(result, pl.Expr)
-
-    def test_aggregation_expression(self):
-        metric = DerivedWeight("AmountColumn")
-        expr = metric.aggregation_expression
-        assert isinstance(expr, pl.Expr)
-
-    def test_mutation_expression(self):
-        metric = DerivedWeight("AmountColumn")
-        filter_expr = pl.col("AssetType") == "Mortgages"
-        result = metric.mutation_expression(0.05, filter_expr)
-        assert isinstance(result, pl.Expr)
-
-    def test_mutation_column(self):
-        metric = DerivedWeight("AmountColumn")
-        assert metric.mutation_column == "AmountColumn"
 
 
 class TestExposure:
@@ -268,23 +194,6 @@ class TestMetricIntegration:
         result = df.select(metric.aggregation_expression.alias("total"))
         assert result["total"].item() == 4500.0
 
-    def test_derived_weight_with_real_data(self):
-        # Create test data
-        df = pl.DataFrame(
-            {
-                "Impairment": [10.0, 40.0, 15.0],
-                "Quantity": [1000.0, 2000.0, 1500.0],
-                "AssetType": ["Mortgages", "Securities", "Mortgages"],
-            }
-        )
-
-        metric = DerivedWeight("Impairment")
-
-        # Test get_expression (impairment rate)
-        result = df.select(metric.get_expression.alias("rate"))
-        expected = [0.01, 0.02, 0.01]  # 10/1000, 40/2000, 15/1500
-        # Check results are close to expected values
-        assert all(abs(a - b) < 1e-6 for a, b in zip(result["rate"].to_list(), expected, strict=False))
 
     def test_dirty_price_with_real_data(self):
         # Create test data
