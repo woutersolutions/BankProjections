@@ -195,8 +195,7 @@ class BookValue(DerivedMetric):
         return (
             pl.when(pl.col("AccountingMethod") == "amortizedcost")
             .then(pl.col("Quantity") + pl.col("Agio") + pl.col("AccruedInterest") + pl.col("Impairment"))
-            .when(pl.col("AccountingMethod") == "fairvalue")
-            .then(pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest") + pl.col("Agio"))
+            .otherwise(pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest") + pl.col("Agio"))
         )
 
     @property

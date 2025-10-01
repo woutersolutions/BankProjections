@@ -10,4 +10,5 @@ class AccountingMethodRegistry(BaseRegistry[AccountingMethod]):
 
 
 AccountingMethodRegistry.register("Amortized cost", AccountingMethod())
-AccountingMethodRegistry.register("Fair Value", AccountingMethod())
+AccountingMethodRegistry.register("Fair Value through OCI", AccountingMethod())
+AccountingMethodRegistry.register("Fair Value through PnL", AccountingMethod())
