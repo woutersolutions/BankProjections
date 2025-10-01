@@ -31,7 +31,7 @@ class MutationReason:
 
 class Positions:
     def __init__(self, data: pl.DataFrame):
-        self._data = data
+        self._data = data.with_columns([pl.col(Config.CLASSIFICATIONS).cast(pl.Categorical)])
 
     def validate(self) -> None:
         if len(self) == 0:
