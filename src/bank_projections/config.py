@@ -2,11 +2,11 @@
 from typing import Any
 
 from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.projections.accounting_method import AccountingMethodRegistry
 from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
-from bank_projections.projections.valuation import ValuationRegistry
 
 
 class Config:
@@ -23,7 +23,7 @@ class Config:
     BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"]
 
     CLASSIFICATIONS: dict[str, type[BaseRegistry[Any]]] = {
-        "ValuationMethod": ValuationRegistry,
+        "AccountingMethod": AccountingMethodRegistry,
         "CouponFrequency": FrequencyRegistry,
         "RedemptionType": RedemptionRegistry,
         "CouponType": CouponTypeRegistry,

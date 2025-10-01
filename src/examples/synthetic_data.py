@@ -139,7 +139,7 @@ def generate_synthetic_positions(
                 "AgioWeight": agios,
                 "ItemType": [item_type] * number,
                 "Currency": [strip_identifier(currency)] * number,
-                "ValuationMethod": [valuation_method] * number,
+                "AccountingMethod": [valuation_method] * number,
                 "InterestRate": interest_rates,
                 "CouponType": coupon_types,
                 "ReferenceRate": [reference_rate] * number,

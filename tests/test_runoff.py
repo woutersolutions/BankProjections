@@ -98,7 +98,7 @@ class TestRunoff:
             ]
         )
 
-        loans_item = BalanceSheetItem(ItemType="Mortgages", ValuationMethod="amortized cost")
+        loans_item = BalanceSheetItem(ItemType="Mortgages", AccountingMethod="amortized cost")
         self.bs.mutate_metric(
             loans_item, BalanceSheetMetrics.get("impairment"), -10000.0, MutationReason(test="test"), offset_pnl=True
         )

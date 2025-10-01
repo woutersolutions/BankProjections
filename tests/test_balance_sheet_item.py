@@ -51,7 +51,7 @@ class TestBalanceSheetItem:
     def test_calculation_tag_identifier(self):
         """Test that calculation tag identifiers are properly cleaned."""
         # This should test the CALCULATION_TAGS branch
-        item = BalanceSheetItem(ItemType="Mortgages", ValuationMethod="Fair Value")
+        item = BalanceSheetItem(ItemType="Mortgages", AccountingMethod="Fair Value")
         # Add test for calculation tags if they exist in config
         assert item.identifiers["ItemType"] == "Mortgages"
-        assert "ValuationMethod" in item.identifiers
+        assert "AccountingMethod" in item.identifiers

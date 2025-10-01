@@ -193,9 +193,9 @@ class BookValue(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
         return (
-            pl.when(pl.col("ValuationMethod") == "amortizedcost")
+            pl.when(pl.col("AccountingMethod") == "amortizedcost")
             .then(pl.col("Quantity") + pl.col("Agio") + pl.col("AccruedInterest") + pl.col("Impairment"))
-            .when(pl.col("ValuationMethod") == "fairvalue")
+            .when(pl.col("AccountingMethod") == "fairvalue")
             .then(pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest") + pl.col("Agio"))
         )
 
