@@ -33,9 +33,18 @@ class Valuation(Rule):
         bs.mutate(
             item,
             pnls={
-                MutationReason(module="Valuation", rule="Net gains fair value through P&L"): pl.when(pl.col("AccountingMethod")=="fairvaluethroughpnl").then((new_clean_prices - pl.col("CleanPrice")) * pl.col("Quantity")).otherwise(0.0),
-                # TODO: Mutate OCI account
-                MutationReason(module="Valuation", rule="Net gains fair value through OCI"): pl.when(pl.col("AccountingMethod")=="fairvaluethroughoci").then((new_clean_prices - pl.col("CleanPrice")) * pl.col("Quantity")).otherwise(0.0),
+                MutationReason(module="Valuation", rule="Net gains fair value through P&L"): pl.when(
+                    pl.col("AccountingMethod") == "fairvaluethroughpnl"
+                )
+                .then((new_clean_prices - pl.col("CleanPrice")) * pl.col("Quantity"))
+                .otherwise(0.0),
+            },
+            ocis={
+                MutationReason(module="Valuation", rule="Net gains fair value through OCI"): pl.when(
+                    pl.col("AccountingMethod") == "fairvaluethroughoci"
+                )
+                .then((new_clean_prices - pl.col("CleanPrice")) * pl.col("Quantity"))
+                .otherwise(0.0),
             },
             CleanPrice=new_clean_prices,
         )

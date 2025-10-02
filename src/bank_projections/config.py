@@ -13,6 +13,7 @@ from bank_projections.projections.valuation_method import ValuationMethodRegistr
 class Config:
     CASHFLOW_AGGREGATION_LABELS = ["ItemType"]
     PNL_AGGREGATION_LABELS = ["ItemType"]
+    OCI_AGGREGATION_LABELS = ["ItemType"]
     BALANCE_SHEET_LABELS = [
         "BalanceSheetSide",
         "ItemType",

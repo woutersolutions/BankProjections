@@ -94,9 +94,13 @@ class BalanceSheet(Positions):
         self.add_item(
             BalanceSheetItemRegistry.get("pnl account"), labels={}, metrics={"Quantity": 0.0}, origination_date=date
         )
+        self.add_item(
+            BalanceSheetItemRegistry.get("oci"), labels={}, metrics={"Quantity": 0.0}, origination_date=date
+        )
 
         self.cashflows = pl.DataFrame(schema={"Amount": pl.Float64})
         self.pnls = pl.DataFrame(schema={"Amount": pl.Float64})
+        self.ocis = pl.DataFrame(schema={"Amount": pl.Float64})
 
         self.validate()
 
@@ -127,6 +131,16 @@ class BalanceSheet(Positions):
         if abs(total_pnl_bs + total_pnl_table) > 0.01:
             raise ValueError(
                 f"PnL in balance sheet and PnL table do not match: {total_pnl_bs:.4f} vs {-total_pnl_table:.4f}"
+            )
+
+        total_oci_bs = self.get_amount(
+            BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("book_value"),
+        )
+        total_oci_table = self.ocis["Amount"].sum() if len(self.ocis) > 0 else 0.0
+        if abs(total_oci_bs - total_oci_table) > 0.01:
+            raise ValueError(
+                f"OCI in balance sheet and OCI table do not match: {total_oci_bs:.4f} vs {total_oci_table:.4f}"
             )
 
         # Check total cash in balance sheet and cashflow table are the same
@@ -310,6 +324,7 @@ class BalanceSheet(Positions):
         item: BalanceSheetItem,
         pnls: dict[MutationReason, pl.Expr] | None = None,
         cashflows: dict[MutationReason, pl.Expr] | None = None,
+        ocis: dict[MutationReason, pl.Expr] | None = None,
         offset_pnl: MutationReason | None = None,
         offset_liquidity: MutationReason | None = None,
         counter_item: BalanceSheetItem | None = None,
@@ -334,6 +349,11 @@ class BalanceSheet(Positions):
                 calculations[cashflow_col] = (
                     pl.when(item.filter_expression).then(cashflow_expr).otherwise(0.0).alias(cashflow_col)
                 )
+
+        if ocis is not None:
+            for i, (_mut_reason, oci_expr) in enumerate(ocis.items()):
+                oci_col = f"oci_{i}"
+                calculations[oci_col] = pl.when(item.filter_expression).then(oci_expr).otherwise(0.0).alias(oci_col)
 
         number_of_offsets = sum([offset_pnl is not None, offset_liquidity is not None, counter_item is not None])
         if number_of_offsets > 1:
@@ -362,6 +382,13 @@ class BalanceSheet(Positions):
                 cashflow_col = f"cashflow_{i}"
                 self.add_liquidity(self._data.filter(item.filter_expression), pl.col(cashflow_col), mut_reason)
                 self._data = self._data.drop(cashflow_col)
+
+        # Process OCI mutations
+        if ocis is not None:
+            for i, (mut_reason, _) in enumerate(ocis.items()):
+                oci_col = f"oci_{i}"
+                self.add_oci(self._data.filter(item.filter_expression), pl.col(oci_col), mut_reason)
+                self._data = self._data.drop(oci_col)
 
         if offset_pnl is not None:
             self.add_pnl(
@@ -415,6 +442,30 @@ class BalanceSheet(Positions):
         if offset_liquidity:
             self.add_single_liquidity(amount, reason)
 
+    def add_oci(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
+        ocis = data.group_by(Config.OCI_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+
+        self.ocis = pl.concat([self.ocis, ocis], how="diagonal")
+        self.mutate_metric(
+            BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("quantity"),
+            ocis["Amount"].sum(),
+            reason,
+            relative=True,
+        )
+
+    def add_single_oci(self, amount: float, reason: MutationReason) -> None:
+        ocis = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
+
+        self.ocis = pl.concat([self.ocis, ocis], how="diagonal")
+        self.mutate_metric(
+            BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
+            BalanceSheetMetrics.get("quantity"),
+            amount,
+            reason,
+            relative=True,
+        )
+
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         cashflows = data.group_by(Config.CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
 
@@ -447,7 +498,7 @@ class BalanceSheet(Positions):
 
     def aggregate(
         self, group_columns: list[str] = Config.BALANCE_SHEET_AGGREGATION_LABELS
-    ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+    ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
         return (
             (
                 self._data.group_by(group_columns)
@@ -461,6 +512,7 @@ class BalanceSheet(Positions):
             ),
             self.pnls,
             self.cashflows,
+            self.ocis,
         )
 
     @classmethod
@@ -480,4 +532,5 @@ class BalanceSheet(Positions):
             "diff": cls.get_differences(bs1, bs2).to_pandas(),
             "pnl": bs2.pnls.to_pandas(),
             "cash": bs2.cashflows.to_pandas(),
+            "oci": bs2.ocis.to_pandas(),
         }

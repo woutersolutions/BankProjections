@@ -17,6 +17,7 @@ class ProjectionResult:
     balance_sheets: list[pl.DataFrame]
     pnls: list[pl.DataFrame]
     cashflows: list[pl.DataFrame]
+    ocis: list[pl.DataFrame]
     metric_list: list[pl.DataFrame]
     horizon: TimeHorizon
 
@@ -39,6 +40,13 @@ class ProjectionResult:
             "Cashflows": pl.concat(
                 [
                     self.cashflows[i].with_columns(ProjectionDate=increment.to_date)
+                    for i, increment in enumerate(self.horizon)
+                ],
+                how="diagonal",
+            ),
+            "OCIs": pl.concat(
+                [
+                    self.ocis[i].with_columns(ProjectionDate=increment.to_date)
                     for i, increment in enumerate(self.horizon)
                 ],
                 how="diagonal",
@@ -77,6 +85,7 @@ class Projection:
         pnls_list = []
         cashflows_list = []
         metric_list = []
+        oci_list = []
 
         total_increments = len(self.horizon)
 
@@ -88,12 +97,13 @@ class Projection:
 
             metrics = calculate_metrics(bs)
 
-            agg_bs, pnls, cashflows = bs.aggregate()
+            agg_bs, pnls, cashflows, ocis = bs.aggregate()
             balance_sheets.append(agg_bs)
             pnls_list.append(pnls)
             cashflows_list.append(cashflows)
             metric_list.append(metrics)
+            oci_list.append(ocis)
 
             bs.validate()
 
-        return ProjectionResult(balance_sheets, pnls_list, cashflows_list, metric_list, self.horizon)
+        return ProjectionResult(balance_sheets, pnls_list, cashflows_list, oci_list, metric_list, self.horizon)
