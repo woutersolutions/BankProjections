@@ -42,6 +42,11 @@ class Curves:
 
         return dict(zip(spot_rates["Name"] + spot_rates["Tenor"], spot_rates["Rate"], strict=False))
 
+    def get_zero_rates(self) -> pd.DataFrame:
+        zero_rates = self.data.loc[self.data["Type"] == "zero", ["Name", "MaturityYears", "Rate"]]
+
+        return zero_rates
+
     def floating_rate_expr(self) -> pl.Expr:
         return pl.col("ReferenceRate").replace_strict(self.get_spot_rates(), default=pl.lit(None)).cast(pl.Float64)
 
