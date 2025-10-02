@@ -29,12 +29,13 @@ def generate_synthetic_positions(
     number: int,
     balance_sheet_side: str,
     item_type: str,
-    valuation_method: str,
+    accounting_method: str,
     redemption_type: str,
     coupon_frequency: str,
     current_date: datetime.date,
     coupon_type: str,
     curves: Curves = generate_synthetic_curves(),
+    valuation_method: str | None = None,
     currency: str = "EUR",
     reference_rate: str = None,
     coverage_rate_range: tuple[float, float] | None = None,
@@ -51,8 +52,12 @@ def generate_synthetic_positions(
 ) -> Positions:
     redemption_type = strip_identifier(redemption_type)
     coupon_frequency = strip_identifier(coupon_frequency)
-    valuation_method = strip_identifier(valuation_method)
+    accounting_method = strip_identifier(accounting_method)
     reference_rate = strip_identifier(reference_rate)
+    if valuation_method is None:
+        valuation_method = "none"
+    else:
+        valuation_method = strip_identifier(valuation_method)
 
     # Generate random book values that sum to the target book value
     if book_value == 0 or number == 1:
@@ -129,19 +134,25 @@ def generate_synthetic_positions(
         case _:
             raise ValueError(f"Unknown redemption type: {redemption_type}")
 
+    if accounting_method == "amortizedcost":
+        clean_prices = [None] * number
+    else:
+        clean_prices = [1.0] * number  # For now, assume par for all
+
     # Create polars dataframe with all the calculated fields
     df = (
         pl.DataFrame(
             {
                 "BookValue": book_values,
                 "CoverageRate": coverage_rates,
-                "CleanPrice": [1.0] * number,  # At par for balanced sheet
+                "CleanPrice": clean_prices,
                 "AgioWeight": agios,
                 "ItemType": [item_type] * number,
                 "Currency": [strip_identifier(currency)] * number,
-                "AccountingMethod": [valuation_method] * number,
+                "AccountingMethod": [accounting_method] * number,
                 "InterestRate": interest_rates,
                 "CouponType": coupon_types,
+                "ValuationMethod": [valuation_method] * number,
                 "ReferenceRate": [reference_rate] * number,
                 "CouponFrequency": [coupon_frequency] * number,
                 "OriginationDate": origination_dates,
@@ -185,6 +196,7 @@ def generate_synthetic_positions(
             Agio=pl.col("Quantity") * pl.col("AgioWeight"),
             OffBalance=pl.col("Quantity") * off_balance,
             ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
+            CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
         )
         .drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "BookValue"])
         .with_columns(

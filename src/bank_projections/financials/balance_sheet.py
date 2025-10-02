@@ -61,6 +61,9 @@ class Positions:
             if self._data[column].is_null().any():
                 raise ValueError(f"Positions data contains null values in non-nullable column: {column}")
 
+            if self._data[column].dtype == pl.Float64 and self._data[column].is_nan().any():
+                raise ValueError(f"Positions data contains NaN values in non-nullable column: {column}")
+
     def __len__(self) -> int:
         return len(self._data)
 
@@ -274,6 +277,10 @@ class BalanceSheet(Positions):
         offset_pnl: bool = False,
         counter_item: BalanceSheetItem | None = None,
     ) -> None:
+
+        if pd.isna(amount):
+            raise ValueError("Amount must be a numeric value and cannot be NaN")
+
         if isinstance(metric, str):
             metric = BalanceSheetMetrics.get(metric)
 

@@ -15,7 +15,7 @@ class Runoff(Rule):
         if increment.from_date == increment.to_date:  # No time passed
             return bs
 
-        # Apply runoff to all instruments that have maturity dates # TODO: refine
+        # Apply runoff to all instruments that origination before the current projection date # TODO: refine
         item = BalanceSheetItem(
             expr=(pl.col("OriginationDate").is_null() | (pl.col("OriginationDate") < increment.to_date))
         )
@@ -73,6 +73,8 @@ class Runoff(Rule):
             )
         )
 
+        bs.validate()
+
         bs.mutate(
             item,
             pnls={
@@ -101,5 +103,7 @@ class Runoff(Rule):
             FloatingRate=floating_rates,
             InterestRate=interest_rates,
         )
+
+        bs.validate()
 
         return bs

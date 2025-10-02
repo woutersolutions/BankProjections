@@ -109,12 +109,22 @@ class DirtyPrice(DerivedMetric):
 
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest")
+        return pl.col("CleanPrice") + pl.col("AccruedInterest") / (pl.col("Quantity") + pl.lit(SMALL_NUMBER))
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return (pl.col("CleanPrice") * pl.col("Quantity") + pl.col("AccruedInterest")).sum() / (pl.col("Quantity").sum() + pl.lit(SMALL_NUMBER))
+
+class MarketValue(DerivedMetric):
+    name = "MarketValue"
+
+    @property
+    def get_expression(self) -> pl.Expr:
+        return pl.col("CleanPrice") * pl.col("Quantity") + pl.col("AccruedInterest")
 
     @property
     def aggregation_expression(self) -> pl.Expr:
         return self.get_expression.sum()
-
 
 class DerivedAmount(DerivedMetric):
     def __init__(self, column: str, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
@@ -217,6 +227,7 @@ BalanceSheetMetrics.register("clean_price", StoredWeight("CleanPrice"))
 BalanceSheetMetrics.register("off_balance", StoredWeight("OffBalance"))
 
 BalanceSheetMetrics.register("dirty_price", DirtyPrice())
+BalanceSheetMetrics.register("market_value", MarketValue())
 
 BalanceSheetMetrics.register("coverage_rate", DerivedWeight("CoverageRate", "Impairment"))
 BalanceSheetMetrics.register("accrued_interest_rate", DerivedWeight("AccruedInterestRate", "AccruedInterest"))

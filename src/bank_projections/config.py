@@ -7,6 +7,7 @@ from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
+from bank_projections.projections.valuation_method import ValuationMethodRegistry
 
 
 class Config:
@@ -24,6 +25,7 @@ class Config:
 
     CLASSIFICATIONS: dict[str, type[BaseRegistry[Any]]] = {
         "AccountingMethod": AccountingMethodRegistry,
+        "ValuationMethod": ValuationMethodRegistry,
         "CouponFrequency": FrequencyRegistry,
         "RedemptionType": RedemptionRegistry,
         "CouponType": CouponTypeRegistry,
