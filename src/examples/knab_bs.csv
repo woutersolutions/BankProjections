@@ -3,7 +3,7 @@ Mortgages,13075263,1000,Assets,amortized cost,,annuity,Monthly,eur,"(0.0, 0.03)"
 SME loans,97157,100,Assets,amortized cost,,bullet,Quarterly,eur,"(0.01, 0.06)","(0.02, 0.07)",,0.01,0,3,0,10,FALSE,0.02,0.75,both,Euribor 3m
 Consumer loans,0,0,Assets,amortized cost,,annuity,Monthly,eur,"(0.01, 0.06)","(0.03, 0.07)",,0.01,0,1,0,3,FALSE,0.03,0.75,both,Euribor 3m
 Cash,2418460,1,Assets,amortized cost,,perpetual,Daily,eur,,"(0.01, 0.02)",,,,,,,TRUE,0,0,floating,Euribor 3m
-Debt securities,260535,100,Assets,fair value through oci,baseline,bullet,Quarterly,eur,,"(0.00, 0.03)",,,0,10,0,20,FALSE,0,0,both,Euribor 6m
+Debt securities,260535,100,Assets,fair value through oci,discounted,bullet,Quarterly,eur,,"(0.00, 0.03)",,,0,10,0,20,FALSE,0,0,both,Euribor 6m
 Intangible assets,21135,1,Assets,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0.5,none,
 Other loans,951939,1,Assets,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,1.0,none,
 Savings deposits,-12684867,1000,Liabilities,amortized cost,,perpetual,Weekly,eur,,"(0.01, 0.02)",,,,,,,TRUE,0,0,both,

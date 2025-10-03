@@ -22,8 +22,9 @@ class Valuation(Rule):
         matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
 
         zero_rates = market_rates.curves.get_zero_rates()
+        # TODO: Find a way not to use the _.data here
         new_dirty_prices = (
-            pl.when(matured).then(0.0).otherwise(ValuationMethodRegistry.dirty_price(increment.to_date, zero_rates))
+            pl.when(matured).then(0.0).otherwise(ValuationMethodRegistry.dirty_price(bs._data, increment.to_date, zero_rates))
         )
         new_clean_prices = new_dirty_prices - pl.col("AccruedInterest") / (pl.col("Quantity") + SMALL_NUMBER)
 

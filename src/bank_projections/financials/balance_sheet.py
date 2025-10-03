@@ -138,7 +138,7 @@ class BalanceSheet(Positions):
             BalanceSheetMetrics.get("book_value"),
         )
         total_oci_table = self.ocis["Amount"].sum() if len(self.ocis) > 0 else 0.0
-        if abs(total_oci_bs - total_oci_table) > 0.01:
+        if abs(total_oci_bs + total_oci_table) > 0.01:
             raise ValueError(
                 f"OCI in balance sheet and OCI table do not match: {total_oci_bs:.4f} vs {total_oci_table:.4f}"
             )
@@ -449,7 +449,7 @@ class BalanceSheet(Positions):
         self.mutate_metric(
             BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
-            ocis["Amount"].sum(),
+            -ocis["Amount"].sum(),
             reason,
             relative=True,
         )
@@ -461,7 +461,7 @@ class BalanceSheet(Positions):
         self.mutate_metric(
             BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
-            amount,
+            -amount,
             reason,
             relative=True,
         )

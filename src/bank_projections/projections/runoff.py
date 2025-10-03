@@ -94,6 +94,13 @@ class Runoff(Rule):
                 * (1 - repayment_factors)
                 * prepayment_factors,
             },
+            ocis={
+                MutationReason(module="Runoff", rule="Net gains fair value through OCI"): pl.when(
+                    pl.col("AccountingMethod") == "fairvaluethroughoci"
+                )
+                .then(-(new_quantity - pl.col("Quantity")) * (1 - pl.col("CleanPrice")))
+                .otherwise(0.0)
+            },
             Quantity=new_quantity,
             AccruedInterest=new_accrual,
             Agio=new_agio,

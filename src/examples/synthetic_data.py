@@ -137,7 +137,7 @@ def generate_synthetic_positions(
     if accounting_method == "amortizedcost":
         clean_prices = [None] * number
     else:
-        clean_prices = [1.0] * number  # For now, assume par for all
+        clean_prices = [1.0] * number  # TODO: Do valuation to determine correct prices
 
     # Create polars dataframe with all the calculated fields
     df = (
