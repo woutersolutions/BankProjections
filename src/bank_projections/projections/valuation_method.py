@@ -5,10 +5,10 @@ import pandas as pd
 import polars as pl
 
 from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.projections.frequency import FrequencyRegistry
 
 
 class ValuationMethod(ABC):
-
     @classmethod
     @abstractmethod
     def dirty_price(
@@ -19,43 +19,85 @@ class ValuationMethod(ABC):
     ) -> pl.Expr:
         pass
 
-class NoValuationMethod(ValuationMethod):
 
+class NoValuationMethod(ValuationMethod):
     @classmethod
     def dirty_price(
-        cls, data:pl.DataFrame, projection_date: datetime.date, zero_rates:pd.DataFrame,
+        cls,
+        data: pl.DataFrame,
+        projection_date: datetime.date,
+        zero_rates: pd.DataFrame,
     ) -> pl.Expr:
         return pl.lit(None, dtype=pl.Float64)
 
-class BaselineValuationMethod(ValuationMethod):
 
+class BaselineValuationMethod(ValuationMethod):
     @classmethod
     def dirty_price(
-        cls, data:pl.DataFrame, projection_date: datetime.date, zero_rates:pd.DataFrame,
+        cls,
+        data: pl.DataFrame,
+        projection_date: datetime.date,
+        zero_rates: pd.DataFrame,
     ) -> pl.Expr:
-        return 1.0 + pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity"))
+        return 1.0 + pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(
+            pl.col("AccruedInterest") / pl.col("Quantity")
+        )
+
 
 class DiscountedCashFlowValuationMethod(ValuationMethod):
-
     @classmethod
     def dirty_price(
-        cls, data:pl.DataFrame, projection_date: datetime.date, zero_rates:pd.DataFrame,
+        cls,
+        data: pl.DataFrame,
+        projection_date: datetime.date,
+        zero_rates: pd.DataFrame,
     ) -> pl.Series:
-
         years_to_maturity = (pl.col("MaturityDate") - pl.lit(projection_date)).dt.total_days() / 365.25
-        discount_rates = get_discount_rates(data, zero_rates, years_to_maturity)
+        result = get_discount_rates(data, zero_rates, years_to_maturity)
 
-        # TODO: Consider for coupons too
+        # TODO: Have filter as function argument
+        filter_expr = pl.col("AccountingMethod") == "fairvaluethroughoci"
 
-        return discount_rates
+        # Consider for coupons too
+        number_of_coupons = data.select(
+            FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate"))
+        ).to_series()
 
+        for i in range(number_of_coupons.max() + 1):
+            coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
+            years_to_coupon = (coupon_date - pl.lit(projection_date)).dt.total_days() / 365.25
+            discount_rates_i = get_discount_rates(data, zero_rates, years_to_coupon)
+            payment_i = (
+                pl.when(number_of_coupons >= i)
+                .then(pl.col("InterestRate") * FrequencyRegistry.portion_year())
+                .otherwise(0.0)
+            )
 
+            data.with_columns(years_to_coupon, discount_rates_i).filter(filter_expr).to_pandas()
+
+            assert (
+                data.with_columns(discount_rates_i.alias("test"))
+                .filter(filter_expr)
+                .select(pl.col("test").is_not_null().all())
+                .to_series()[0]
+            ), "Discounted price calculation error"
+
+            result += data.select(payment_i * (-discount_rates_i * years_to_coupon).exp()).to_series()
+
+        assert (
+            data.with_columns(result.alias("test"))
+            .filter(filter_expr)
+            .select(pl.col("test").is_not_null().all())
+            .to_series()[0]
+        ), "Discounted price calculation error"
+
+        return data.select(pl.when(filter_expr).then(result).otherwise(pl.lit(None))).to_series()
 
 
 def get_discount_rates(
     loans: pl.DataFrame,
     zero_rates: pd.DataFrame,
-    time_expr : pl.Expr,
+    time_expr: pl.Expr,
 ) -> pl.Series:
     """
     Add linear-interpolated zero rate at each loan's maturity and (optionally) a discount factor.
@@ -78,23 +120,17 @@ def get_discount_rates(
     )
 
     # Years to maturity
-    base = lf.with_columns(
-        YearsToMat = time_expr
-    ).with_row_index(name="_idx").sort("YearsToMat")
+    base = lf.with_columns(YearsToMat=time_expr).with_row_index(name="_idx").sort("YearsToMat")
 
     # Lower bracket (t0,r0): last curve point <= t
-    lower = base.join_asof(
-        zero_pl, left_on="YearsToMat", right_on="zc_t", strategy="backward"
-    ).select(
+    lower = base.join_asof(zero_pl, left_on="YearsToMat", right_on="zc_t", strategy="backward").select(
         pl.all(),
         pl.col("zc_t").alias("t0"),
         pl.col("zc_r").alias("r0"),
     )
 
     # Upper bracket (t1,r1): first curve point >= t
-    upper = base.join_asof(
-        zero_pl, left_on="YearsToMat", right_on="zc_t", strategy="forward"
-    ).select(
+    upper = base.join_asof(zero_pl, left_on="YearsToMat", right_on="zc_t", strategy="forward").select(
         pl.all(),
         pl.col("zc_t").alias("t1"),
         pl.col("zc_r").alias("r1"),
@@ -110,7 +146,9 @@ def get_discount_rates(
         .sort("_idx")
         .with_columns(
             # linear interpolation with sensible edge handling
-            pl.when(pl.col("t0").is_not_null() & pl.col("t1").is_not_null() & (pl.col("t1") != pl.col("t0")))
+            pl.when(pl.col("t0").is_not_null() & pl.col("t1").is_not_null() & (pl.col("t1") == pl.col("t0")))
+            .then(pl.coalesce([pl.col("r0"), pl.col("r1")]))  # both rates equal
+            .when(pl.col("t0").is_not_null() & pl.col("t1").is_not_null() & (pl.col("t1") != pl.col("t0")))
             .then(
                 pl.col("r0")
                 + (pl.col("r1") - pl.col("r0")) * (pl.col("YearsToMat") - pl.col("t0")) / (pl.col("t1") - pl.col("t0"))
@@ -122,17 +160,24 @@ def get_discount_rates(
             .otherwise(pl.lit(None, dtype=pl.Float64))
             .alias("rate"),
         )
-        .select(pl.col('_idx'), pl.col("YearsToMat"), pl.col("rate"), (-pl.col("rate") * pl.col("YearsToMat")).exp().alias('dfs'))
+        .select(
+            pl.col("_idx"),
+            pl.col("YearsToMat"),
+            pl.col("rate"),
+            (-pl.col("rate") * pl.col("YearsToMat")).exp().alias("dfs"),
+        )
     ).collect()
 
-    return base.collect().join(rates, on="_idx", how="left").sort('_idx').select(pl.col("dfs")).to_series()
+    return base.collect().join(rates, on="_idx", how="left").sort("_idx").select(pl.col("dfs")).to_series()
 
 
 class ValuationMethodRegistry(BaseRegistry[ValuationMethod], ValuationMethod):
-
     @classmethod
     def dirty_price(
-        cls, data:pl.DataFrame, projection_date: datetime.date, zero_rates:pd.DataFrame,
+        cls,
+        data: pl.DataFrame,
+        projection_date: datetime.date,
+        zero_rates: pd.DataFrame,
     ) -> pl.Expr:
         expr = pl.lit(None, dtype=pl.Float64)
         for name, impl in cls.items.items():
