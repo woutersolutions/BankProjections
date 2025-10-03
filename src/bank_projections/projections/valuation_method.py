@@ -16,7 +16,8 @@ class ValuationMethod(ABC):
         data: pl.DataFrame,
         projection_date: datetime.date,
         zero_rates: pd.DataFrame,
-    ) -> pl.Expr:
+        output_column: str,
+    ) -> pl.DataFrame:
         pass
 
 
@@ -27,8 +28,9 @@ class NoValuationMethod(ValuationMethod):
         data: pl.DataFrame,
         projection_date: datetime.date,
         zero_rates: pd.DataFrame,
-    ) -> pl.Expr:
-        return pl.lit(None, dtype=pl.Float64)
+        output_column: str,
+    ) -> pl.DataFrame:
+        return data.with_columns(pl.lit(None, dtype=pl.Float64).alias(output_column))
 
 
 class BaselineValuationMethod(ValuationMethod):
@@ -38,9 +40,13 @@ class BaselineValuationMethod(ValuationMethod):
         data: pl.DataFrame,
         projection_date: datetime.date,
         zero_rates: pd.DataFrame,
-    ) -> pl.Expr:
-        return 1.0 + pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(
-            pl.col("AccruedInterest") / pl.col("Quantity")
+        output_column: str,
+    ) -> pl.DataFrame:
+        return data.with_columns(
+            (
+                1.0
+                + pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity"))
+            ).alias(output_column)
         )
 
 
@@ -51,47 +57,44 @@ class DiscountedCashFlowValuationMethod(ValuationMethod):
         data: pl.DataFrame,
         projection_date: datetime.date,
         zero_rates: pd.DataFrame,
-    ) -> pl.Series:
-        years_to_maturity = (pl.col("MaturityDate") - pl.lit(projection_date)).dt.total_days() / 365.25
-        result = get_discount_rates(data, zero_rates, years_to_maturity)
+        output_column: str,
+    ) -> pl.DataFrame:
+        data = data.with_columns(
+            **{
+                "YearsToMaturity": (pl.col("MaturityDate") - pl.lit(projection_date)).dt.total_days() / 365.25,
+                "NumberOfCoupons": FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate")),
+            }
+        )
 
-        # TODO: Have filter as function argument
-        filter_expr = pl.col("AccountingMethod") == "fairvaluethroughoci"
+        data = data.with_columns(get_discount_rates(data, zero_rates, pl.col("YearsToMaturity")).alias(output_column))
 
-        # Consider for coupons too
-        number_of_coupons = data.select(
-            FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate"))
-        ).to_series()
-
-        for i in range(number_of_coupons.max() + 1):
+        for i in range(data["NumberOfCoupons"].max() + 1):
             coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
             years_to_coupon = (coupon_date - pl.lit(projection_date)).dt.total_days() / 365.25
             discount_rates_i = get_discount_rates(data, zero_rates, years_to_coupon)
             payment_i = (
-                pl.when(number_of_coupons >= i)
+                pl.when(pl.col("NumberOfCoupons") >= i)
                 .then(pl.col("InterestRate") * FrequencyRegistry.portion_year())
                 .otherwise(0.0)
             )
 
-            data.with_columns(years_to_coupon, discount_rates_i).filter(filter_expr).to_pandas()
-
             assert (
                 data.with_columns(discount_rates_i.alias("test"))
-                .filter(filter_expr)
                 .select(pl.col("test").is_not_null().all())
                 .to_series()[0]
             ), "Discounted price calculation error"
 
-            result += data.select(payment_i * (-discount_rates_i * years_to_coupon).exp()).to_series()
+            data.with_columns(
+                (pl.col(output_column) + payment_i * (-discount_rates_i * years_to_coupon).exp()).alias(output_column)
+            )
 
         assert (
-            data.with_columns(result.alias("test"))
-            .filter(filter_expr)
+            data.with_columns(data[output_column].alias("test"))
             .select(pl.col("test").is_not_null().all())
             .to_series()[0]
         ), "Discounted price calculation error"
 
-        return data.select(pl.when(filter_expr).then(result).otherwise(pl.lit(None))).to_series()
+        return data.drop("YearsToMaturity", "NumberOfCoupons")
 
 
 def get_discount_rates(
@@ -178,15 +181,14 @@ class ValuationMethodRegistry(BaseRegistry[ValuationMethod], ValuationMethod):
         data: pl.DataFrame,
         projection_date: datetime.date,
         zero_rates: pd.DataFrame,
-    ) -> pl.Expr:
-        expr = pl.lit(None, dtype=pl.Float64)
-        for name, impl in cls.items.items():
-            expr = (
-                pl.when(pl.col("ValuationMethod") == name)
-                .then(impl.dirty_price(data, projection_date, zero_rates))
-                .otherwise(expr)
-            )
-        return expr
+        output_column: str,
+    ) -> pl.DataFrame:
+        results = []
+        for (valuation_method,), valuation_method_data in data.partition_by("ValuationMethod", as_dict=True).items():
+            method = cls.get(valuation_method)
+            results.append(method.dirty_price(valuation_method_data, projection_date, zero_rates, output_column))
+
+        return pl.concat(results)
 
 
 ValuationMethodRegistry.register("none", NoValuationMethod())
