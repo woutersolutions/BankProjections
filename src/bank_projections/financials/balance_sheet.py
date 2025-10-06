@@ -9,6 +9,7 @@ import polars as pl
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import (
+    SMALL_NUMBER,
     BalanceSheetMetric,
     BalanceSheetMetrics,
 )
@@ -186,7 +187,8 @@ class BalanceSheet(Positions):
         if based_on_count == 0:
             raise ValueError(f"No item found on balance sheet matching: {based_on_item}")
         if based_on_quantity == 0:
-            raise ValueError(f"Cannot base new item on zero quantity item: {based_on_item}")
+            # Add a small number to avoid division by zero #TODO: Check if this is really needed, but not already coverd by the metrics module
+            self._data = self._data.with_columns(Quantity=pl.col("Quantity") + SMALL_NUMBER)
 
         # Find unique labels for non-numeric columns
         non_numeric_cols = self._data.select([pl.col(pl.Utf8), pl.col(pl.Boolean)]).columns

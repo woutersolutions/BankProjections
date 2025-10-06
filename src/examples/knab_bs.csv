@@ -16,3 +16,7 @@ Unaudited earnings,-93865,1,Equity,amortized cost,,perpetual,Never,eur,,,,,,,,,F
 Retained earnings,-468004,1,Equity,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
 Other comprehensive income,-100,1,Equity,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
 Dividends payable,0,1,Equity,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
+Prepaid expenses,0,1,Assets,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
+Prepaid revenue,0,1,Liabilities,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
+Unpaid expenses,0,1,Liabilities,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
+Unpaid revenue,0,1,Assets,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,

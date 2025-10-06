@@ -97,3 +97,13 @@ class TimeIncrement:
             return self.from_date == date
         else:
             return self.from_date < date <= self.to_date
+
+    def overlaps(self, start_date: datetime.date, end_date: datetime.date) -> bool:
+        return not (self.to_date < start_date or self.from_date >= end_date)
+
+    def days_overlap(self, start_date: datetime.date, end_date: datetime.date) -> int:
+        if not self.overlaps(start_date, end_date):
+            return 0
+        overlap_start = max(self.from_date + relativedelta(days=1), start_date)
+        overlap_end = min(self.to_date, end_date)
+        return (overlap_end - overlap_start).days + 1
