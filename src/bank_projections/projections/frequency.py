@@ -124,7 +124,7 @@ class DailyBase(Frequency):
 
     @classmethod
     def number_due(cls, coupon_date: pl.Expr, projection_date: pl.Expr) -> pl.Expr:
-        return (projection_date - coupon_date).dt.total_days() // cls.number_of_days
+        return ((projection_date - coupon_date).dt.total_days() // cls.number_of_days) + 1
 
     @classmethod
     def step_coupon_date(cls, current_date: datetime.date, anchor_date: pl.Expr, number: int) -> pl.Expr:

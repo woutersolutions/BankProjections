@@ -22,16 +22,18 @@ class Runoff(Rule):
 
         matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
         number_of_payments = FrequencyRegistry.number_due(
-            pl.col("NextCouponDate"), pl.min_horizontal(pl.col("NextCouponDate"), pl.lit(increment.to_date))
+            pl.col("NextCouponDate"), pl.min_horizontal(pl.col("MaturityDate"), pl.lit(increment.to_date))
         )
         previous_coupon_date = FrequencyRegistry.previous_coupon_date(increment.to_date)
         new_coupon_date = pl.when(matured).then(None).otherwise(FrequencyRegistry.next_coupon_date(increment.to_date))
-        payments = pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
+        coupon_payments = (
+            pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
+        )
         floating_rates = market_rates.curves.floating_rate_expr()
         interest_rates = (
             pl.when(number_of_payments > 0)
             .then(CouponTypeRegistry.coupon_rate(floating_rates))
-            .otherwise("InterestRate")
+            .otherwise(pl.col("InterestRate"))
         )
 
         repayment_factors = (
@@ -78,17 +80,15 @@ class Runoff(Rule):
         bs.mutate(
             item,
             pnls={
-                MutationReason(module="Runoff", rule="Interest Income"): new_accrual
-                - pl.col("AccruedInterest")
-                + payments
-                + new_agio
-                - pl.col("Agio"),
+                MutationReason(module="Runoff", rule="Accrual"): new_accrual - pl.col("AccruedInterest"),
+                MutationReason(module="Runoff", rule="Coupons"): coupon_payments,
                 MutationReason(module="Runoff", rule="Impairment"): new_impairment - pl.col("Impairment"),
+                MutationReason(module="Runoff", rule="Agio"): new_agio - pl.col("Agio"),
             },
             cashflows={
                 MutationReason(module="Runoff", rule="Coupon payment"): pl.when(pl.col("IsAccumulating"))
                 .then(0.0)
-                .otherwise(payments),
+                .otherwise(coupon_payments),
                 MutationReason(module="Runoff", rule="Principal Repayment"): pl.col("Quantity") * repayment_factors,
                 MutationReason(module="Runoff", rule="Principal Prepayment"): pl.col("Quantity")
                 * (1 - repayment_factors)

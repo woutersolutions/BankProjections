@@ -6,7 +6,7 @@ Cash,2418460,1,Assets,amortized cost,,perpetual,Daily,eur,,"(0.01, 0.02)",,,,,,,
 Debt securities,260535,100,Assets,fair value through oci,discounted,bullet,Quarterly,eur,,"(0.00, 0.03)",,,0,10,0,20,FALSE,0,0,both,Euribor 6m
 Intangible assets,21135,1,Assets,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0.5,none,
 Other loans,951939,1,Assets,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,1.0,none,
-Savings deposits,-12684867,1000,Liabilities,amortized cost,,perpetual,Weekly,eur,,"(0.01, 0.02)",,,,,,,TRUE,0,0,both,
+Savings deposits,-12684867,1000,Liabilities,amortized cost,,perpetual,Weekly,eur,,"(0.01, 0.02)",,,,,,,TRUE,0,0,both,Euribor 3m
 Provisions,-3412,1,Liabilities,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,
 Borrowings,-2956600,100,Liabilities,amortized cost,,bullet,Annual,eur,,"(0.02, 0.04)",,,0,10,0,10,FALSE,0,0,fixed,Euribor 6m
 Other liabilities,-103453,1,Liabilities,amortized cost,,perpetual,Never,eur,,,,,,,,,FALSE,0,0,none,

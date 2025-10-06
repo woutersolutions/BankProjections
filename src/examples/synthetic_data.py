@@ -63,14 +63,9 @@ def generate_synthetic_positions(
     if book_value == 0 or number == 1:
         book_values = [book_value] * number
     else:
-        if book_value > 0:
-            book_values = generate_random_numbers(
-                number, 1, book_value * min(0.9, (100.0 / number)), book_value / number
-            )
-        else:
-            book_values = generate_random_numbers(
-                number, book_value / number, -book_value * min(0.9, (100.0 / number)), -1
-            )
+        book_values = generate_random_numbers(
+            number, 0.01, abs(book_value) * min(0.9, (100.0 / number)), abs(book_value) / number
+        )
         # Scale so that the total book value matches exactly
         book_values = [value * book_value / sum(book_values) for value in book_values]
 

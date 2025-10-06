@@ -20,6 +20,8 @@ from loguru import logger
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.time import TimeHorizon
+from bank_projections.projections.valuation import Valuation
+from bank_projections.scenarios.template_registry import TemplateRegistry
 from examples import EXAMPLE_FOLDER, OUTPUT_FOLDER
 from examples.synthetic_data import create_synthetic_balance_sheet
 
@@ -31,7 +33,7 @@ class EfficiencyAssessment:
         self,
         output_dir: str = OUTPUT_FOLDER,
         synthetic_data_config: str = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
-        size_multipliers=(1, 5, 10, 100),
+        size_multipliers=(1, 5, 10, 100, 500, 1000),
         number_of_projections=(1, 5, 10, 20, 50, 100),
     ):
         """Initialize efficiency assessment.
@@ -60,7 +62,8 @@ class EfficiencyAssessment:
         start_date = datetime.date(2024, 12, 31)
         base_bs = create_synthetic_balance_sheet(current_date=start_date, config_path=str(self.synthetic_data_config))
 
-        rules = [Runoff()]
+        scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
 
         for n in self.number_of_projections:
             # Create time horizon
@@ -74,7 +77,7 @@ class EfficiencyAssessment:
             logger.info(f"Testing time horizon: {num_time_steps} steps")
 
             # Measure performance
-            projection = Projection(rules, horizon)
+            projection = Projection(scenario, horizon)
 
             start_time = time.perf_counter()
             _ = projection.run(base_bs)
@@ -113,7 +116,8 @@ class EfficiencyAssessment:
             end_of_month=True,
         )
 
-        rules = [Runoff()]
+        scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
 
         for multiplier in self.size_multipliers:
             logger.info(f"Testing balance sheet size multiplier: {multiplier}")
@@ -126,7 +130,7 @@ class EfficiencyAssessment:
             logger.info(f"Balance sheet positions: {num_positions}")
 
             # Measure performance
-            projection = Projection(rules, horizon)
+            projection = Projection(scenario, horizon)
 
             start_time = time.perf_counter()
             _ = projection.run(bs)
@@ -266,7 +270,7 @@ class EfficiencyAssessment:
         logger.info(f"Saving detailed results to CSV {file_name}")
 
         time_horizon_df = pd.DataFrame(results)
-        time_horizon_path = self.output_dir / "time_horizon_performance.csv"
+        time_horizon_path = self.output_dir / file_name
         time_horizon_df.to_csv(time_horizon_path, index=False)
         logger.info(f"Saved time horizon results to {time_horizon_path}")
 
@@ -301,8 +305,8 @@ class EfficiencyAssessment:
         logger.info("Starting complete efficiency assessment")
 
         # Run both performance tests
-        time_horizon_results = self.measure_time_horizon_performance()
         balance_sheet_results = self.measure_balance_sheet_size_performance()
+        time_horizon_results = self.measure_time_horizon_performance()
 
         # Generate outputs
         self.create_visualizations(time_horizon_results, balance_sheet_results)
