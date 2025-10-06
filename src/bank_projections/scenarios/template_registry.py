@@ -4,6 +4,7 @@ import pandas as pd
 
 from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.scenarios.audit import AuditRule
+from bank_projections.scenarios.cost_income import CostIncomeRule
 from bank_projections.scenarios.curve import CurveTemplate
 from bank_projections.scenarios.mutation import BalanceSheetMutationRule
 from bank_projections.scenarios.production import ProductionRule
@@ -79,3 +80,4 @@ TemplateRegistry.register("interestrates", CurveTemplate())
 TemplateRegistry.register("tax", TaxTemplate())
 TemplateRegistry.register("audit", KeyValueTemplate(AuditRule))
 TemplateRegistry.register("production", OneHeaderTemplate(ProductionRule))
+TemplateRegistry.register("costincome", OneHeaderTemplate(CostIncomeRule))

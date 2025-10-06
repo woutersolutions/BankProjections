@@ -49,7 +49,7 @@ class Runoff(Rule):
         redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
 
         new_quantity = pl.col("Quantity") * (1 - redemption_factors) + pl.when(pl.col("IsAccumulating")).then(
-            payments
+            coupon_payments
         ).otherwise(0.0)
 
         new_impairment = pl.when(matured).then(0.0).otherwise(pl.col("Impairment") * (1 - redemption_factors))

@@ -25,6 +25,13 @@ class MutationReason:
     def add_to_df(self, df: pl.DataFrame) -> pl.DataFrame:
         return df.with_columns(**{k: pl.lit(v) for k, v in self.reasons.items()})
 
+    def add_identifier(self, key: str, value: Any) -> "MutationReason":
+        reasons = self.reasons.copy()
+        if pd.isna(value) or value == "":
+            raise ValueError(f"MutationReason {key} cannot be '{value}'")
+        reasons[key] = value
+        return MutationReason(**reasons)
+
     def __hash__(self) -> int:
         return hash(tuple(sorted(self.reasons.items())))
 
@@ -94,9 +101,7 @@ class BalanceSheet(Positions):
         self.add_item(
             BalanceSheetItemRegistry.get("pnl account"), labels={}, metrics={"Quantity": 0.0}, origination_date=date
         )
-        self.add_item(
-            BalanceSheetItemRegistry.get("oci"), labels={}, metrics={"Quantity": 0.0}, origination_date=date
-        )
+        self.add_item(BalanceSheetItemRegistry.get("oci"), labels={}, metrics={"Quantity": 0.0}, origination_date=date)
 
         self.cashflows = pl.DataFrame(schema={"Amount": pl.Float64})
         self.pnls = pl.DataFrame(schema={"Amount": pl.Float64})
@@ -291,7 +296,6 @@ class BalanceSheet(Positions):
         offset_pnl: bool = False,
         counter_item: BalanceSheetItem | None = None,
     ) -> None:
-
         if pd.isna(amount):
             raise ValueError("Amount must be a numeric value and cannot be NaN")
 
@@ -491,7 +495,7 @@ class BalanceSheet(Positions):
         )
 
         if offset_pnl:
-            self.add_single_pnl(-amount, reason)
+            self.add_single_pnl(amount, reason)
 
     def copy(self) -> "BalanceSheet":
         return copy.deepcopy(self)
