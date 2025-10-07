@@ -33,11 +33,6 @@ class Valuation(Rule):
         new_clean_prices = pl.col("NewDirtyPrice") - pl.col("AccruedInterest") / (pl.col("Quantity") + SMALL_NUMBER)
 
         # TODO: Consider doing revaluation before runoff
-
-
-
-
-
         bs.mutate(
             item,
             pnls={

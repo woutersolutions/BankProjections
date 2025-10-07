@@ -33,7 +33,7 @@ class NoValuationMethod(ValuationMethod):
         return data.with_columns(pl.lit(None, dtype=pl.Float64).alias(output_column))
 
 
-class BaselineValuationMethod(ValuationMethod):
+class AmortizedCostValuationMethod(ValuationMethod):
     @classmethod
     def dirty_price(
         cls,
@@ -50,7 +50,7 @@ class BaselineValuationMethod(ValuationMethod):
         )
 
 
-class DiscountedCashFlowValuationMethod(ValuationMethod):
+class FixedRateBondValuationMethod(ValuationMethod):
     @classmethod
     def dirty_price(
         cls,
@@ -192,5 +192,5 @@ class ValuationMethodRegistry(BaseRegistry[ValuationMethod], ValuationMethod):
 
 
 ValuationMethodRegistry.register("none", NoValuationMethod())
-ValuationMethodRegistry.register("baseline", BaselineValuationMethod())
-ValuationMethodRegistry.register("discounted", DiscountedCashFlowValuationMethod())
+ValuationMethodRegistry.register("amortizedcost", AmortizedCostValuationMethod())
+ValuationMethodRegistry.register("fixedratebond", FixedRateBondValuationMethod())
