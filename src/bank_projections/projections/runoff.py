@@ -73,6 +73,19 @@ class Runoff(Rule):
             )
         )
 
+        # Also, assume the valuation error decreases linear
+        new_valuation_error = (
+            pl.when(pl.col("MaturityDate").is_null())
+            .then(pl.col("ValuationError"))
+            .when(matured)
+            .then(0.0)
+            .otherwise(
+                pl.col("ValuationError")
+                * (pl.col("MaturityDate") - increment.to_date).dt.total_days()
+                / (pl.col("MaturityDate") - increment.from_date).dt.total_days()
+            )
+        )
+
         bs_before = bs.copy()
         bs.validate()
 
@@ -108,6 +121,7 @@ class Runoff(Rule):
             NextCouponDate=new_coupon_date,
             FloatingRate=floating_rates,
             InterestRate=new_interest_rates,
+            ValuationError=new_valuation_error,
         )
 
         bs.validate()

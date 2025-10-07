@@ -227,6 +227,7 @@ BalanceSheetMetrics.register("clean_price", StoredWeight("CleanPrice"))
 BalanceSheetMetrics.register("off_balance", StoredWeight("OffBalance"))
 
 BalanceSheetMetrics.register("dirty_price", DirtyPrice())
+BalanceSheetMetrics.register("valuation_error", StoredWeight("ValuationError"))
 BalanceSheetMetrics.register("market_value", MarketValue())
 
 BalanceSheetMetrics.register("coverage_rate", DerivedWeight("CoverageRate", "Impairment"))

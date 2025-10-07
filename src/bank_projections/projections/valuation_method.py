@@ -6,12 +6,13 @@ import polars as pl
 
 from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
+from bank_projections.utils.scaling import MultiplicativeScaling, NoScaling, ScalingMethod
 
 
 class ValuationMethod(ABC):
     @classmethod
     @abstractmethod
-    def dirty_price(
+    def calculated_dirty_price(
         cls,
         data: pl.DataFrame,
         projection_date: datetime.date,
@@ -20,10 +21,35 @@ class ValuationMethod(ABC):
     ) -> pl.DataFrame:
         pass
 
+    @classmethod
+    def corrected_dirty_price(
+        cls,
+        data: pl.DataFrame,
+        projection_date: datetime.date,
+        zero_rates: pd.DataFrame,
+        output_column: str,
+    ) -> pl.DataFrame:
+        return cls.calculated_dirty_price(data, projection_date, zero_rates, output_column).with_columns(
+            cls._correction_method().scale(pl.col(output_column), pl.col("ValuationError")).alias(output_column)
+        )
+
+    @classmethod
+    @abstractmethod
+    def _correction_method(cls) -> ScalingMethod:
+        pass
+
+    @classmethod
+    def valuation_error(cls, calculated_price: pl.Expr, correct_price: pl.Expr) -> pl.Expr:
+        return cls._correction_method().scaling_factor(calculated_price, correct_price)
+
 
 class NoValuationMethod(ValuationMethod):
     @classmethod
-    def dirty_price(
+    def _correction_method(cls) -> ScalingMethod:
+        return NoScaling()
+
+    @classmethod
+    def calculated_dirty_price(
         cls,
         data: pl.DataFrame,
         projection_date: datetime.date,
@@ -35,7 +61,11 @@ class NoValuationMethod(ValuationMethod):
 
 class AmortizedCostValuationMethod(ValuationMethod):
     @classmethod
-    def dirty_price(
+    def _correction_method(cls) -> ScalingMethod:
+        return MultiplicativeScaling()
+
+    @classmethod
+    def calculated_dirty_price(
         cls,
         data: pl.DataFrame,
         projection_date: datetime.date,
@@ -52,7 +82,11 @@ class AmortizedCostValuationMethod(ValuationMethod):
 
 class FixedRateBondValuationMethod(ValuationMethod):
     @classmethod
-    def dirty_price(
+    def _correction_method(cls) -> ScalingMethod:
+        return MultiplicativeScaling()
+
+    @classmethod
+    def calculated_dirty_price(
         cls,
         data: pl.DataFrame,
         projection_date: datetime.date,
@@ -99,7 +133,11 @@ class FixedRateBondValuationMethod(ValuationMethod):
 
 class FloatingRateBondValuationMethod(ValuationMethod):
     @classmethod
-    def dirty_price(
+    def _correction_method(cls) -> ScalingMethod:
+        return MultiplicativeScaling()
+
+    @classmethod
+    def calculated_dirty_price(
         cls,
         data: pl.DataFrame,
         projection_date: datetime.date,
@@ -219,9 +257,9 @@ def get_discount_rates(
     return base.collect().join(rates, on="_idx", how="left").sort("_idx").select(pl.col("dfs")).to_series()
 
 
-class ValuationMethodRegistry(BaseRegistry[ValuationMethod], ValuationMethod):
+class ValuationMethodRegistry(BaseRegistry[ValuationMethod]):
     @classmethod
-    def dirty_price(
+    def corrected_dirty_price(
         cls,
         data: pl.DataFrame,
         projection_date: datetime.date,
@@ -231,7 +269,9 @@ class ValuationMethodRegistry(BaseRegistry[ValuationMethod], ValuationMethod):
         results = []
         for (valuation_method,), valuation_method_data in data.partition_by("ValuationMethod", as_dict=True).items():
             method = cls.get(str(valuation_method))
-            results.append(method.dirty_price(valuation_method_data, projection_date, zero_rates, output_column))
+            results.append(
+                method.corrected_dirty_price(valuation_method_data, projection_date, zero_rates, output_column)
+            )
 
         return pl.concat(results)
 

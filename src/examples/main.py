@@ -11,7 +11,6 @@ from examples.synthetic_data import create_synthetic_balance_sheet
 
 if __name__ == "__main__":
     start_date = datetime.date(2024, 12, 31)
-    start_bs = create_synthetic_balance_sheet(start_date)
 
     scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
     scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
@@ -23,6 +22,7 @@ if __name__ == "__main__":
         end_of_month=True,
     )
 
+    start_bs = create_synthetic_balance_sheet(start_date, scenario)
     projection = Projection(scenario, horizon)
     result = projection.run(start_bs)
     result.to_excel(os.path.join(OUTPUT_FOLDER, "main example.xlsx"), open_after=True)

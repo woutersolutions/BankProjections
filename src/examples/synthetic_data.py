@@ -10,7 +10,9 @@ from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
-from bank_projections.projections.market_data import Curves
+from bank_projections.projections.market_data import Curves, MarketRates
+from bank_projections.projections.valuation_method import ValuationMethodRegistry
+from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.parsing import strip_identifier
 from examples import EXAMPLE_FOLDER
 
@@ -25,6 +27,7 @@ def generate_synthetic_curves() -> Curves:
 
 
 def generate_synthetic_positions(
+    market_rates: MarketRates,
     book_value: float,
     number: int,
     balance_sheet_side: str,
@@ -193,11 +196,20 @@ def generate_synthetic_positions(
             ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
             CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
         )
-        .drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "BookValue"])
         .with_columns(
             FloatingRate=curves.floating_rate_expr(), Spread=pl.col("InterestRate") - curves.floating_rate_expr()
         )
     )
+
+    # Perform valuation to initialize the t0 valuation error
+    zero_rates = market_rates.curves.get_zero_rates()
+    valuation_method_object = ValuationMethodRegistry.get(valuation_method)
+    df = valuation_method_object.calculated_dirty_price(df, current_date, zero_rates, "CalculatedPrice")
+    df = df.with_columns(
+        valuation_method_object.valuation_error(
+            pl.col("CalculatedPrice"), pl.col("CleanPrice") + pl.col("AccruedInterestWeight")
+        ).alias("ValuationError")
+    ).drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "BookValue", "CalculatedPrice"])
 
     positions = Positions(df)
 
@@ -225,6 +237,7 @@ def generate_random_numbers(number: int, minimum: float, maximum: float, mean: f
 
 def create_synthetic_balance_sheet(
     current_date: datetime.date,
+    scenario: Scenario,
     config_path: str | None = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
     config_table: pl.DataFrame = None,
 ) -> BalanceSheet:
@@ -235,11 +248,17 @@ def create_synthetic_balance_sheet(
 
     curves = generate_synthetic_curves()
 
+    market_rates = scenario.market_data.get_market_rates(current_date)
+
     positions = []
     for row in config_table.iter_rows(named=True):
         position_input = {name: read_range(value) if name.endswith("_range") else value for name, value in row.items()}
         if row["number"] > 0:
-            positions.append(generate_synthetic_positions(current_date=current_date, curves=curves, **position_input))
+            positions.append(
+                generate_synthetic_positions(
+                    market_rates=market_rates, current_date=current_date, curves=curves, **position_input
+                )
+            )
 
     combined_positions = Positions.combine(*positions)
 

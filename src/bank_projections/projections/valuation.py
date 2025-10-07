@@ -29,7 +29,9 @@ class Valuation(Rule):
 
         zero_rates = market_rates.curves.get_zero_rates()
         # TODO: Find a way not to use the _.data here
-        bs._data = ValuationMethodRegistry.dirty_price(bs._data, increment.to_date, zero_rates, "NewDirtyPrice")
+        bs._data = ValuationMethodRegistry.corrected_dirty_price(
+            bs._data, increment.to_date, zero_rates, "NewDirtyPrice"
+        )
         new_clean_prices = pl.col("NewDirtyPrice") - pl.col("AccruedInterest") / (pl.col("Quantity") + SMALL_NUMBER)
 
         # TODO: Consider doing revaluation before runoff
