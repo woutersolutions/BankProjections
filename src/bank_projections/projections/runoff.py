@@ -101,16 +101,26 @@ class Runoff(Rule):
                 MutationReason(module="Runoff", rule="Coupon payment"): pl.when(pl.col("IsAccumulating"))
                 .then(0.0)
                 .otherwise(coupon_payments),
-                MutationReason(module="Runoff", rule="Principal Repayment"): pl.col("Quantity") * repayment_factors,
-                MutationReason(module="Runoff", rule="Principal Prepayment"): pl.col("Quantity")
-                * (1 - repayment_factors)
-                * prepayment_factors,
+                MutationReason(module="Runoff", rule="Principal Repayment"): pl.when(
+                    RedemptionRegistry.has_principal_exchange()
+                )
+                .then(pl.col("Quantity") * repayment_factors)
+                .otherwise(0.0),
+                MutationReason(module="Runoff", rule="Principal Prepayment"): pl.when(
+                    RedemptionRegistry.has_principal_exchange()
+                )
+                .then(pl.col("Quantity") * (1 - repayment_factors) * prepayment_factors)
+                .otherwise(0.0),
             },
             ocis={
                 MutationReason(module="Runoff", rule="Net gains fair value through OCI"): pl.when(
-                    pl.col("AccountingMethod") == "fairvaluethroughoci"
+                    (pl.col("AccountingMethod") == "fairvaluethroughoci") & RedemptionRegistry.has_principal_exchange()
                 )
                 .then(-(new_quantity - pl.col("Quantity")) * (1 - pl.col("CleanPrice")))
+                .when(
+                    (pl.col("AccountingMethod") == "fairvaluethroughoci") & ~RedemptionRegistry.has_principal_exchange()
+                )
+                .then((new_quantity - pl.col("Quantity")) * pl.col("CleanPrice"))
                 .otherwise(0.0)
             },
             Quantity=new_quantity,

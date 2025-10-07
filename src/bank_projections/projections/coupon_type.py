@@ -42,5 +42,6 @@ class CouponTypeRegistry(BaseRegistry[CouponType], CouponType):
 
 CouponTypeRegistry.register("fixed", Fixed())
 CouponTypeRegistry.register("floating", Floating())
+CouponTypeRegistry.register("swap", Floating())
 CouponTypeRegistry.register("zero", Zero())
 CouponTypeRegistry.register("none", Zero())

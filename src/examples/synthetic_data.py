@@ -52,6 +52,7 @@ def generate_synthetic_positions(
     accumulating: bool | None = False,
     off_balance: float = 0.0,
     trea_weight: float = 0.0,
+    notional_range: tuple[float, float] | None = None,
 ) -> Positions:
     redemption_type = strip_identifier(redemption_type)
     coupon_frequency = strip_identifier(coupon_frequency)
@@ -62,15 +63,24 @@ def generate_synthetic_positions(
     else:
         valuation_method = strip_identifier(valuation_method)
 
-    # Generate random book values that sum to the target book value
-    if book_value == 0 or number == 1:
-        book_values = [book_value] * number
-    else:
-        book_values = generate_random_numbers(
-            number, 0.01, abs(book_value) * min(0.9, (100.0 / number)), abs(book_value) / number
+    # For notional-based instruments (like swaps), generate notionals separately
+    if notional_range is not None:
+        notionals = generate_random_numbers(
+            number, notional_range[0], notional_range[1], (notional_range[0] + notional_range[1]) / 2
         )
-        # Scale so that the total book value matches exactly
-        book_values = [value * book_value / sum(book_values) for value in book_values]
+        # Book values will be derived from notionals and market values
+        book_values = None
+    else:
+        # Generate random book values that sum to the target book value
+        if book_value == 0 or number == 1:
+            book_values = [book_value] * number
+        else:
+            book_values = generate_random_numbers(
+                number, 0.01, abs(book_value) * min(0.9, (100.0 / number)), abs(book_value) / number
+            )
+            # Scale so that the total book value matches exactly
+            book_values = [value * book_value / sum(book_values) for value in book_values]
+        notionals = None
 
     if agio_range is None:
         agios = [0.0] * number
@@ -122,7 +132,7 @@ def generate_synthetic_positions(
     match strip_identifier(redemption_type):
         case "perpetual":
             maturity_dates = [None] * number
-        case "bullet" | "linear" | "annuity":
+        case "bullet" | "linear" | "annuity" | "notional":
             # Generate uniform random based on current date and min/max maturity in years,
             # by adding a random number of days
             maturity_dates = [
@@ -134,33 +144,49 @@ def generate_synthetic_positions(
 
     if accounting_method == "amortizedcost":
         clean_prices = [None] * number
+    elif valuation_method == "swap" and notionals is not None:
+        # For swaps with notionals, derive CleanPrice from target book_value
+        # book_value ≈ sum(Quantity * CleanPrice) = sum(notional * CleanPrice)
+        # Assume equal CleanPrice across all swaps for simplicity
+        total_notional = sum(notionals)
+        avg_clean_price = book_value / total_notional if total_notional != 0 else 0.0
+        clean_prices = [avg_clean_price] * number
+    elif valuation_method == "swap":
+        clean_prices = [0.0] * number
     else:
         clean_prices = [1.0] * number  # TODO: Do valuation to determine correct prices
 
     # Create polars dataframe with all the calculated fields
+    df_dict = {
+        "CoverageRate": coverage_rates,
+        "CleanPrice": clean_prices,
+        "AgioWeight": agios,
+        "ItemType": [item_type] * number,
+        "Currency": [strip_identifier(currency)] * number,
+        "AccountingMethod": [accounting_method] * number,
+        "InterestRate": interest_rates,
+        "CouponType": coupon_types,
+        "ValuationMethod": [valuation_method] * number,
+        "ReferenceRate": [reference_rate] * number,
+        "CouponFrequency": [coupon_frequency] * number,
+        "OriginationDate": origination_dates,
+        "MaturityDate": maturity_dates,
+        "PrepaymentRate": [prepayment_rate] * number,
+        "IsAccumulating": [accumulating] * number,
+        "RedemptionType": [redemption_type] * number,
+        "BalanceSheetSide": [balance_sheet_side] * number,
+        "TREAWeight": [trea_weight] * number,
+    }
+
+    # Add either book_values or notionals depending on instrument type
+    if notionals is not None:
+        df_dict["Notional"] = notionals
+    else:
+        df_dict["BookValue"] = book_values
+
     df = (
         pl.DataFrame(
-            {
-                "BookValue": book_values,
-                "CoverageRate": coverage_rates,
-                "CleanPrice": clean_prices,
-                "AgioWeight": agios,
-                "ItemType": [item_type] * number,
-                "Currency": [strip_identifier(currency)] * number,
-                "AccountingMethod": [accounting_method] * number,
-                "InterestRate": interest_rates,
-                "CouponType": coupon_types,
-                "ValuationMethod": [valuation_method] * number,
-                "ReferenceRate": [reference_rate] * number,
-                "CouponFrequency": [coupon_frequency] * number,
-                "OriginationDate": origination_dates,
-                "MaturityDate": maturity_dates,
-                "PrepaymentRate": [prepayment_rate] * number,
-                "IsAccumulating": [accumulating] * number,
-                "RedemptionType": [redemption_type] * number,
-                "BalanceSheetSide": [balance_sheet_side] * number,
-                "TREAWeight": [trea_weight] * number,
-            },
+            df_dict,
             schema_overrides={
                 "MaturityDate": pl.Date,
             },
@@ -184,21 +210,34 @@ def generate_synthetic_positions(
                 current_date,
             )
         )
-        .with_columns(
+    )
+
+    # Handle quantity calculation differently for notional vs book_value instruments
+    # TODO: Make dealing with swaps less hacky
+    if notionals is not None:
+        # For notional instruments, Quantity = Notional directly
+        df = df.with_columns(
+            Quantity=book_value
+            / pl.col("Notional").sum()
+            * pl.col("Notional")
+            / (pl.col("CleanPrice") + pl.col("AccruedInterestWeight"))
+        ).drop("Notional")
+    else:
+        # For book_value instruments, derive Quantity from BookValue
+        df = df.with_columns(
             Quantity=pl.col("BookValue")
             / (1 + pl.col("AgioWeight") + pl.col("AccruedInterestWeight") - pl.col("CoverageRate"))
-        )
-        .with_columns(
-            Impairment=-pl.col("Quantity") * pl.col("CoverageRate"),
-            AccruedInterest=pl.col("Quantity") * pl.col("AccruedInterestWeight"),
-            Agio=pl.col("Quantity") * pl.col("AgioWeight"),
-            OffBalance=pl.col("Quantity") * off_balance,
-            ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
-            CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
-        )
-        .with_columns(
-            FloatingRate=curves.floating_rate_expr(), Spread=pl.col("InterestRate") - curves.floating_rate_expr()
-        )
+        ).drop("BookValue")
+
+    df = df.with_columns(
+        Impairment=-pl.col("Quantity") * pl.col("CoverageRate"),
+        AccruedInterest=pl.col("Quantity") * pl.col("AccruedInterestWeight"),
+        Agio=pl.col("Quantity") * pl.col("AgioWeight"),
+        OffBalance=pl.col("Quantity") * off_balance,
+        ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
+        CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
+    ).with_columns(
+        FloatingRate=curves.floating_rate_expr(), Spread=pl.col("InterestRate") - curves.floating_rate_expr()
     )
 
     # Perform valuation to initialize the t0 valuation error
@@ -209,14 +248,15 @@ def generate_synthetic_positions(
         valuation_method_object.valuation_error(
             pl.col("CalculatedPrice"), pl.col("CleanPrice") + pl.col("AccruedInterestWeight")
         ).alias("ValuationError")
-    ).drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "BookValue", "CalculatedPrice"])
+    ).drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "CalculatedPrice"])
 
     positions = Positions(df)
 
     positions.validate()
-    assert abs(positions.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value")) - book_value) < 1e-2, (
-        f"Generated book value not equal to target {book_value}"
-    )
+
+    # Always validate book_value matches target (works for both notional and non-notional instruments)
+    generated_bv = positions.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
+    assert abs(generated_bv - book_value) < 1e-2, f"Generated book value not equal to target {book_value}"
 
     return positions
 

@@ -6,7 +6,7 @@ import polars as pl
 
 from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
-from bank_projections.utils.scaling import MultiplicativeScaling, NoScaling, ScalingMethod
+from bank_projections.utils.scaling import AdditiveScaling, MultiplicativeScaling, NoScaling, ScalingMethod
 
 
 class ValuationMethod(ABC):
@@ -144,40 +144,44 @@ class FloatingRateBondValuationMethod(ValuationMethod):
         zero_rates: pd.DataFrame,
         output_column: str,
     ) -> pl.DataFrame:
-        # coupons left (0 = next coupon)
-        data = data.with_columns(
-            NumberOfCoupons=FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate")),
-            _par=pl.lit(1.0, dtype=pl.Float64),
-            _acc=pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity")),
+        # include principal (par) for floating rate note
+        return _price_spread_instrument(
+            data=data,
+            projection_date=projection_date,
+            zero_rates=zero_rates,
+            output_column=output_column,
+            rate_expr=pl.col("Spread"),  # spread over float
+            include_par=True,
         )
 
-        # start with par + accrued
-        out = data.with_columns((pl.col("_par") + pl.col("_acc")).alias(output_column))
 
-        max_cpn = int(out["NumberOfCoupons"].max()) if out.height > 0 else 0
-        for i in range(max_cpn + 1):
-            # coupon date i and year-fraction from projection to that coupon
-            cpn_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
-            dt_years_i = (cpn_date_i - pl.lit(projection_date)).dt.total_days() / 365.25
+class SwapValuationMethod(ValuationMethod):
+    """
+    Receive floating, pay fixed (stored in Spread column as typically negative).
+    Same mechanics as floating rate bond valuation but WITHOUT principal redemption.
+    """
 
-            # discount factor to coupon date
-            dfs_i = get_discount_rates(out, zero_rates, dt_years_i)
+    @classmethod
+    def _correction_method(cls) -> ScalingMethod:
+        return AdditiveScaling()
 
-            # annuity weight for spread for this period (Δ_i)
-            # (replace with FrequencyRegistry.portion_year(prev, curr) if you prefer)
-            if i == 0:
-                prev_date_i = pl.col("PreviousCouponDate")
-            else:
-                prev_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i - 1)
-
-            delta_i = (cpn_date_i - prev_date_i).dt.total_days() / 365.25
-
-            # Only count if period is still ahead of projection_date
-            contrib_i = pl.when(pl.col("NumberOfCoupons") >= i).then(pl.col("Spread") * delta_i * dfs_i).otherwise(0.0)
-
-            out = out.with_columns((pl.col(output_column) + contrib_i).alias(output_column))
-
-        return out.drop("_par", "_acc", "NumberOfCoupons")
+    @classmethod
+    def calculated_dirty_price(
+        cls,
+        data: pl.DataFrame,
+        projection_date: datetime.date,
+        zero_rates: pd.DataFrame,
+        output_column: str,
+    ) -> pl.DataFrame:
+        # no principal payment => include_par = False
+        return _price_spread_instrument(
+            data=data,
+            projection_date=projection_date,
+            zero_rates=zero_rates,
+            output_column=output_column,
+            rate_expr=pl.col("Spread"),  # fixed leg rate (usually negative)
+            include_par=False,
+        )
 
 
 def get_discount_rates(
@@ -257,6 +261,57 @@ def get_discount_rates(
     return base.collect().join(rates, on="_idx", how="left").sort("_idx").select(pl.col("dfs")).to_series()
 
 
+# Shared helper for floating-like instruments (floating notes, swaps)
+def _price_spread_instrument(
+    data: pl.DataFrame,
+    projection_date: datetime.date,
+    zero_rates: pd.DataFrame,
+    output_column: str,
+    rate_expr: pl.Expr,
+    include_par: bool,
+) -> pl.DataFrame:
+    """
+    Generic present value builder:
+      start value = (par if include_par) + accrued
+      add sum_i rate_expr * Δ_i * DF_i for remaining periods
+    Assumes:
+      - 'Spread' (or supplied rate_expr) per period
+      - Frequency data via FrequencyRegistry
+      - Accrued interest provided (quantity-scaled externally)
+    """
+    if data.height == 0:
+        return data.with_columns(pl.lit(None, dtype=pl.Float64).alias(output_column))
+
+    df = data.with_columns(
+        NumberOfCoupons=FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate")),
+        _acc=pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity")),
+    )
+
+    start_val = pl.lit(0.0)
+    if include_par:
+        start_val = start_val + pl.lit(1.0)
+    start_val = start_val + pl.col("_acc")
+
+    out = df.with_columns(start_val.alias(output_column))
+
+    max_cpn = int(out["NumberOfCoupons"].max()) if out.height > 0 else 0
+    for i in range(max_cpn + 1):
+        cpn_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
+        dt_years_i = (cpn_date_i - pl.lit(projection_date)).dt.total_days() / 365.25
+        dfs_i = get_discount_rates(out, zero_rates, dt_years_i)
+
+        if i == 0:
+            prev_date_i = pl.col("PreviousCouponDate")
+        else:
+            prev_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i - 1)
+        delta_i = (cpn_date_i - prev_date_i).dt.total_days() / 365.25
+
+        contrib_i = pl.when(pl.col("NumberOfCoupons") >= i).then(rate_expr * delta_i * dfs_i).otherwise(0.0)
+        out = out.with_columns((pl.col(output_column) + contrib_i).alias(output_column))
+
+    return out.drop("_acc", "NumberOfCoupons")
+
+
 class ValuationMethodRegistry(BaseRegistry[ValuationMethod]):
     @classmethod
     def corrected_dirty_price(
@@ -280,3 +335,4 @@ ValuationMethodRegistry.register("none", NoValuationMethod())
 ValuationMethodRegistry.register("amortizedcost", AmortizedCostValuationMethod())
 ValuationMethodRegistry.register("fixedratebond", FixedRateBondValuationMethod())
 ValuationMethodRegistry.register("floatingratebond", FloatingRateBondValuationMethod())
+ValuationMethodRegistry.register("swap", SwapValuationMethod())

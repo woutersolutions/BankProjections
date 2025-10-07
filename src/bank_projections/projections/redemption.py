@@ -24,6 +24,12 @@ class Redemption(ABC):
         """
         pass
 
+    @classmethod
+    @abstractmethod
+    def has_principal_exchange(cls) -> bool:
+        """Returns True if this redemption type involves principal cashflow exchange at maturity."""
+        pass
+
 
 class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
     @classmethod
@@ -53,6 +59,18 @@ class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
         return result
 
     @classmethod
+    def has_principal_exchange(cls) -> pl.Expr:  # type: ignore[override]
+        """Returns a polars expression that evaluates to True if the redemption type involves principal exchange."""
+        expr = pl.lit(False)
+        for name, redemption_cls in cls.items.items():
+            expr = (
+                pl.when(pl.col("RedemptionType") == name)
+                .then(pl.lit(redemption_cls.has_principal_exchange()))
+                .otherwise(expr)
+            )
+        return expr
+
+    @classmethod
     def validate_df(
         cls,
         df: pl.DataFrame | pl.LazyFrame,
@@ -78,6 +96,10 @@ class BulletRedemption(Redemption):
         :param date:
         """
         return [pl.col("MaturityDate").is_not_null()]
+
+    @classmethod
+    def has_principal_exchange(cls) -> bool:
+        return True
 
 
 class AnnuityRedemption(Redemption):
@@ -113,6 +135,10 @@ class AnnuityRedemption(Redemption):
             pl.col("InterestRate").is_not_null(),
         ]
 
+    @classmethod
+    def has_principal_exchange(cls) -> bool:
+        return True
+
 
 class PerpetualRedemption(Redemption):
     @classmethod
@@ -127,6 +153,10 @@ class PerpetualRedemption(Redemption):
         :param date:
         """
         return [pl.col("MaturityDate").is_null()]
+
+    @classmethod
+    def has_principal_exchange(cls) -> bool:
+        return False
 
 
 class LinearRedemption(Redemption):
@@ -151,12 +181,36 @@ class LinearRedemption(Redemption):
         """
         return [pl.col("MaturityDate").is_not_null()]
 
+    @classmethod
+    def has_principal_exchange(cls) -> bool:
+        return True
+
+
+class NotionalOnlyRedemption(Redemption):
+    @classmethod
+    def redemption_factor(
+        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
+    ) -> pl.Expr:
+        return pl.when(maturity_date <= pl.lit(projection_date)).then(pl.lit(1.0)).otherwise(pl.lit(0.0))
+
+    @classmethod
+    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
+        """Validates that notional redemption only needs maturity date.
+        :param date:
+        """
+        return [pl.col("MaturityDate").is_not_null()]
+
+    @classmethod
+    def has_principal_exchange(cls) -> bool:
+        return False
+
 
 # Register all redemption types
 RedemptionRegistry.register("bullet", BulletRedemption())
 RedemptionRegistry.register("annuity", AnnuityRedemption())
 RedemptionRegistry.register("perpetual", PerpetualRedemption())
 RedemptionRegistry.register("linear", LinearRedemption())
+RedemptionRegistry.register("notional", NotionalOnlyRedemption())
 
 
 def validate_df(
