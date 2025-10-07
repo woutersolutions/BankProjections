@@ -213,17 +213,21 @@ def generate_synthetic_positions(
     )
 
     # Handle quantity calculation differently for notional vs book_value instruments
-    # TODO: Make dealing with swaps less hacky
     if notionals is not None:
-        # For notional instruments, Quantity = Notional directly
+        # For notional instruments (e.g., swaps), scale notionals to match target book value
+        # Book value formula: sum(Quantity * CleanPrice + Quantity * AccruedInterestWeight)
+        # Therefore: sum(Quantity * (CleanPrice + AccruedInterestWeight)) = book_value
+        # Scale Notional proportionally: Quantity = Notional * scale_factor
+        # where scale_factor ensures: sum(Notional * scale_factor * (CleanPrice + AccruedInterestWeight)) = book_value
+        denominator = (pl.col("Notional") * (pl.col("CleanPrice") + pl.col("AccruedInterestWeight"))).sum()
         df = df.with_columns(
-            Quantity=book_value
-            / pl.col("Notional").sum()
-            * pl.col("Notional")
-            / (pl.col("CleanPrice") + pl.col("AccruedInterestWeight"))
+            Quantity=pl.when(denominator != 0.0).then(book_value / denominator * pl.col("Notional")).otherwise(0.0)
         ).drop("Notional")
     else:
         # For book_value instruments, derive Quantity from BookValue
+        # For amortized cost: BookValue = Quantity + Agio + AccruedInterest + Impairment
+        # For fair value: BookValue = Quantity * CleanPrice + AccruedInterest + Agio
+        # Both can be expressed as: BookValue = Quantity * (1 + AgioWeight + AccruedInterestWeight - CoverageRate)
         df = df.with_columns(
             Quantity=pl.col("BookValue")
             / (1 + pl.col("AgioWeight") + pl.col("AccruedInterestWeight") - pl.col("CoverageRate"))
