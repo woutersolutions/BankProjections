@@ -172,9 +172,16 @@ FrequencyRegistry.register("Weekly", Weekly())
 FrequencyRegistry.register("Never", Never())
 
 
+def coupon_payment(
+    quantity: pl.Expr,
+    coupon_rate: pl.Expr,
+) -> pl.Expr:
+    return quantity * coupon_rate * FrequencyRegistry.portion_year()
+
+
 def interest_accrual(
     quantity: pl.Expr,
-    interest_rate: pl.Expr,
+    coupon_rate: pl.Expr,
     previous_coupon_date: pl.Expr,
     next_coupon_date: pl.Expr,
     current_date: datetime.date,
@@ -182,4 +189,4 @@ def interest_accrual(
     days_fraction = (current_date - previous_coupon_date).dt.total_days() / (
         next_coupon_date - previous_coupon_date
     ).dt.total_days()
-    return days_fraction.fill_null(0) * quantity * interest_rate
+    return days_fraction.fill_null(0) * coupon_payment(quantity, coupon_rate)

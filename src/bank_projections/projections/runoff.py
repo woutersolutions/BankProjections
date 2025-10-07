@@ -3,7 +3,7 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.projections.coupon_type import CouponTypeRegistry
-from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
+from bank_projections.projections.frequency import FrequencyRegistry, coupon_payment, interest_accrual
 from bank_projections.projections.market_data import MarketRates
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.rule import Rule
@@ -26,11 +26,9 @@ class Runoff(Rule):
         )
         previous_coupon_date = FrequencyRegistry.previous_coupon_date(increment.to_date)
         new_coupon_date = pl.when(matured).then(None).otherwise(FrequencyRegistry.next_coupon_date(increment.to_date))
-        coupon_payments = (
-            pl.col("Quantity") * pl.col("InterestRate") * FrequencyRegistry.portion_year() * number_of_payments
-        )
+        coupon_payments = coupon_payment(pl.col("Quantity"), pl.col("InterestRate")) * number_of_payments
         floating_rates = market_rates.curves.floating_rate_expr()
-        interest_rates = (
+        new_interest_rates = (
             pl.when(number_of_payments > 0)
             .then(CouponTypeRegistry.coupon_rate(floating_rates))
             .otherwise(pl.col("InterestRate"))
@@ -56,7 +54,7 @@ class Runoff(Rule):
 
         new_accrual = interest_accrual(
             new_quantity,
-            interest_rates,
+            new_interest_rates,
             previous_coupon_date,
             new_coupon_date,
             increment.to_date,
@@ -75,6 +73,7 @@ class Runoff(Rule):
             )
         )
 
+        bs_before = bs.copy()
         bs.validate()
 
         bs.mutate(
@@ -108,7 +107,7 @@ class Runoff(Rule):
             PreviousCouponDate=previous_coupon_date,
             NextCouponDate=new_coupon_date,
             FloatingRate=floating_rates,
-            InterestRate=interest_rates,
+            InterestRate=new_interest_rates,
         )
 
         bs.validate()
