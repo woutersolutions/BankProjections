@@ -22,7 +22,6 @@ class Config:
         "IsAccumulating",
     ]
     DATE_COLUMNS = ["OriginationDate", "MaturityDate", "PreviousCouponDate", "NextCouponDate"]
-    BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"]
 
     CLASSIFICATIONS: dict[str, type[BaseRegistry[Any]]] = {
         "AccountingMethod": AccountingMethodRegistry,
@@ -31,6 +30,8 @@ class Config:
         "RedemptionType": RedemptionRegistry,
         "CouponType": CouponTypeRegistry,
     }
+
+    BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"] + list(CLASSIFICATIONS.keys())
 
     @classmethod
     def label_columns(cls) -> list[str]:
