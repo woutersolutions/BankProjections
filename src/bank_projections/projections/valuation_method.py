@@ -96,6 +96,7 @@ class FixedRateBondValuationMethod(ValuationMethod):
 
         return data.drop("YearsToMaturity", "NumberOfCoupons")
 
+
 class FloatingRateBondValuationMethod(ValuationMethod):
     @classmethod
     def dirty_price(
@@ -109,9 +110,7 @@ class FloatingRateBondValuationMethod(ValuationMethod):
         data = data.with_columns(
             NumberOfCoupons=FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate")),
             _par=pl.lit(1.0, dtype=pl.Float64),
-            _acc=pl.when(pl.col("Quantity") == 0)
-                  .then(0.0)
-                  .otherwise(pl.col("AccruedInterest") / pl.col("Quantity")),
+            _acc=pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity")),
         )
 
         # start with par + accrued
@@ -120,9 +119,7 @@ class FloatingRateBondValuationMethod(ValuationMethod):
         max_cpn = int(out["NumberOfCoupons"].max()) if out.height > 0 else 0
         for i in range(max_cpn + 1):
             # coupon date i and year-fraction from projection to that coupon
-            cpn_date_i = FrequencyRegistry.step_coupon_date(
-                projection_date, pl.col("MaturityDate"), i
-            )
+            cpn_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
             dt_years_i = (cpn_date_i - pl.lit(projection_date)).dt.total_days() / 365.25
 
             # discount factor to coupon date
@@ -133,18 +130,12 @@ class FloatingRateBondValuationMethod(ValuationMethod):
             if i == 0:
                 prev_date_i = pl.col("PreviousCouponDate")
             else:
-                prev_date_i = FrequencyRegistry.step_coupon_date(
-                    projection_date, pl.col("MaturityDate"), i - 1
-                )
+                prev_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i - 1)
 
             delta_i = (cpn_date_i - prev_date_i).dt.total_days() / 365.25
 
             # Only count if period is still ahead of projection_date
-            contrib_i = (
-                pl.when(pl.col("NumberOfCoupons") >= i)
-                .then(pl.col("Spread") * delta_i * dfs_i)
-                .otherwise(0.0)
-            )
+            contrib_i = pl.when(pl.col("NumberOfCoupons") >= i).then(pl.col("Spread") * delta_i * dfs_i).otherwise(0.0)
 
             out = out.with_columns((pl.col(output_column) + contrib_i).alias(output_column))
 
