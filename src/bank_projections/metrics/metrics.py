@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet
-from bank_projections.financials.balance_sheet_item import BalanceSheetItem
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import BaseRegistry
 
@@ -11,7 +11,7 @@ from bank_projections.projections.base_registry import BaseRegistry
 def calculate_metrics(bs: BalanceSheet) -> pl.DataFrame:
     metrics = {}
     for _name, metric in MetricRegistry.items.items():
-        metrics[metric.name] = metric.calculate(bs)
+        metrics[metric.name] = metric.calculate(bs, metrics)
 
     return pl.DataFrame(metrics)
 
@@ -21,7 +21,7 @@ class Metric(ABC):
         self.name = name
 
     @abstractmethod
-    def calculate(self, bs: BalanceSheet) -> float:
+    def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
         pass
 
 
@@ -31,7 +31,7 @@ class BalanceSheetAggregation(Metric):
         self.metric = BalanceSheetMetrics.get(metric)
         self.item = item
 
-    def calculate(self, bs: BalanceSheet) -> float:
+    def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
         return bs.get_amount(self.item, self.metric)
 
 
@@ -41,5 +41,12 @@ class MetricRegistry(BaseRegistry[Metric]):
 
 MetricRegistry.register("trea", BalanceSheetAggregation("TREA", "trea"))
 MetricRegistry.register(
-    "total", BalanceSheetAggregation("Total assets", "book_value", BalanceSheetItem(BalanceSheetSide="Assets"))
+    "size",
+    BalanceSheetAggregation(
+        "Size",
+        "Book value",
+        BalanceSheetItemRegistry.get("Assets")
+        | (BalanceSheetItemRegistry.get("Derivatives") & BalanceSheetItemRegistry.get("Positive")),
+    ),
 )
+

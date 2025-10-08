@@ -5,6 +5,7 @@ import pandas as pd
 import polars as pl
 
 from bank_projections.config import Config
+from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_date, strip_identifier
 
@@ -63,6 +64,28 @@ class BalanceSheetItem:
         )
         return expr
 
+    def __and__(self, other: "BalanceSheetItem"):
+        # Check for conflicting identifiers
+        for key in self.identifiers.keys() & other.identifiers.keys():
+            if self.identifiers[key] != other.identifiers[key]:
+                raise ValueError(f"Conflicting identifiers for BalanceSheetItem: {key}")
+
+        # Combine identifiers
+        combined_identifiers = {**self.identifiers, **other.identifiers}
+        if self.expr is None and other.expr is None:
+            combined_expr = None
+        elif self.expr is None:
+            combined_expr = other.expr
+        elif other.expr is None:
+            combined_expr = self.expr
+        else:
+            combined_expr = self.expr & other.expr
+
+        return BalanceSheetItem(expr=combined_expr, **combined_identifiers)
+
+    def __or__(self, other: "BalanceSheetItem"):
+        return BalanceSheetItem(expr=self.filter_expression | other.filter_expression)
+
 
 class BalanceSheetItemRegistry(BaseRegistry[BalanceSheetItem]):
     pass
@@ -73,3 +96,15 @@ BalanceSheetItemRegistry.register("pnl account", BalanceSheetItem(ItemType="Unau
 BalanceSheetItemRegistry.register("retained earnings", BalanceSheetItem(SubItemType="Retained earnings"))
 BalanceSheetItemRegistry.register("dividend", BalanceSheetItem(ItemType="Dividends payable"))
 BalanceSheetItemRegistry.register("oci", BalanceSheetItem(SubItemType="Other comprehensive income"))
+
+BalanceSheetItemRegistry.register(
+    "positive", BalanceSheetItem(expr=BalanceSheetMetrics.get("BookValue").get_expression >= 0)
+)
+BalanceSheetItemRegistry.register(
+    "negative", BalanceSheetItem(expr=BalanceSheetMetrics.get("BookValue").get_expression < 0)
+)
+
+BalanceSheetItemRegistry.register("assets", BalanceSheetItem(BalanceSheetSide="Assets"))
+BalanceSheetItemRegistry.register("liabilities", BalanceSheetItem(BalanceSheetSide="Liabilities"))
+BalanceSheetItemRegistry.register("equity", BalanceSheetItem(BalanceSheetSide="Equity"))
+BalanceSheetItemRegistry.register("derivatives", BalanceSheetItem(BalanceSheetSide = "Derivatives"))
