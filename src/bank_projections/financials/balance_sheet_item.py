@@ -70,6 +70,6 @@ class BalanceSheetItemRegistry(BaseRegistry[BalanceSheetItem]):
 
 BalanceSheetItemRegistry.register("cash account", BalanceSheetItem(ItemType="Cash"))
 BalanceSheetItemRegistry.register("pnl account", BalanceSheetItem(ItemType="Unaudited earnings"))
-BalanceSheetItemRegistry.register("retained earnings", BalanceSheetItem(ItemType="Retained earnings"))
+BalanceSheetItemRegistry.register("retained earnings", BalanceSheetItem(SubItemType="Retained earnings"))
 BalanceSheetItemRegistry.register("dividend", BalanceSheetItem(ItemType="Dividends payable"))
-BalanceSheetItemRegistry.register("oci", BalanceSheetItem(ItemType="Other comprehensive income"))
+BalanceSheetItemRegistry.register("oci", BalanceSheetItem(SubItemType="Other comprehensive income"))

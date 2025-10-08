@@ -11,12 +11,13 @@ from bank_projections.projections.valuation_method import ValuationMethodRegistr
 
 
 class Config:
-    CASHFLOW_AGGREGATION_LABELS = ["ItemType"]
-    PNL_AGGREGATION_LABELS = ["ItemType"]
-    OCI_AGGREGATION_LABELS = ["ItemType"]
+    CASHFLOW_AGGREGATION_LABELS = ["ItemType", "SubItemType"]
+    PNL_AGGREGATION_LABELS = ["ItemType", "SubItemType"]
+    OCI_AGGREGATION_LABELS = ["ItemType", "SubItemType"]
     BALANCE_SHEET_LABELS = [
         "BalanceSheetSide",
         "ItemType",
+        "SubItemType",
         "Currency",
         "ReferenceRate",
         "IsAccumulating",
@@ -31,7 +32,7 @@ class Config:
         "CouponType": CouponTypeRegistry,
     }
 
-    BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType"] + list(CLASSIFICATIONS.keys())
+    BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType", "SubItemType"] + list(CLASSIFICATIONS.keys())
 
     @classmethod
     def label_columns(cls) -> list[str]:
