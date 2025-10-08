@@ -10,46 +10,42 @@ from bank_projections.projections.base_registry import BaseRegistry
 
 def calculate_metrics(bs: BalanceSheet) -> pl.DataFrame:
     metrics = {}
-    for _name, metric in MetricRegistry.items.items():
-        metrics[metric.name] = metric.calculate(bs, metrics)
+    for name, metric in MetricRegistry.items.items():
+        metrics[name] = metric.calculate(bs, metrics)
 
     return pl.DataFrame(metrics)
 
 
 class Metric(ABC):
-    def __init__(self, name: str):
-        self.name = name
-
     @abstractmethod
     def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
         pass
 
     def __neg__(self):
-        return Multiplied(f"-{self.name}", self, -1)
+        return Multiplied(self, -1)
+
 
 class Ratio(Metric):
-    def __init__(self, name: str, numerator: Metric, denominator: Metric):
-        super().__init__(name)
+    def __init__(self, numerator: Metric, denominator: Metric):
         self.numerator = numerator
         self.denominator = denominator
 
     def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
-
         numerator = self.numerator.calculate(bs, previous_metrics)
         denominator = self.denominator.calculate(bs, previous_metrics)
         return numerator / denominator if denominator != 0 else None
 
+
 class Sum(Metric):
-    def __init__(self, name: str, metrics: list[Metric]):
-        super().__init__(name)
+    def __init__(self, metrics: list[Metric]):
         self.metrics = metrics
 
     def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
         return sum(metric.calculate(bs, previous_metrics) for metric in self.metrics)
 
+
 class Clipped(Metric):
-    def __init__(self, name: str, metric: Metric, min_value: float = None, max_value: float = None):
-        super().__init__(name)
+    def __init__(self, metric: Metric, min_value: float = None, max_value: float = None):
         self.metric = metric
         self.min_value = min_value
         self.max_value = max_value
@@ -62,18 +58,18 @@ class Clipped(Metric):
             value = min(value, self.max_value)
         return value
 
+
 class Multiplied(Metric):
-    def __init__(self, name: str, metric: Metric, factor: float):
-        super().__init__(name)
+    def __init__(self, metric: Metric, factor: float):
         self.metric = metric
         self.factor = factor
 
     def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
         return self.metric.calculate(bs, previous_metrics) * self.factor
 
+
 class BalanceSheetAggregation(Metric):
-    def __init__(self, name: str, metric: str, item: BalanceSheetItem = BalanceSheetItem()):
-        super().__init__(name)
+    def __init__(self, metric: str, item: BalanceSheetItem = BalanceSheetItem()):
         self.metric = BalanceSheetMetrics.get(metric)
         self.item = item
 
@@ -85,20 +81,18 @@ class MetricRegistry(BaseRegistry[Metric]):
     pass
 
 
-MetricRegistry.register("trea", BalanceSheetAggregation("TREA", "trea"))
+MetricRegistry.register("TREA", BalanceSheetAggregation("trea"))
 MetricRegistry.register(
-    "size",
+    "Size",
     BalanceSheetAggregation(
-        "Size",
         "Book value",
         BalanceSheetItemRegistry.get("Assets")
         | (BalanceSheetItemRegistry.get("Derivatives") & BalanceSheetItemRegistry.get("Positive")),
     ),
 )
 MetricRegistry.register(
-    "cet1",
+    "CET1",
     -BalanceSheetAggregation(
-        "CET1 capital",
         "Book value",
         BalanceSheetItem(ItemType="CET1 capital"),
     ),

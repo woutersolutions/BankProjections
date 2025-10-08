@@ -10,11 +10,6 @@ SMALL_NUMBER = 1e-12
 class BalanceSheetMetric(ABC):
     @property
     @abstractmethod
-    def name(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
     def get_expression(self) -> pl.Expr:
         pass
 
@@ -47,10 +42,6 @@ class StoredColumn(BalanceSheetMetric, ABC):
 
     def __init__(self, column: str):
         self.column = column
-
-    @property
-    def name(self) -> str:
-        return self.column
 
     @property
     def get_expression(self) -> pl.Expr:
@@ -105,19 +96,18 @@ class DerivedMetric(BalanceSheetMetric, ABC):
 
 
 class DirtyPrice(DerivedMetric):
-    name = "DirtyPrice"
-
     @property
     def get_expression(self) -> pl.Expr:
         return pl.col("CleanPrice") + pl.col("AccruedInterest") / (pl.col("Quantity") + pl.lit(SMALL_NUMBER))
 
     @property
     def aggregation_expression(self) -> pl.Expr:
-        return (pl.col("CleanPrice") * pl.col("Quantity") + pl.col("AccruedInterest")).sum() / (pl.col("Quantity").sum() + pl.lit(SMALL_NUMBER))
+        return (pl.col("CleanPrice") * pl.col("Quantity") + pl.col("AccruedInterest")).sum() / (
+            pl.col("Quantity").sum() + pl.lit(SMALL_NUMBER)
+        )
+
 
 class MarketValue(DerivedMetric):
-    name = "MarketValue"
-
     @property
     def get_expression(self) -> pl.Expr:
         return pl.col("CleanPrice") * pl.col("Quantity") + pl.col("AccruedInterest")
@@ -126,15 +116,11 @@ class MarketValue(DerivedMetric):
     def aggregation_expression(self) -> pl.Expr:
         return self.get_expression.sum()
 
+
 class DerivedAmount(DerivedMetric):
-    def __init__(self, column: str, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
         self.weight_column = weight_column
         self.allocation_expr = allocation_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
-        self.column = column
-
-    @property
-    def name(self) -> str:
-        return self.column
 
     @property
     def get_expression(self) -> pl.Expr:
@@ -156,14 +142,9 @@ class DerivedAmount(DerivedMetric):
 
 
 class DerivedWeight(DerivedMetric):
-    def __init__(self, column: str, amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
         self.amount_column = amount_column
         self.weight_expr = weight_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
-        self.column = column
-
-    @property
-    def name(self) -> str:
-        return self.column
 
     @property
     def get_expression(self) -> pl.Expr:
@@ -186,8 +167,6 @@ class DerivedWeight(DerivedMetric):
 
 # TODO: Determine exposure for fair value items
 class Exposure(DerivedMetric):
-    name = "Exposure"
-
     @property
     def get_expression(self) -> pl.Expr:
         return pl.col("Quantity") + pl.col("OffBalance")
@@ -198,8 +177,6 @@ class Exposure(DerivedMetric):
 
 
 class BookValue(DerivedMetric):
-    name = "BookValue"
-
     @property
     def get_expression(self) -> pl.Expr:
         return (
@@ -216,32 +193,32 @@ class BookValue(DerivedMetric):
 class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
     @classmethod
     def stored_columns(cls) -> list[str]:
-        return [metric.column for name, metric in cls.items.items() if metric.is_stored]
+        return [metric.column for metric in cls.values() if metric.is_stored]
 
 
-BalanceSheetMetrics.register("quantity", StoredAmount("Quantity"))
-BalanceSheetMetrics.register("impairment", StoredAmount("Impairment"))
-BalanceSheetMetrics.register("accrued_interest", StoredAmount("AccruedInterest"))
-BalanceSheetMetrics.register("agio", StoredAmount("Agio"))
-BalanceSheetMetrics.register("clean_price", StoredWeight("CleanPrice"))
-BalanceSheetMetrics.register("off_balance", StoredWeight("OffBalance"))
+BalanceSheetMetrics.register("Quantity", StoredAmount("Quantity"))
+BalanceSheetMetrics.register("Impairment", StoredAmount("Impairment"))
+BalanceSheetMetrics.register("AccruedInterest", StoredAmount("AccruedInterest"))
+BalanceSheetMetrics.register("Agio", StoredAmount("Agio"))
+BalanceSheetMetrics.register("CleanPrice", StoredWeight("CleanPrice"))
+BalanceSheetMetrics.register("Off-Balance", StoredWeight("OffBalance"))
 
-BalanceSheetMetrics.register("dirty_price", DirtyPrice())
-BalanceSheetMetrics.register("valuation_error", StoredWeight("ValuationError"))
-BalanceSheetMetrics.register("market_value", MarketValue())
+BalanceSheetMetrics.register("DirtyPrice", DirtyPrice())
+BalanceSheetMetrics.register("ValuationError", StoredWeight("ValuationError"))
+BalanceSheetMetrics.register("MarketValue", MarketValue())
 
-BalanceSheetMetrics.register("coverage_rate", DerivedWeight("CoverageRate", "Impairment"))
-BalanceSheetMetrics.register("accrued_interest_rate", DerivedWeight("AccruedInterestRate", "AccruedInterest"))
-BalanceSheetMetrics.register("agio_weight", DerivedWeight("AgioWeight", "Agio"))
+BalanceSheetMetrics.register("CoverageRate", DerivedWeight("Impairment"))
+BalanceSheetMetrics.register("AccruedInterestWeight", DerivedWeight("AccruedInterest"))
+BalanceSheetMetrics.register("AgioWeight", DerivedWeight("Agio"))
 
-BalanceSheetMetrics.register("book_value", BookValue())
-BalanceSheetMetrics.register("exposure", Exposure())
+BalanceSheetMetrics.register("BookValue", BookValue())
+BalanceSheetMetrics.register("Exposure", Exposure())
 
-BalanceSheetMetrics.register("floating_rate", StoredWeight("FloatingRate"))
-BalanceSheetMetrics.register("spread", StoredWeight("Spread"))
-BalanceSheetMetrics.register("interest_rate", StoredWeight("InterestRate"))
-BalanceSheetMetrics.register("prepayment_rate", StoredWeight("PrepaymentRate"))
+BalanceSheetMetrics.register("FloatingRate", StoredWeight("FloatingRate"))
+BalanceSheetMetrics.register("Spread", StoredWeight("Spread"))
+BalanceSheetMetrics.register("InterestRate", StoredWeight("InterestRate"))
+BalanceSheetMetrics.register("PrepaymentRate", StoredWeight("PrepaymentRate"))
 
 
-BalanceSheetMetrics.register("trea_weight", StoredWeight("TREAWeight", Exposure().get_expression))
-BalanceSheetMetrics.register("trea", DerivedAmount("TREA", "TREAWeight", Exposure().get_expression))
+BalanceSheetMetrics.register("TREAWeight", StoredWeight("TREAWeight", Exposure().get_expression))
+BalanceSheetMetrics.register("TREA", DerivedAmount("TREAWeight", Exposure().get_expression))

@@ -34,7 +34,7 @@ class CouponTypeRegistry(BaseRegistry[CouponType], CouponType):
     @classmethod
     def coupon_rate(cls, floating_rate: pl.Expr) -> pl.Expr:
         expr = pl.col("InterestRate")  # Default, should not be used
-        for name, impl in cls.items.items():
+        for name, impl in cls.stripped_items.items():
             expr = pl.when(pl.col("CouponType") == name).then(impl.coupon_rate(floating_rate)).otherwise(expr)
 
         return expr

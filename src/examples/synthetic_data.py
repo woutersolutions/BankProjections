@@ -111,7 +111,7 @@ def generate_synthetic_positions(
         )
 
     coupon_type = strip_identifier(coupon_type)
-    if coupon_type in CouponTypeRegistry.names():
+    if coupon_type in CouponTypeRegistry.stripped_names():
         coupon_types = [strip_identifier(coupon_type)] * number
     elif coupon_type == "both":
         coupon_types = [random.choice(["fixed", "floating"]) for _ in range(number)]

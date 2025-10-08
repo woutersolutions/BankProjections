@@ -141,4 +141,3 @@ class TestProductionRule:
 
         with pytest.raises(ValueError, match="Date must be specified for production"):
             rule.apply(bs, increment, market_rates)
-

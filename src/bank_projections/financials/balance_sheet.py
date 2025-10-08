@@ -46,16 +46,16 @@ class Positions:
             raise ValueError("Positions data cannot be empty")
 
         for column, registry in Config.CLASSIFICATIONS.items():
-            if not self._data.select(pl.col(column).is_in(registry.names()).all()).item():
+            if not self._data.select(pl.col(column).is_in(registry.stripped_names()).all()).item():
                 invalid_values = (
-                    self._data.filter(~pl.col(column).is_in(registry.names()))
+                    self._data.filter(~pl.col(column).is_in(registry.stripped_names()))
                     .select(pl.col(column).unique())
                     .to_series()
                     .to_list()
                 )
                 raise ValueError(
                     f"Positions data contains invalid values in column '{column}': {invalid_values}. "
-                    f"Valid values are: {list(registry.names())}"
+                    f"Valid values are: {list(registry.stripped_names())}"
                 )
 
         missing_columns = set(Config.required_columns()) - set(self._data.columns)
@@ -211,7 +211,7 @@ class BalanceSheet(Positions):
             .agg(
                 [
                     metric.aggregation_expression.alias(metric.column)
-                    for name, metric in BalanceSheetMetrics.items.items()
+                    for metric in BalanceSheetMetrics.values()
                     if metric.is_stored
                 ]
             )
@@ -508,12 +508,7 @@ class BalanceSheet(Positions):
         return (
             (
                 self._data.group_by(group_columns)
-                .agg(
-                    [
-                        metric.aggregation_expression.alias(metric.name)
-                        for name, metric in BalanceSheetMetrics.items.items()
-                    ]
-                )
+                .agg([metric.aggregation_expression.alias(name) for name, metric in BalanceSheetMetrics.items.items()])
                 .sort(by=group_columns)
             ),
             self.pnls,

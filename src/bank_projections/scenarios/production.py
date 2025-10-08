@@ -39,7 +39,7 @@ class ProductionRule(AmountRuleBase):
                     pass
                 case "referenceitem":
                     pass
-                case _ if is_in_identifiers(key, list(BalanceSheetMetrics.items.keys())):
+                case _ if is_in_identifiers(key, list(BalanceSheetMetrics.stripped_names())):
                     stripped_key = strip_identifier(key)
                     if stripped_key is not None:
                         self.metrics[stripped_key] = value

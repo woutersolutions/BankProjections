@@ -67,12 +67,10 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
             raise ValueError(f"First cell must be 'Template', found {df_raw.iloc[0, 0]}")
 
         template_name = str(df_raw.iloc[0, 1])
-        if is_in_identifiers(template_name, cls.items.keys()):
+        if is_in_identifiers(template_name, cls.stripped_names()):
             return cls.get(template_name)
         else:
-            raise ValueError(
-                f"Template '{template_name}' not recognized. Available templates: {list(cls.items.keys())}"
-            )
+            raise ValueError(f"Template '{template_name}' not recognized. Available templates: {cls.stripped_names()}")
 
 
 TemplateRegistry.register("balancesheetmutations", MultiHeaderTemplate(BalanceSheetMutationRule))

@@ -280,4 +280,3 @@ class TestRunoff:
         )
         total_prepayment = abs(prepayment_cashflows["Amount"].sum()) if len(prepayment_cashflows) > 0 else 0.0
         assert abs(total_prepayment) < 0.01
-

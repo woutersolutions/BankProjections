@@ -34,7 +34,6 @@ class TestFrequencyRegistry:
         assert "monthly" in FrequencyRegistry.items
         assert item in FrequencyRegistry.items.values()
 
-
     def test_number_due_with_registered_frequency(self) -> None:
         """Test number_due works with registered frequencies."""
         FrequencyRegistry.register("Monthly", Monthly())
@@ -54,10 +53,8 @@ class TestFrequencyRegistry:
         assert result["payments_due"][0] == 4  # Jan, Feb, Mar, Apr
 
 
-
 class TestMonthly:
     """Test Monthly frequency class."""
-
 
     def test_number_due(self) -> None:
         """Test calculating number of payments due."""
@@ -73,10 +70,8 @@ class TestMonthly:
         assert result["payments"][0] == 4  # Jan, Feb, Mar, Apr (day >= 15)
 
 
-
 class TestQuarterly:
     """Test Quarterly frequency class."""
-
 
     def test_number_due(self) -> None:
         """Test calculating quarterly payments due."""
@@ -92,10 +87,8 @@ class TestQuarterly:
         assert result["payments"][0] == 3  # Q1, Q2, Q3
 
 
-
 class TestSemiAnnual:
     """Test SemiAnnual frequency class."""
-
 
     def test_number_due(self) -> None:
         """Test calculating semi-annual payments due."""
@@ -114,7 +107,6 @@ class TestSemiAnnual:
 class TestAnnual:
     """Test Annual frequency class."""
 
-
     def test_number_due(self) -> None:
         """Test calculating annual payments due."""
         df = pl.DataFrame(
@@ -132,7 +124,6 @@ class TestAnnual:
 class TestDaily:
     """Test Daily frequency class."""
 
-
     def test_number_due(self) -> None:
         """Test calculating daily payments due."""
         df = pl.DataFrame(
@@ -145,4 +136,3 @@ class TestDaily:
         result = df.with_columns(payments=Daily.number_due(pl.col("coupon_date"), pl.col("projection_date")))
 
         assert result["payments"][0] == 5  # 5 days
-

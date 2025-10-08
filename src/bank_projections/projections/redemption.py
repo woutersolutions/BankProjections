@@ -37,7 +37,7 @@ class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
         cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
     ) -> pl.Expr:
         expr = pl.lit(0.0)
-        for name, redemption_cls in cls.items.items():
+        for name, redemption_cls in cls.stripped_items.items():
             expr = (
                 pl.when(pl.col("RedemptionType") == name)
                 .then(redemption_cls.redemption_factor(maturity_date, interest_rate, coupon_date, projection_date))
@@ -51,8 +51,8 @@ class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
         :param date:
         """
         # Base requirement: RedemptionType column must exist and be non-null
-        result = [pl.col("RedemptionType").is_in(RedemptionRegistry.names())]
-        for name, redemption_cls in cls.items.items():
+        result = [pl.col("RedemptionType").is_in(RedemptionRegistry.stripped_names())]
+        for name, redemption_cls in cls.stripped_items.items():
             for expr in redemption_cls.required_columns_validation(date):
                 result.append(pl.when(pl.col("RedemptionType") == name).then(expr).otherwise(True))
 
@@ -62,7 +62,7 @@ class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
     def has_principal_exchange(cls) -> pl.Expr:  # type: ignore[override]
         """Returns a polars expression that evaluates to True if the redemption type involves principal exchange."""
         expr = pl.lit(False)
-        for name, redemption_cls in cls.items.items():
+        for name, redemption_cls in cls.stripped_items.items():
             expr = (
                 pl.when(pl.col("RedemptionType") == name)
                 .then(pl.lit(redemption_cls.has_principal_exchange()))
@@ -130,7 +130,7 @@ class AnnuityRedemption(Redemption):
         return [
             pl.col("MaturityDate").is_not_null(),
             pl.col("CouponFrequency").is_not_null(),
-            pl.col("CouponFrequency").is_in(list(FrequencyRegistry.items.keys())),
+            pl.col("CouponFrequency").is_in(list(FrequencyRegistry.stripped_names())),
             pl.col("NextCouponDate").is_not_null() | (pl.col("MaturityDate") <= pl.lit(date)),
             pl.col("InterestRate").is_not_null(),
         ]

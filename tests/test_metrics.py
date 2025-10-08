@@ -141,8 +141,6 @@ class TestDirtyPrice:
         assert isinstance(expr, pl.Expr)
 
 
-
-
 class TestExposure:
     def test_exposure_initialization(self):
         metric = Exposure()
@@ -191,7 +189,6 @@ class TestMetricIntegration:
         # Test aggregation_expression
         result = df.select(metric.aggregation_expression.alias("total"))
         assert result["total"].item() == 4500.0
-
 
     def test_dirty_price_with_real_data(self):
         # Create test data
