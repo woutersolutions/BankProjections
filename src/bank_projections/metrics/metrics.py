@@ -155,3 +155,37 @@ MetricRegistry.register(
         MetricRegistry.get("Leverage exposure"),
     ),
 )
+MetricRegistry.register(
+    "Encumbered Assets", BalanceSheetAggregation("Encumbered", BalanceSheetItemRegistry.get("Assets"))
+)
+MetricRegistry.register("Unencumbered Assets", MetricRegistry.get("Size") - MetricRegistry.get("Encumbered Assets"))
+MetricRegistry.register(
+    "Encumbrance Ratio",
+    Ratio(
+        MetricRegistry.get("Encumbered Assets"),
+        MetricRegistry.get("Size"),
+    ),
+)
+
+MetricRegistry.register("HQLA", BalanceSheetAggregation("HQLA", BalanceSheetItemRegistry.get("Assets")))
+MetricRegistry.register(
+    "EncumberedHQLA", BalanceSheetAggregation("EncumberedHQLA", BalanceSheetItemRegistry.get("Assets"))
+)
+MetricRegistry.register(
+    "Encumbered HQLA Ratio", Ratio(MetricRegistry.get("EncumberedHQLA"), MetricRegistry.get("HQLA"))
+)
+MetricRegistry.register("HQLA Ratio", Ratio(MetricRegistry.get("HQLA"), MetricRegistry.get("Size")))
+
+MetricRegistry.register(
+    "Required Stable Funding", BalanceSheetAggregation("StableFunding", BalanceSheetItemRegistry.get("Assets"))
+)
+MetricRegistry.register(
+    "Available Stable Funding", -BalanceSheetAggregation("StableFunding", BalanceSheetItemRegistry.get("Funding"))
+)
+MetricRegistry.register(
+    "NSFR",
+    Ratio(
+        MetricRegistry.get("Available Stable Funding"),
+        MetricRegistry.get("Required Stable Funding"),
+    ),
+)

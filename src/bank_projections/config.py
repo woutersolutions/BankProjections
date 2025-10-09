@@ -6,6 +6,7 @@ from bank_projections.projections.accounting_method import AccountingMethodRegis
 from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
+from bank_projections.projections.hqla_class import HQLARegistry
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
 
@@ -30,6 +31,7 @@ class Config:
         "CouponFrequency": FrequencyRegistry,
         "RedemptionType": RedemptionRegistry,
         "CouponType": CouponTypeRegistry,
+        "HQLAClass": HQLARegistry,
     }
 
     BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType", "SubItemType"] + list(CLASSIFICATIONS.keys())

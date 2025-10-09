@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import polars as pl
 
 from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.projections.hqla_class import HQLARegistry
 
 SMALL_NUMBER = 1e-12
 
@@ -190,6 +191,26 @@ class BookValue(DerivedMetric):
         return self.get_expression.sum()
 
 
+class HQLA(DerivedMetric):
+    @property
+    def get_expression(self) -> pl.Expr:
+        return HQLARegistry.hqla_constribution_expression() * BookValue().get_expression
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return self.get_expression.sum()
+
+
+class EncumberedHQLA(DerivedMetric):
+    @property
+    def get_expression(self) -> pl.Expr:
+        return pl.col("EncumberedWeight") * HQLA().get_expression * BookValue().get_expression
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return self.get_expression.sum()
+
+
 class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
     @classmethod
     def stored_columns(cls) -> list[str]:
@@ -222,3 +243,12 @@ BalanceSheetMetrics.register("PrepaymentRate", StoredWeight("PrepaymentRate"))
 
 BalanceSheetMetrics.register("TREAWeight", StoredWeight("TREAWeight", Exposure().get_expression))
 BalanceSheetMetrics.register("TREA", DerivedAmount("TREAWeight", Exposure().get_expression))
+
+BalanceSheetMetrics.register("EncumberedWeight", StoredWeight("EncumberedWeight"))
+BalanceSheetMetrics.register("Encumbered", DerivedAmount("EncumberedWeight"))
+
+BalanceSheetMetrics.register("StableFundingWeight", StoredWeight("StableFundingWeight"))
+BalanceSheetMetrics.register("StableFunding", DerivedAmount("StableFundingWeight"))
+
+BalanceSheetMetrics.register("HQLA", HQLA())
+BalanceSheetMetrics.register("EncumberedHQLA", EncumberedHQLA())

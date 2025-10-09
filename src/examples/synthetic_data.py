@@ -41,6 +41,7 @@ def generate_synthetic_positions(
     curves: Curves = generate_synthetic_curves(),
     valuation_method: str | None = None,
     currency: str = "EUR",
+    hqla_class: str = "n/a",
     reference_rate: str = None,
     coverage_rate_range: tuple[float, float] | None = None,
     interest_rate_range: tuple[float, float] | None = None,
@@ -53,6 +54,8 @@ def generate_synthetic_positions(
     accumulating: bool | None = False,
     off_balance: float = 0.0,
     trea_weight: float = 0.0,
+    stable_funding_weight: float = 0.0,
+    encumbrance_weight: float = 0.0,
     notional_range: tuple[float, float] | None = None,
 ) -> Positions:
     redemption_type = strip_identifier(redemption_type)
@@ -165,6 +168,7 @@ def generate_synthetic_positions(
         "ItemType": [item_type] * number,
         "SubItemType": [sub_item_type] * number,
         "Currency": [strip_identifier(currency)] * number,
+        "HQLAClass": [strip_identifier(hqla_class)] * number,
         "AccountingMethod": [accounting_method] * number,
         "InterestRate": interest_rates,
         "CouponType": coupon_types,
@@ -178,6 +182,8 @@ def generate_synthetic_positions(
         "RedemptionType": [redemption_type] * number,
         "BalanceSheetSide": [balance_sheet_side] * number,
         "TREAWeight": [trea_weight] * number,
+        "EncumberedWeight": [encumbrance_weight] * number,
+        "StableFundingWeight": [stable_funding_weight] * number,
     }
 
     # Add either book_values or notionals depending on instrument type
