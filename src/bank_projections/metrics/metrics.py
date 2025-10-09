@@ -86,6 +86,14 @@ class BalanceSheetAggregation(Metric):
         return bs.get_amount(self.item, self.metric)
 
 
+class MRELEligibleLiabilities(Metric):
+    def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
+        item = BalanceSheetItem(
+            ItemType="Borrowings", expr=pl.col("MaturityDate") >= pl.lit(bs.date).dt.offset_by("1y")
+        )
+        return -bs.get_amount(item, BalanceSheetMetrics.get("Book value"))
+
+
 class MetricRegistry(BaseRegistry[Metric]):
     pass
 
@@ -128,4 +136,22 @@ MetricRegistry.register("Tier 1 Ratio", Ratio(MetricRegistry.get("Tier 1 Capital
 MetricRegistry.register("Total Capital Ratio", Ratio(MetricRegistry.get("Total Capital"), MetricRegistry.get("TREA")))
 MetricRegistry.register(
     "Leverage Ratio", Ratio(MetricRegistry.get("Tier 1 Capital"), MetricRegistry.get("Leverage exposure"))
+)
+MetricRegistry.register(
+    "MREL Eligible Liabilities",
+    MRELEligibleLiabilities(),
+)
+MetricRegistry.register(
+    "MREL Ratio risk-based",
+    Ratio(
+        MetricRegistry.get("Total Capital") + MetricRegistry.get("MREL Eligible Liabilities"),
+        MetricRegistry.get("TREA"),
+    ),
+)
+MetricRegistry.register(
+    "MREL Ratio leverage-based",
+    Ratio(
+        MetricRegistry.get("Total Capital") + MetricRegistry.get("MREL Eligible Liabilities"),
+        MetricRegistry.get("Leverage exposure"),
+    ),
 )
