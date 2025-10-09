@@ -172,7 +172,13 @@ MetricRegistry.register(
     "EncumberedHQLA", BalanceSheetAggregation("EncumberedHQLA", BalanceSheetItemRegistry.get("Assets"))
 )
 MetricRegistry.register(
+    "UnencumberedHQLA", BalanceSheetAggregation("UnencumberedHQLA", BalanceSheetItemRegistry.get("Assets"))
+)
+MetricRegistry.register(
     "Encumbered HQLA Ratio", Ratio(MetricRegistry.get("EncumberedHQLA"), MetricRegistry.get("HQLA"))
+)
+MetricRegistry.register(
+    "Unencumbered HQLA Ratio", Ratio(MetricRegistry.get("UnencumberedHQLA"), MetricRegistry.get("Size"))
 )
 MetricRegistry.register("HQLA Ratio", Ratio(MetricRegistry.get("HQLA"), MetricRegistry.get("Size")))
 

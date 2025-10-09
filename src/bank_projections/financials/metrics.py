@@ -211,6 +211,16 @@ class EncumberedHQLA(DerivedMetric):
         return self.get_expression.sum()
 
 
+class UnencumberedHQLA(DerivedMetric):
+    @property
+    def get_expression(self) -> pl.Expr:
+        return (1 - pl.col("EncumberedWeight")) * HQLA().get_expression * BookValue().get_expression
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return self.get_expression.sum()
+
+
 class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
     @classmethod
     def stored_columns(cls) -> list[str]:
@@ -252,3 +262,4 @@ BalanceSheetMetrics.register("StableFunding", DerivedAmount("StableFundingWeight
 
 BalanceSheetMetrics.register("HQLA", HQLA())
 BalanceSheetMetrics.register("EncumberedHQLA", EncumberedHQLA())
+BalanceSheetMetrics.register("UnencumberedHQLA", UnencumberedHQLA())
