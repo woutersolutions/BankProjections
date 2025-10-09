@@ -25,35 +25,35 @@ class ProjectionResult:
         return {
             "BalanceSheets": pl.concat(
                 [
-                    self.balance_sheets[i].with_columns(ProjectionDate=increment.to_date)
+                    self.balance_sheets[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
                     for i, increment in enumerate(self.horizon)
                 ],
                 how="diagonal",
             ),
             "P&Ls": pl.concat(
                 [
-                    self.pnls[i].with_columns(ProjectionDate=increment.to_date)
+                    self.pnls[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
                     for i, increment in enumerate(self.horizon)
                 ],
                 how="diagonal",
             ),
             "Cashflows": pl.concat(
                 [
-                    self.cashflows[i].with_columns(ProjectionDate=increment.to_date)
+                    self.cashflows[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
                     for i, increment in enumerate(self.horizon)
                 ],
                 how="diagonal",
             ),
             "OCIs": pl.concat(
                 [
-                    self.ocis[i].with_columns(ProjectionDate=increment.to_date)
+                    self.ocis[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
                     for i, increment in enumerate(self.horizon)
                 ],
                 how="diagonal",
             ),
             "Metrics": pl.concat(
                 [
-                    self.metric_list[i].with_columns(ProjectionDate=increment.to_date)
+                    self.metric_list[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
                     for i, increment in enumerate(self.horizon)
                 ],
                 how="diagonal",

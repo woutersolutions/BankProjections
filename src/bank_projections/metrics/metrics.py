@@ -24,6 +24,15 @@ class Metric(ABC):
     def __neg__(self):
         return Multiplied(self, -1)
 
+    def clip(self, lower: float = None, upper: float = None) -> "Metric":
+        return Clipped(self, lower, upper)
+
+    def __add__(self, other: "Metric") -> "Metric":
+        return Sum([self, other])
+
+    def __sub__(self, other):
+        return Sum([self, -other])
+
 
 class Ratio(Metric):
     def __init__(self, numerator: Metric, denominator: Metric):
@@ -81,19 +90,42 @@ class MetricRegistry(BaseRegistry[Metric]):
     pass
 
 
-MetricRegistry.register("TREA", BalanceSheetAggregation("trea"))
 MetricRegistry.register(
     "Size",
     BalanceSheetAggregation(
         "Book value",
-        BalanceSheetItemRegistry.get("Assets")
-        | (BalanceSheetItemRegistry.get("Derivatives") & BalanceSheetItemRegistry.get("Positive")),
+        BalanceSheetItemRegistry.get("Assets"),
     ),
 )
 MetricRegistry.register(
-    "CET1",
+    "Leverage exposure", BalanceSheetAggregation("Exposure", BalanceSheetItemRegistry.get("Assets"))
+)
+MetricRegistry.register("TREA", BalanceSheetAggregation("trea", BalanceSheetItemRegistry.get("Assets")))
+MetricRegistry.register(
+    "CET1 Capital",
     -BalanceSheetAggregation(
         "Book value",
         BalanceSheetItem(ItemType="CET1 capital"),
-    ),
+    )
+    - BalanceSheetAggregation("Book value", BalanceSheetItemRegistry.get("pnl account")).clip(upper=0),
+)
+MetricRegistry.register(
+    "Tier 1 Capital",
+    MetricRegistry.get("CET1 Capital")
+    + BalanceSheetAggregation("Book value", BalanceSheetItem(ItemType="Additional Tier 1 capital")),
+)
+MetricRegistry.register(
+    "Tier 2 Capital",
+    BalanceSheetAggregation("Book value", BalanceSheetItem(ItemType="Tier 2 capital")),
+)
+MetricRegistry.register(
+    "Total Capital",
+    MetricRegistry.get("Tier 1 Capital") + MetricRegistry.get("Tier 2 Capital"),
+)
+
+MetricRegistry.register("CET1 Ratio", Ratio(MetricRegistry.get("CET1 Capital"), MetricRegistry.get("TREA")))
+MetricRegistry.register("Tier 1 Ratio", Ratio(MetricRegistry.get("Tier 1 Capital"), MetricRegistry.get("TREA")))
+MetricRegistry.register("Total Capital Ratio", Ratio(MetricRegistry.get("Total Capital"), MetricRegistry.get("TREA")))
+MetricRegistry.register(
+    "Leverage Ratio", Ratio(MetricRegistry.get("Tier 1 Capital"), MetricRegistry.get("Leverage exposure"))
 )

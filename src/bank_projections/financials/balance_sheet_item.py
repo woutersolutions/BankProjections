@@ -104,7 +104,18 @@ BalanceSheetItemRegistry.register(
     "negative", BalanceSheetItem(expr=BalanceSheetMetrics.get("BookValue").get_expression < 0)
 )
 
-BalanceSheetItemRegistry.register("assets", BalanceSheetItem(BalanceSheetSide="Assets"))
-BalanceSheetItemRegistry.register("liabilities", BalanceSheetItem(BalanceSheetSide="Liabilities"))
+BalanceSheetItemRegistry.register("derivatives", BalanceSheetItem(BalanceSheetSide="Derivatives"))
+BalanceSheetItemRegistry.register(
+    "assets",
+    BalanceSheetItem(BalanceSheetSide="Assets")
+    | (BalanceSheetItemRegistry.get("Derivatives") & BalanceSheetItemRegistry.get("Positive")),
+)
+BalanceSheetItemRegistry.register(
+    "liabilities",
+    BalanceSheetItem(BalanceSheetSide="Liabilities")
+    | (BalanceSheetItemRegistry.get("Derivatives") & BalanceSheetItemRegistry.get("Negative")),
+)
 BalanceSheetItemRegistry.register("equity", BalanceSheetItem(BalanceSheetSide="Equity"))
-BalanceSheetItemRegistry.register("derivatives", BalanceSheetItem(BalanceSheetSide = "Derivatives"))
+BalanceSheetItemRegistry.register(
+    "Funding", BalanceSheetItemRegistry.get("Liabilities") | BalanceSheetItem(ItemType="Equity")
+)
