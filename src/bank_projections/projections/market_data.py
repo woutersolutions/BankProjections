@@ -8,17 +8,21 @@ from bank_projections.utils.combine import Combinable
 
 class CurveData(Combinable):
     def __init__(self, data: pd.DataFrame | None = None):
-        self.data = (
-            pd.DataFrame(columns=["Date", "Name", "Type", "Tenor", "Maturity", "Rate"]) if data is None else data
-        )
-
-        for col in ["Name", "Type", "Tenor", "Maturity"]:
-            self.data[col] = self.data[col].astype("string").str.strip().str.lower()
-
-        self.data["MaturityYears"] = self.data["Maturity"].map(parse_tenor)
+        if data is None:
+            self.data = self._empty_frame()
+        else:
+            self.data = data.copy()
+        self._enforce_schema()
 
     def combine(self, other: "CurveData") -> "CurveData":
-        combined_data = pd.concat([self.data, other.data]).reset_index(drop=True)
+        # Filter out empty frames to avoid pandas FutureWarning about empty/all-NA entries
+        frames = [df for df in [self.data, other.data] if not df.empty]
+        if not frames:
+            combined_data = self._empty_frame()
+        elif len(frames) == 1:
+            combined_data = frames[0].copy()
+        else:
+            combined_data = pd.concat(frames, ignore_index=True)
         return CurveData(combined_data)
 
     def get_curves(self, date: datetime.date) -> "Curves":
@@ -31,6 +35,41 @@ class CurveData(Combinable):
         # TODO: Interpolation between dates
 
         return Curves(filtered_data)
+
+    @staticmethod
+    def _empty_frame() -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                "Date": pd.Series(dtype="datetime64[ns]"),
+                "Name": pd.Series(dtype="string"),
+                "Type": pd.Series(dtype="string"),
+                "Tenor": pd.Series(dtype="string"),
+                "Maturity": pd.Series(dtype="string"),
+                "Rate": pd.Series(dtype="float64"),
+                "MaturityYears": pd.Series(dtype="float64"),
+            }
+        )
+
+    def _enforce_schema(self) -> None:
+        # Ensure all required columns exist
+        template = self._empty_frame()
+        for col in template.columns:
+            if col not in self.data.columns:
+                self.data[col] = template[col]
+
+        # Coerce types
+        self.data["Date"] = pd.to_datetime(self.data["Date"], errors="coerce")
+
+        for col in ["Name", "Type", "Tenor", "Maturity"]:
+            self.data[col] = self.data[col].astype("string").str.strip().str.lower()
+
+        self.data["Rate"] = pd.to_numeric(self.data["Rate"], errors="coerce").astype("float64")
+
+        # (Re)compute MaturityYears from Maturity ensuring float dtype
+        self.data["MaturityYears"] = self.data["Maturity"].map(parse_tenor).astype("float64")
+
+        # Column order normalization (optional but keeps consistency)
+        self.data = self.data[template.columns]
 
 
 class Curves:
