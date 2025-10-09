@@ -1,3 +1,4 @@
+import datetime
 from abc import ABC, abstractmethod
 
 import polars as pl
@@ -6,6 +7,8 @@ from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.metrics import BalanceSheetMetrics
 from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.projections.frequency import FrequencyRegistry, coupon_payment
+from bank_projections.projections.redemption import RedemptionRegistry
 
 
 def calculate_metrics(bs: BalanceSheet) -> pl.DataFrame:
@@ -94,6 +97,67 @@ class MRELEligibleLiabilities(Metric):
         return -bs.get_amount(item, BalanceSheetMetrics.get("Book value"))
 
 
+class ContractualInflowPrincipal(Metric):
+    def __init__(self, item: BalanceSheetItem):
+        self.item = item
+
+    def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
+        to_date = bs.date + datetime.timedelta(days=30)
+
+        matured = pl.col("MaturityDate") <= pl.lit(to_date)
+        repayment_factors = (
+            pl.when(~RedemptionRegistry.has_principal_exchange())
+            .then(0.0)
+            .when(matured)
+            .then(1.0)
+            .otherwise(
+                RedemptionRegistry.redemption_factor(
+                    pl.col("MaturityDate"), pl.col("InterestRate"), pl.col("NextCouponDate"), to_date
+                )
+            )
+        )
+
+        inflow = (
+            bs._data.filter(self.item.filter_expression).select((repayment_factors * pl.col("Quantity")).sum()).item()
+        )
+
+        return inflow
+
+
+class ContractualInflowCoupon(Metric):
+    def __init__(self, item: BalanceSheetItem):
+        self.item = item
+
+    def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
+        to_date = bs.date + datetime.timedelta(days=30)
+
+        number_of_payments = FrequencyRegistry.number_due(
+            pl.col("NextCouponDate"), pl.min_horizontal(pl.col("MaturityDate"), pl.lit(to_date))
+        )
+        coupon_payments = coupon_payment(pl.col("Quantity"), pl.col("InterestRate")) * number_of_payments
+
+        inflow = bs._data.filter(self.item.filter_expression).select(coupon_payments.sum()).item()
+
+        return inflow
+
+
+class EncumberedHQLACapped(Metric):
+    def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
+        # TODO: Review this formula
+        total = previous_metrics["EncumberedHQLA"]
+        level1 = previous_metrics["EncumberedHQLALevel1"]
+        level2a = min(previous_metrics["EncumberedHQLALevel2a"], 0.4 * total)
+        level2b = previous_metrics["EncumberedHQLALevel2b"]
+        level2 = min(level2a + level2b, 0.15 * (level1 + level2a + level2b))
+
+        return level1 + level2
+
+
+class NetOutflow(Metric):
+    def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
+        return previous_metrics["Outflow"] - min(previous_metrics["Inflow"], 0.75 * previous_metrics["Outflow"])
+
+
 class MetricRegistry(BaseRegistry[Metric]):
     pass
 
@@ -172,6 +236,26 @@ MetricRegistry.register(
     "EncumberedHQLA", BalanceSheetAggregation("EncumberedHQLA", BalanceSheetItemRegistry.get("Assets"))
 )
 MetricRegistry.register(
+    "EncumberedHQLALevel1",
+    BalanceSheetAggregation(
+        "EncumberedHQLA", BalanceSheetItemRegistry.get("Assets").add_identifier("HQLAClass", "level1")
+    ),
+)
+MetricRegistry.register(
+    "EncumberedHQLALevel2a",
+    BalanceSheetAggregation(
+        "EncumberedHQLA", BalanceSheetItemRegistry.get("Assets").add_identifier("HQLAClass", "level2a")
+    ),
+)
+MetricRegistry.register(
+    "EncumberedHQLALevel2b",
+    BalanceSheetAggregation(
+        "EncumberedHQLA",
+        BalanceSheetItemRegistry.get("Assets").add_identifier("HQLAClass", "level2bcorporate")
+        | BalanceSheetItemRegistry.get("Assets").add_identifier("HQLAClass", "level2bequity"),
+    ),
+)
+MetricRegistry.register(
     "UnencumberedHQLA", BalanceSheetAggregation("UnencumberedHQLA", BalanceSheetItemRegistry.get("Assets"))
 )
 MetricRegistry.register(
@@ -181,7 +265,7 @@ MetricRegistry.register(
     "Unencumbered HQLA Ratio", Ratio(MetricRegistry.get("UnencumberedHQLA"), MetricRegistry.get("Size"))
 )
 MetricRegistry.register("HQLA Ratio", Ratio(MetricRegistry.get("HQLA"), MetricRegistry.get("Size")))
-
+MetricRegistry.register("EncumberedHQLACapped", EncumberedHQLACapped())
 MetricRegistry.register(
     "Required Stable Funding", BalanceSheetAggregation("StableFunding", BalanceSheetItemRegistry.get("Assets"))
 )
@@ -203,4 +287,27 @@ MetricRegistry.register(
 MetricRegistry.register(
     "Loan-to-Deposit Ratio",
     Ratio(MetricRegistry.get("Loans"), MetricRegistry.get("Deposits")),
+)
+
+MetricRegistry.register(
+    "Contractual principal inflow", ContractualInflowPrincipal(BalanceSheetItemRegistry.get("Assets"))
+)
+MetricRegistry.register(
+    "Contractual principal outflow", -ContractualInflowPrincipal(BalanceSheetItemRegistry.get("Funding"))
+)
+MetricRegistry.register("Contractual coupon inflow", ContractualInflowCoupon(BalanceSheetItemRegistry.get("Assets")))
+MetricRegistry.register("Contractual coupon outflow", -ContractualInflowCoupon(BalanceSheetItemRegistry.get("Funding")))
+MetricRegistry.register(
+    "Inflow", MetricRegistry.get("Contractual principal inflow") + MetricRegistry.get("Contractual coupon inflow")
+)
+MetricRegistry.register(
+    "Outflow", MetricRegistry.get("Contractual principal outflow") + MetricRegistry.get("Contractual coupon outflow")
+)
+MetricRegistry.register("Net Outflow", NetOutflow())
+MetricRegistry.register(
+    "LCR",
+    Ratio(
+        MetricRegistry.get("EncumberedHQLACapped"),
+        MetricRegistry.get("Net Outflow"),
+    ),
 )
