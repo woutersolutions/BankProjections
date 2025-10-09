@@ -195,3 +195,12 @@ MetricRegistry.register(
         MetricRegistry.get("Required Stable Funding"),
     ),
 )
+
+MetricRegistry.register("Loans", BalanceSheetAggregation("Book value", BalanceSheetItem(ItemType="Loans")))
+MetricRegistry.register(
+    "Deposits", -BalanceSheetAggregation("Book value", BalanceSheetItem(ItemType="Savings deposits"))
+)
+MetricRegistry.register(
+    "Loan-to-Deposit Ratio",
+    Ratio(MetricRegistry.get("Loans"), MetricRegistry.get("Deposits")),
+)
