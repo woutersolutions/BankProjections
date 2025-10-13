@@ -141,16 +141,33 @@ class ContractualInflowCoupon(Metric):
         return inflow
 
 
-class EncumberedHQLACapped(Metric):
+class UnencumberedHQLACapped(Metric):
     def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
-        # TODO: Review this formula
-        total = previous_metrics["EncumberedHQLA"]
-        level1 = previous_metrics["EncumberedHQLALevel1"]
-        level2a = min(previous_metrics["EncumberedHQLALevel2a"], 0.4 * total)
-        level2b = previous_metrics["EncumberedHQLALevel2b"]
-        level2 = min(level2a + level2b, 0.15 * (level1 + level2a + level2b))
+        unencumbered_hqla = previous_metrics["UnencumberedHQLA"]
 
-        return level1 + level2
+        unencumbered_level1 = BalanceSheetAggregation(
+            "UnencumberedHQLA", BalanceSheetItemRegistry.get("Assets").add_identifier("HQLAClass", "level1")
+        ).calculate(bs, previous_metrics)
+
+        unencumbered_level2a = BalanceSheetAggregation(
+            "UnencumberedHQLA", BalanceSheetItemRegistry.get("Assets").add_identifier("HQLAClass", "level2a")
+        ).calculate(bs, previous_metrics)
+
+        unencumbered_level2b = BalanceSheetAggregation(
+            "UnencumberedHQLA",
+            BalanceSheetItemRegistry.get("Assets").add_identifier("HQLAClass", "level2bcorporate")
+            | BalanceSheetItemRegistry.get("Assets").add_identifier("HQLAClass", "level2bequity"),
+        ).calculate(bs, previous_metrics)
+
+        # Apply Basel III caps: Level 2a capped at 40% of total HQLA after caps
+        # Level 2 (2a + 2b) capped at 15% of total HQLA after caps
+        level2a_capped = min(unencumbered_level2a, 0.4 * unencumbered_hqla)
+        level2b_capped = unencumbered_level2b
+        level2_total = min(
+            level2a_capped + level2b_capped, 0.15 * (unencumbered_level1 + level2a_capped + level2b_capped)
+        )
+
+        return unencumbered_level1 + level2_total
 
 
 class NetOutflow(Metric):
@@ -265,7 +282,7 @@ MetricRegistry.register(
     "Unencumbered HQLA Ratio", Ratio(MetricRegistry.get("UnencumberedHQLA"), MetricRegistry.get("Size"))
 )
 MetricRegistry.register("HQLA Ratio", Ratio(MetricRegistry.get("HQLA"), MetricRegistry.get("Size")))
-MetricRegistry.register("EncumberedHQLACapped", EncumberedHQLACapped())
+MetricRegistry.register("UnencumberedHQLACapped", UnencumberedHQLACapped())
 MetricRegistry.register(
     "Required Stable Funding", BalanceSheetAggregation("StableFunding", BalanceSheetItemRegistry.get("Assets"))
 )
@@ -307,7 +324,7 @@ MetricRegistry.register("Net Outflow", NetOutflow())
 MetricRegistry.register(
     "LCR",
     Ratio(
-        MetricRegistry.get("EncumberedHQLACapped"),
+        MetricRegistry.get("UnencumberedHQLACapped"),
         MetricRegistry.get("Net Outflow"),
     ),
 )

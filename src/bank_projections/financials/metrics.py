@@ -204,7 +204,7 @@ class HQLA(DerivedMetric):
 class EncumberedHQLA(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("EncumberedWeight") * HQLA().get_expression * BookValue().get_expression
+        return pl.col("EncumberedWeight") * HQLA().get_expression
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -214,7 +214,7 @@ class EncumberedHQLA(DerivedMetric):
 class UnencumberedHQLA(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return (1 - pl.col("EncumberedWeight")) * HQLA().get_expression * BookValue().get_expression
+        return (1 - pl.col("EncumberedWeight")) * HQLA().get_expression
 
     @property
     def aggregation_expression(self) -> pl.Expr:
