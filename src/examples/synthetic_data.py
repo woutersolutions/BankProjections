@@ -42,6 +42,7 @@ def generate_synthetic_positions(
     valuation_method: str | None = None,
     currency: str = "EUR",
     hqla_class: str = "n/a",
+    ifrs9_stage: str = "n/a",
     reference_rate: str = None,
     coverage_rate_range: tuple[float, float] | None = None,
     interest_rate_range: tuple[float, float] | None = None,
@@ -146,6 +147,12 @@ def generate_synthetic_positions(
         case _:
             raise ValueError(f"Unknown redemption type: {redemption_type}")
 
+    ifrs9_stage = strip_identifier(ifrs9_stage)
+    if ifrs9_stage == "mixed":
+        ifrs9_stages = [random.choice(["1", "2", "3", "poci"]) for _ in range(number)]
+    else:
+        ifrs9_stages = [ifrs9_stage] * number
+
     if accounting_method == "amortizedcost":
         clean_prices = [None] * number
     elif valuation_method == "swap" and notionals is not None:
@@ -169,6 +176,7 @@ def generate_synthetic_positions(
         "SubItemType": [sub_item_type] * number,
         "Currency": [strip_identifier(currency)] * number,
         "HQLAClass": [strip_identifier(hqla_class)] * number,
+        "IFRS9Stage": ifrs9_stages,
         "AccountingMethod": [accounting_method] * number,
         "InterestRate": interest_rates,
         "CouponType": coupon_types,
