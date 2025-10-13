@@ -1,15 +1,16 @@
 ﻿item_type,sub_item_type,book_value,number,balance_sheet_side,accounting_method,valuation_method,redemption_type,coupon_frequency,currency,ifrs9_stage,coverage_rate_range,interest_rate_range,agio_range,prepayment_rate,minimum_age,maximum_age,minimum_maturity,maximum_maturity,accumulating,off_balance,trea_weight,coupon_type,reference_rate,notional_range,stable_funding_weight,hqla_class,encumbrance_weight
 Loans,Mortgages,13075263,1000,Assets,amortized cost,,annuity,Monthly,eur,mixed,"(0.0, 0.03)","(0.01, 0.04)","(0.0, 0.01)",0.01,0,10,0,30,FALSE,0.01,0.3,both,Euribor 3m,,0.65,non-HQLA,0.20
-Loans,SME loans,97157,100,Assets,amortized cost,,bullet,Quarterly,eur,mixed,"(0.01, 0.06)","(0.02, 0.07)",,0.01,0,3,0,10,FALSE,0.02,0.75,both,Euribor 3m,,0.85,non-HQLA,0.10
-Loans,Consumer loans,0,0,Assets,amortized cost,,annuity,Monthly,eur,mixed,"(0.01, 0.06)","(0.03, 0.07)",,0.01,0,1,0,3,FALSE,0.03,0.75,both,Euribor 3m,,0.85,non-HQLA,0.10
-Cash,Cash,2418460,1,Assets,amortized cost,,perpetual,Daily,eur,n/a,,"(0.01, 0.02)",,,,,,,TRUE,0,0,floating,Euribor 3m,,0.00,Level1,0.00
-Debt securities,Fixed Debt securities,160035,100,Assets,fair value through oci,fixedratebond,bullet,Quarterly,eur,1,,"(0.00, 0.03)",,,0,10,0,20,FALSE,0,0,fixed,Euribor 6m,,0.05,Level1,0.05
-Debt securities,Floating debt securities,100000,100,Assets,fair value through oci,floatingratebond,bullet,Quarterly,eur,1,,"(0.00, 0.03)",,,0,10,0,20,FALSE,0,0,floating,Euribor 6m,,0.15,Level2A,0.05
+Loans,SME loans,197157,100,Assets,amortized cost,,bullet,Quarterly,eur,mixed,"(0.01, 0.06)","(0.02, 0.07)",,0.01,0,3,0,10,FALSE,0.02,0.75,both,Euribor 3m,,0.85,non-HQLA,0.10
+Loans,Consumer loans,200000,0,Assets,amortized cost,,annuity,Monthly,eur,mixed,"(0.01, 0.06)","(0.03, 0.07)",,0.01,0,1,0,3,FALSE,0.03,0.75,both,Euribor 3m,,0.85,non-HQLA,0.10
+Cash,Cash,1918460,1,Assets,amortized cost,,perpetual,Daily,eur,n/a,,"(0.01, 0.02)",,,,,,,TRUE,0,0,floating,Euribor 3m,,0.00,Level1,0.00
+Debt securities,Fixed Debt securities,360035,100,Assets,fair value through oci,fixedratebond,bullet,Quarterly,eur,1,,"(0.00, 0.03)",,,0,10,0,20,FALSE,0,0,fixed,Euribor 6m,,0.05,Level1,0.05
+Debt securities,Floating debt securities,300000,100,Assets,fair value through oci,floatingratebond,bullet,Quarterly,eur,1,,"(0.00, 0.03)",,,0,10,0,20,FALSE,0,0,floating,Euribor 6m,,0.15,Level2A,0.05
 Intangible assets,Intangible assets,21135,1,Assets,amortized cost,,perpetual,Never,eur,n/a,,,,,,,,,FALSE,0,0.5,none,,,1.00,non-HQLA,0.00
-Loans,Other loans,951939,1,Assets,amortized cost,,perpetual,Never,eur,n/a,,,,,,,,,FALSE,0,1.0,none,,,1.00,non-HQLA,0.15
+Loans,Other loans,951939,1,Assets,amortized cost,,perpetual,Never,eur,n/a,,,,,,,,,FALSE,0,0.35,none,,,1.00,non-HQLA,0.15
 Savings deposits,Savings deposits,-12684867,1000,Liabilities,amortized cost,,perpetual,Weekly,eur,n/a,,"(0.01, 0.02)",,,,,,,TRUE,0,0,both,Euribor 3m,,0.95,n/a,0.00
 Provisions,Provisions,-3412,1,Liabilities,amortized cost,,perpetual,Never,eur,n/a,,,,,,,,,FALSE,0,0,none,,,1.00,n/a,0.00
-Borrowings,Borrowings,-2956600,100,Liabilities,amortized cost,,bullet,Annual,eur,n/a,,"(0.02, 0.04)",,,0,10,0,10,FALSE,0,0,fixed,Euribor 6m,,0.50,n/a,0.00
+Borrowings,Borrowings,-2156600,100,Liabilities,amortized cost,,bullet,Annual,eur,n/a,,"(0.02, 0.04)",,,0,10,0,10,FALSE,0,0,fixed,Euribor 6m,,0.50,n/a,0.00
+Borrowings,Senior unsecured bonds,-800000,50,Liabilities,amortized cost,,bullet,Annual,eur,n/a,,"(0.015, 0.035)",,,0,10,0,5,FALSE,0,0,fixed,Euribor 6m,,0.50,n/a,0.00
 Other liabilities,Other liabilities,-103453,1,Liabilities,amortized cost,,perpetual,Never,eur,n/a,,,,,,,,,FALSE,0,0,none,,,0.00,n/a,0.00
 CET1 capital,SharePremium,-476751,1,Equity,amortized cost,,perpetual,Never,eur,n/a,,,,,,,,,FALSE,0,0,none,,,1.00,n/a,0.00
 Additional Tier 1 capital,PreferenceShares,-37437,1,Equity,amortized cost,,perpetual,Never,eur,n/a,,,,,,,,,FALSE,0,0,none,,,1.00,n/a,0.00
