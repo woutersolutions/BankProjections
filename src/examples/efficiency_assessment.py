@@ -32,7 +32,7 @@ class EfficiencyAssessment:
     def __init__(
         self,
         output_dir: str = OUTPUT_FOLDER,
-        synthetic_data_config: str = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
+        synthetic_data_config: str = os.path.join(EXAMPLE_FOLDER, "example_bs.csv"),
         size_multipliers=(1, 5, 10, 100, 500, 1000),
         number_of_projections=(1, 5, 10, 20, 50, 100),
     ):

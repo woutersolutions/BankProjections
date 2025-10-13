@@ -298,7 +298,7 @@ def generate_random_numbers(number: int, minimum: float, maximum: float, mean: f
 def create_synthetic_balance_sheet(
     current_date: datetime.date,
     scenario: Scenario,
-    config_path: str | None = os.path.join(EXAMPLE_FOLDER, "knab_bs.csv"),
+    config_path: str | None = os.path.join(EXAMPLE_FOLDER, "example_bs.csv"),
     config_table: pl.DataFrame = None,
 ) -> BalanceSheet:
     # Iterate over synthetic_data.csv using polars to create each of the items
