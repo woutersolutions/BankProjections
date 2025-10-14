@@ -64,7 +64,7 @@ class BalanceSheetItem:
         )
         return expr
 
-    def __and__(self, other: "BalanceSheetItem"):
+    def __and__(self, other: "BalanceSheetItem") -> "BalanceSheetItem":
         # Check for conflicting identifiers
         for key in self.identifiers.keys() & other.identifiers.keys():
             if self.identifiers[key] != other.identifiers[key]:
@@ -83,7 +83,7 @@ class BalanceSheetItem:
 
         return BalanceSheetItem(expr=combined_expr, **combined_identifiers)
 
-    def __or__(self, other: "BalanceSheetItem"):
+    def __or__(self, other: "BalanceSheetItem") -> "BalanceSheetItem":
         return BalanceSheetItem(expr=self.filter_expression | other.filter_expression)
 
 

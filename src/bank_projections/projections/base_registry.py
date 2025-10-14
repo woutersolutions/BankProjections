@@ -1,5 +1,6 @@
 from abc import ABC
-from typing import Any, ClassVar, TypeVar, ValuesView
+from collections.abc import ValuesView
+from typing import Any, ClassVar, TypeVar
 
 from loguru import logger
 

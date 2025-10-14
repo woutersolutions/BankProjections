@@ -12,7 +12,7 @@ from bank_projections.projections.redemption import RedemptionRegistry
 
 
 def calculate_metrics(bs: BalanceSheet) -> pl.DataFrame:
-    metrics = {}
+    metrics: dict[str, float] = {}
     for name, metric in MetricRegistry.items.items():
         metrics[name] = metric.calculate(bs, metrics)
 
@@ -24,16 +24,16 @@ class Metric(ABC):
     def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
         pass
 
-    def __neg__(self):
+    def __neg__(self) -> "Metric":
         return Multiplied(self, -1)
 
-    def clip(self, lower: float = None, upper: float = None) -> "Metric":
+    def clip(self, lower: float | None = None, upper: float | None = None) -> "Metric":
         return Clipped(self, lower, upper)
 
     def __add__(self, other: "Metric") -> "Metric":
         return Sum([self, other])
 
-    def __sub__(self, other):
+    def __sub__(self, other: "Metric") -> "Metric":
         return Sum([self, -other])
 
 
@@ -45,7 +45,7 @@ class Ratio(Metric):
     def calculate(self, bs: BalanceSheet, previous_metrics: dict[str, float]) -> float:
         numerator = self.numerator.calculate(bs, previous_metrics)
         denominator = self.denominator.calculate(bs, previous_metrics)
-        return numerator / denominator if denominator != 0 else None
+        return numerator / denominator if denominator != 0 else 0.0
 
 
 class Sum(Metric):
@@ -57,7 +57,7 @@ class Sum(Metric):
 
 
 class Clipped(Metric):
-    def __init__(self, metric: Metric, min_value: float = None, max_value: float = None):
+    def __init__(self, metric: Metric, min_value: float | None = None, max_value: float | None = None):
         self.metric = metric
         self.min_value = min_value
         self.max_value = max_value
@@ -121,7 +121,7 @@ class ContractualInflowPrincipal(Metric):
             bs._data.filter(self.item.filter_expression).select((repayment_factors * pl.col("Quantity")).sum()).item()
         )
 
-        return inflow
+        return float(inflow)
 
 
 class ContractualInflowCoupon(Metric):
@@ -138,7 +138,7 @@ class ContractualInflowCoupon(Metric):
 
         inflow = bs._data.filter(self.item.filter_expression).select(coupon_payments.sum()).item()
 
-        return inflow
+        return float(inflow)
 
 
 class UnencumberedHQLACapped(Metric):

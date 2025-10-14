@@ -14,9 +14,6 @@ class Valuation(Rule):
         if increment.from_date == increment.to_date:  # No time passed
             return bs
 
-        bs.validate()
-        bs_before = bs.copy()
-
         # Apply runoff to all instruments that origination before the current projection date # TODO: refine
         item = BalanceSheetItem(
             expr=(
@@ -24,8 +21,6 @@ class Valuation(Rule):
                 & (pl.col("AccountingMethod") == "fairvaluethroughoci")
             )
         )
-
-        matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
 
         zero_rates = market_rates.curves.get_zero_rates()
         # TODO: Find a way not to use the _.data here

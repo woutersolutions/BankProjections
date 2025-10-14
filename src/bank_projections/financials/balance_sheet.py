@@ -187,7 +187,8 @@ class BalanceSheet(Positions):
         if based_on_count == 0:
             raise ValueError(f"No item found on balance sheet matching: {based_on_item}")
         if based_on_quantity == 0:
-            # Add a small number to avoid division by zero #TODO: Check if this is really needed, but not already coverd by the metrics module
+            # Add a small number to avoid division by zero
+            # TODO: Check if this is really needed, but not already covered by the metrics module
             self._data = self._data.with_columns(Quantity=pl.col("Quantity") + SMALL_NUMBER)
 
         # Find unique labels for non-numeric columns
@@ -322,7 +323,7 @@ class BalanceSheet(Positions):
             offset_pnl=offset_pnl_reason,
             offset_liquidity=offset_liquidity_reason,
             counter_item=counter_item,
-            **{metric.mutation_column: expr},
+            **{metric.mutation_column: expr},  # type: ignore[arg-type]
         )
 
     def mutate(

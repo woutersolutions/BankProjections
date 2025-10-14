@@ -102,7 +102,13 @@ class FixedRateBondValuationMethod(ValuationMethod):
 
         data = data.with_columns(get_discount_rates(data, zero_rates, pl.col("YearsToMaturity")).alias(output_column))
 
-        for i in range(data["NumberOfCoupons"].max() + 1):
+        max_coupons_value = data["NumberOfCoupons"].max()
+        if max_coupons_value is None:
+            max_coupons = 0
+        else:
+            # Cast to float first, handling polars scalar types
+            max_coupons = int(float(max_coupons_value))  # type: ignore[arg-type]
+        for i in range(max_coupons + 1):
             coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
             years_to_coupon = (coupon_date - pl.lit(projection_date)).dt.total_days() / 365.25
             discount_rates_i = get_discount_rates(data, zero_rates, years_to_coupon)
@@ -294,7 +300,8 @@ def _price_spread_instrument(
 
     out = df.with_columns(start_val.alias(output_column))
 
-    max_cpn = int(out["NumberOfCoupons"].max()) if out.height > 0 else 0
+    max_cpn_value = out["NumberOfCoupons"].max() if out.height > 0 else None
+    max_cpn = 0 if max_cpn_value is None else int(float(max_cpn_value))  # type: ignore[arg-type]
     for i in range(max_cpn + 1):
         cpn_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
         dt_years_i = (cpn_date_i - pl.lit(projection_date)).dt.total_days() / 365.25

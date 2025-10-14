@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 
 import polars as pl
-import xlsxwriter  # type: ignore[import-untyped]
+import xlsxwriter
 from loguru import logger
 
 from bank_projections.financials.balance_sheet import BalanceSheet

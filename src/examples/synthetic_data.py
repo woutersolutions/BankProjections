@@ -63,10 +63,7 @@ def generate_synthetic_positions(
     coupon_frequency = strip_identifier(coupon_frequency)
     accounting_method = strip_identifier(accounting_method)
     reference_rate = strip_identifier(reference_rate)
-    if valuation_method is None:
-        valuation_method = "none"
-    else:
-        valuation_method = strip_identifier(valuation_method)
+    valuation_method = "none" if valuation_method is None else strip_identifier(valuation_method)
 
     # For notional-based instruments (like swaps), generate notionals separately
     if notional_range is not None:

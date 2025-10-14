@@ -53,15 +53,23 @@ class CostIncomeRule(AmountRuleBase):
         if self.pnl_start is None:
             self.bs_item = None
         else:
+            # At this point we know both pnl_start and pnl_end are not None (validated above)
+            assert self.pnl_end is not None
             if self.pnl_start > self.pnl_end:
                 raise ValueError("pnlstart must be before or equal to pnlend in CostIncomeRule")
 
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
+        # Type narrowing: after __init__, we know these are not None
+        assert self.cashflow_date is not None
+        assert self.amount is not None
+
         if self.pnl_start is None:
             if increment.contains(self.cashflow_date):
                 bs.add_single_liquidity(self.amount, self.reason, True)
 
         elif self.cashflow_date <= self.pnl_start:
+            # Type narrowing: pnl_start and pnl_end are both not None
+            assert self.pnl_end is not None
             if self.amount > 0:
                 bs_item = BalanceSheetItem(ItemType="Prepaid revenue")
             else:
@@ -83,7 +91,9 @@ class CostIncomeRule(AmountRuleBase):
                     bs_item, "Quantity", amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
                 )
 
-        elif self.cashflow_date >= self.pnl_end:
+        elif self.pnl_end is not None and self.cashflow_date >= self.pnl_end:
+            # Type narrowing: pnl_start and pnl_end are both not None
+            assert self.pnl_start is not None
             if self.amount > 0:
                 bs_item = BalanceSheetItem(ItemType="Unpaid revenue")
             else:

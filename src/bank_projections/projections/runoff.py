@@ -86,9 +86,6 @@ class Runoff(Rule):
             )
         )
 
-        bs_before = bs.copy()
-        bs.validate()
-
         bs.mutate(
             item,
             pnls={
@@ -133,7 +130,5 @@ class Runoff(Rule):
             InterestRate=new_interest_rates,
             ValuationError=new_valuation_error,
         )
-
-        bs.validate()
 
         return bs
