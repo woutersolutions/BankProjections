@@ -7,10 +7,10 @@ import polars as pl
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.projections.market_data import MarketRates
-from bank_projections.projections.time import TimeIncrement
+from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.template import AmountRuleBase
 from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_date, strip_identifier
+from bank_projections.utils.time import TimeIncrement
 
 
 class CostIncomeRule(AmountRuleBase):

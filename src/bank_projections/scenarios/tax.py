@@ -2,11 +2,11 @@ import pandas as pd
 import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
-from bank_projections.projections.market_data import MarketRates
+from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.rule import Rule
-from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.scenarios.template import ScenarioTemplate
+from bank_projections.utils.time import TimeIncrement
 
 
 class TaxTemplate(ScenarioTemplate):

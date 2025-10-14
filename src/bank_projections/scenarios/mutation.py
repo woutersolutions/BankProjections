@@ -7,11 +7,11 @@ import pandas as pd
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
-from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.market_data import MarketRates
-from bank_projections.projections.time import TimeIncrement
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.template import AmountRuleBase
 from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_bool, read_date, strip_identifier
+from bank_projections.utils.time import TimeIncrement
 
 
 class BalanceSheetMutationRule(AmountRuleBase):

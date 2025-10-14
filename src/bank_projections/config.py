@@ -1,15 +1,15 @@
 # TODO: Properly arrange these configurations into a config file or environment variables
 from typing import Any
 
-from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.accounting_method import AccountingMethodRegistry
-from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.financials.accounting_method import AccountingMethodRegistry
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.hqla_class import HQLARegistry
+from bank_projections.financials.stage import IFRS9StageRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
-from bank_projections.projections.hqla_class import HQLARegistry
 from bank_projections.projections.redemption import RedemptionRegistry
-from bank_projections.projections.stage import IFRS9StageRegistry
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
+from bank_projections.utils.base_registry import BaseRegistry
 
 
 class Config:

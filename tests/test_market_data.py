@@ -5,7 +5,7 @@ import datetime
 import pandas as pd
 import pytest
 
-from bank_projections.projections.market_data import CurveData, Curves, MarketData, MarketRates, parse_tenor
+from bank_projections.financials.market_data import CurveData, Curves, MarketData, MarketRates, parse_tenor
 
 
 class TestCurveData:

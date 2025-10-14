@@ -2,7 +2,7 @@
 
 import datetime
 
-from bank_projections.projections.time import TimeHorizon, TimeIncrement, to_end_of_month
+from bank_projections.utils.time import TimeHorizon, TimeIncrement, to_end_of_month
 
 
 class TestTimeIncrement:

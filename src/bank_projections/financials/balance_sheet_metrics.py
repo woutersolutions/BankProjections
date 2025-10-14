@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 
 import polars as pl
 
-from bank_projections.projections.base_registry import BaseRegistry
-from bank_projections.projections.hqla_class import HQLARegistry
+from bank_projections.financials.hqla_class import HQLARegistry
+from bank_projections.utils.base_registry import BaseRegistry
 
 SMALL_NUMBER = 1e-12
 

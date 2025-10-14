@@ -8,7 +8,7 @@ import polars as pl
 
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
-from bank_projections.financials.metrics import (
+from bank_projections.financials.balance_sheet_metrics import (
     SMALL_NUMBER,
     BalanceSheetMetric,
     BalanceSheetMetrics,

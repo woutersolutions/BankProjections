@@ -1,4 +1,4 @@
-from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.utils.base_registry import BaseRegistry
 
 
 class AccountingMethod:

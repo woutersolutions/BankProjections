@@ -5,7 +5,7 @@ import datetime
 import pytest
 
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 

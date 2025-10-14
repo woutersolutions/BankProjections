@@ -5,7 +5,7 @@ import pytest
 
 from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
 
 
 @pytest.fixture

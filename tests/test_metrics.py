@@ -1,7 +1,7 @@
 import polars as pl
 import pytest
 
-from bank_projections.financials.metrics import (
+from bank_projections.financials.balance_sheet_metrics import (
     BalanceSheetMetric,
     BookValue,
     DerivedMetric,

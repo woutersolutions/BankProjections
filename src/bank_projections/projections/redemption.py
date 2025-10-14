@@ -4,8 +4,8 @@ from collections.abc import Sequence
 
 import polars as pl
 
-from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
+from bank_projections.utils.base_registry import BaseRegistry
 
 
 class Redemption(ABC):

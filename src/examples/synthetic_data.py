@@ -7,10 +7,10 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, Positions
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.market_data import Curves, MarketRates
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
-from bank_projections.projections.market_data import Curves, MarketRates
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.parsing import strip_identifier

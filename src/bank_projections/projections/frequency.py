@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 import polars as pl
 
-from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.utils.base_registry import BaseRegistry
 from bank_projections.utils.date import is_end_of_month
 
 

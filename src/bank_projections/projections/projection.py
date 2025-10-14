@@ -8,8 +8,8 @@ from loguru import logger
 
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.metrics.metrics import calculate_metrics
-from bank_projections.projections.time import TimeHorizon
 from bank_projections.scenarios.scenario import Scenario
+from bank_projections.utils.time import TimeHorizon
 
 
 @dataclass

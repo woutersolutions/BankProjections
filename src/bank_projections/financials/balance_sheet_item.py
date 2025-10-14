@@ -5,8 +5,8 @@ import pandas as pd
 import polars as pl
 
 from bank_projections.config import Config
-from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.utils.base_registry import BaseRegistry
 from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_date, strip_identifier
 
 

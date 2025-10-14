@@ -3,7 +3,7 @@ import datetime
 import pandas as pd
 import pytest
 
-from bank_projections.projections.market_data import CurveData, MarketData
+from bank_projections.financials.market_data import CurveData, MarketData
 from bank_projections.scenarios.scenario import Scenario
 from examples.synthetic_data import create_synthetic_balance_sheet
 

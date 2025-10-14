@@ -2,7 +2,6 @@ import os
 
 import pandas as pd
 
-from bank_projections.projections.base_registry import BaseRegistry
 from bank_projections.scenarios.audit import AuditRule
 from bank_projections.scenarios.cost_income import CostIncomeRule
 from bank_projections.scenarios.curve import CurveTemplate
@@ -16,6 +15,7 @@ from bank_projections.scenarios.template import (
     OneHeaderTemplate,
     ScenarioTemplate,
 )
+from bank_projections.utils.base_registry import BaseRegistry
 from bank_projections.utils.parsing import is_in_identifiers, strip_identifier
 
 

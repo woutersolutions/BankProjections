@@ -5,10 +5,10 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
-from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.base_registry import BaseRegistry
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
 from bank_projections.projections.frequency import FrequencyRegistry, coupon_payment
 from bank_projections.projections.redemption import RedemptionRegistry
+from bank_projections.utils.base_registry import BaseRegistry
 
 
 def calculate_metrics(bs: BalanceSheet) -> pl.DataFrame:

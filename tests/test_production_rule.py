@@ -3,9 +3,9 @@ import datetime
 import pandas as pd
 import pytest
 
-from bank_projections.projections.market_data import MarketRates
-from bank_projections.projections.time import TimeIncrement
+from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.production import ProductionRule
+from bank_projections.utils.time import TimeIncrement
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 

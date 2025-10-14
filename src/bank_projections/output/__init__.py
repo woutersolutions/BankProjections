@@ -1,1 +1,0 @@
-"""Output module for storing and formatting projection results."""

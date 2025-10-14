@@ -4,11 +4,11 @@ from typing import Any
 import pandas as pd
 
 from bank_projections.financials.balance_sheet import BalanceSheet
-from bank_projections.projections.market_data import MarketRates
+from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.rule import Rule
-from bank_projections.projections.time import TimeIncrement
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.parsing import strip_identifier
+from bank_projections.utils.time import TimeIncrement
 
 
 class AmountRuleBase(Rule):

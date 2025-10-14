@@ -7,10 +7,10 @@ import pytest
 
 from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.metrics import BalanceSheetMetrics
-from bank_projections.projections.market_data import MarketRates
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.runoff import Runoff
-from bank_projections.projections.time import TimeIncrement
+from bank_projections.utils.time import TimeIncrement
 from examples.synthetic_data import generate_synthetic_curves
 
 

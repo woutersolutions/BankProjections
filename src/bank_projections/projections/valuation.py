@@ -2,11 +2,11 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.metrics import SMALL_NUMBER
-from bank_projections.projections.market_data import MarketRates
+from bank_projections.financials.balance_sheet_metrics import SMALL_NUMBER
+from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.rule import Rule
-from bank_projections.projections.time import TimeIncrement
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
+from bank_projections.utils.time import TimeIncrement
 
 
 class Valuation(Rule):

@@ -2,9 +2,9 @@ import datetime
 
 import pytest
 
-from bank_projections.projections.market_data import MarketRates
-from bank_projections.projections.time import TimeIncrement
+from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.audit import AuditRule
+from bank_projections.utils.time import TimeIncrement
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 

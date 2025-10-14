@@ -1,6 +1,6 @@
 import pandas as pd
 
-from bank_projections.projections.market_data import CurveData, MarketData
+from bank_projections.financials.market_data import CurveData, MarketData
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.scenarios.template import ScenarioTemplate
 
