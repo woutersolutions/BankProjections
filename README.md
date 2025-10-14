@@ -1,27 +1,36 @@
 # BankProjections
 
-A comprehensive balance sheet projection tool for banks, designed for capital management, liquidity management, and stress testing.
+A comprehensive balance sheet projection tool for banks, designed for capital management, liquidity management, stress
+testing, and planning.
 
 ## Overview
 
 BankProjections enables financial institutions to:
-- Construct financial statements from various input formats (YAML, CSV, Excel)
 - Project financials statements into the future
 - Apply scenario-based projections with customizable time intervals
 - Calculate amortization schedules for balance sheet items
 - Compute regulatory metrics (capital ratios, ROC, LCR, NSFR)
-- Generate comprehensive output reports
+- Output future balance sheet, regulatory metrics, income statement, and cashflow statement
 
 ## Features
 
-- **Multi-scenario Support**: Run multiple projection scenarios simultaneously
-- **Flexible Input**: Accept data in YAML, CSV, or Excel formats
+- **Multi-scenario Support**: Run multiple projection scenarios
+- **Flexible Input**: High-level or detailed balance sheet table and flexible scenario input templates.
+- **Flexible Calculations**: Orchestrate calculation details using classification columns on the balance sheet and
+  registries.
+- **Runoff**: Calculate repayments, pre-payments, and coupon payements
+- **Valuation**: Market value calculations based on scenario curves.
 - **Regulatory Compliance**: Calculate Basel III capital ratios and liquidity metrics
 - **Synthetic Data Generation**: Test and demonstrate capabilities without real bank data
+
+Built on Polars, it’s extremely fast and capable of handling portfolios with millions of loans. It is highly flexible to
+adapt to any bank setup.
 
 ## Installation
 
 ### Development Setup
+
+The code is developed in Python 3.13. See configuration in pyproject.toml for more details.
 
 ```bash
 # Clone the repository
@@ -34,51 +43,10 @@ pip install -e ".[dev]"
 
 ## Usage
 
-Here's a simple example using the current API:
-
-```python
-import datetime
-from bank_projections.projections.projection import Projection
-from bank_projections.projections.runoff import Runoff
-from bank_projections.projections.time import TimeHorizon
-from examples.synthetic_data import create_synthetic_balance_sheet
-
-# Create a synthetic balance sheet
-start_date = datetime.date(2024, 12, 31)
-balance_sheet = create_synthetic_balance_sheet(start_date)
-
-# Define projection rules
-rules = [Runoff()]
-
-# Create time horizon
-horizon = TimeHorizon.from_numbers(
-    start_date=start_date,
-    number_of_months=12,
-    number_of_years=2,
-    end_of_month=True,
-)
-
-# Run projection
-projection = Projection(rules, horizon)
-results = projection.run(balance_sheet)
-```
-
-For more complete examples, see the `src/examples/` directory.
-
-## Project Structure
-
-```
-src/bank_projections/
-├── data_preparation/   # Input parsing and validation
-├── amortization/       # Amortization calculations
-├── projections/        # Scenario-based forecasting
-├── metrics/           # Financial metrics and ratios
-└── output/            # Result formatting and export
-
-tests/                 # Unit and integration tests
-docs/                  # Documentation
-examples/              # Sample data and scenarios
-```
+For an example, see the `src/examples/` directory. It contains a script `main.py` that demonstrates how to use the
+library. It is based on synthetic data confidered in `example_bs.csv` and `example_params.yaml`, and uses an example
+scenario input file `example_scenario.xlsx`. The script generate a synthethic balance sheet, perform the projections and
+metric calculations, and output the results to Excel.
 
 ## Development
 
@@ -120,4 +88,5 @@ Contributions are welcome! Please ensure all tests pass and code meets quality s
 
 ## Disclaimer
 
-This tool uses synthetic data for testing and demonstration purposes only.
+This tool is work in progress and not production-ready yet. It needs to be tailored to the specific needs of each bank
+and should be used with caution. Always validate results against known benchmarks.

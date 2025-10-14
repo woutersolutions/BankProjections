@@ -10,7 +10,7 @@ readme = "README.md"
 license = { text = "AGPL-3.0" }
 requires-python = ">=3.13"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "Wouter van Krieken", email = "73380480+woutersolutions@users.noreply.github.com" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
