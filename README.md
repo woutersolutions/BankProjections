@@ -1,30 +1,69 @@
 # BankProjections
 
-A comprehensive balance sheet projection tool for banks, designed for capital management, liquidity management, stress
-testing, and planning.
+A powerful, open-source balance sheet projection engine for banks and financial institutions. Built for speed,
+flexibility, and transparency in capital management, liquidity forecasting, and stress testing.
 
-## Overview
+## Why BankProjections?
+
+Traditional banking projection are often in various complex Excel sheets. BankProjections offers:
+
+- **🚀 Blazing Fast**: Built on Polars, handles portfolios with millions of instruments efficiently
+- **🔧 Highly Flexible**: Adapt calculations to your bank's specific needs using configurable registries
+- **📊 Comprehensive**: Projects balance sheets, P&L, cash flows, and regulatory metrics
+- **🎯 Scenario-Based**: Run multiple concurrent scenarios with customizable assumptions
+- **🔓 Open Source**: Full transparency with AGPL v3 license
+- **🧪 Test-Driven**: Synthetic data generation for safe testing and demonstration
+
+## What It Does
 
 BankProjections enables financial institutions to:
-- Project financials statements into the future
-- Apply scenario-based projections with customizable time intervals
-- Calculate amortization schedules for balance sheet items
-- Compute regulatory metrics (capital ratios, ROC, LCR, NSFR)
-- Output future balance sheet, regulatory metrics, income statement, and cashflow statement
 
-## Features
+- Project financial statements into the future under various scenarios
+- Calculate runoff patterns, amortization, and repayment schedules
+- Compute regulatory metrics (Basel III capital ratios, LCR, NSFR, ROC)
+- Perform market valuations based on scenario curves
+- Generate income statements and cash flow projections
+- Stress test portfolios under adverse conditions
 
-- **Multi-scenario Support**: Run multiple projection scenarios
-- **Flexible Input**: High-level or detailed balance sheet table and flexible scenario input templates.
-- **Flexible Calculations**: Orchestrate calculation details using classification columns on the balance sheet and
-  registries.
-- **Runoff**: Calculate repayments, pre-payments, and coupon payements
-- **Valuation**: Market value calculations based on scenario curves.
-- **Regulatory Compliance**: Calculate Basel III capital ratios and liquidity metrics
-- **Synthetic Data Generation**: Test and demonstrate capabilities without real bank data
+## Key Features
 
-Built on Polars, it’s extremely fast and capable of handling portfolios with millions of loans. It is highly flexible to
-adapt to any bank setup.
+### Core Capabilities
+
+- **Multi-scenario Support**: Run multiple projection scenarios concurrently with independent assumptions
+- **Runoff Modeling**: Calculate repayments, prepayments, and coupon payments with custom amortization rules
+- **Market Valuation**: Dynamic market value calculations based on scenario yield curves
+- **Regulatory Compliance**: Basel III capital ratios, LCR, NSFR, and other regulatory metrics
+- **Synthetic Data Generation**: Built-in tools to generate realistic test data without exposing real bank information
+
+> **⚠️ Work in Progress**: This project is under active development and not yet production-ready. Contributions and
+> feedback are welcome!
+
+### Flexible Architecture via Registries
+
+BankProjections uses a **registry-based architecture** that allows you to customize calculations without modifying core
+code:
+
+A few examples:
+
+1. **BalanceSheetItemRegistry**: Define important balance sheet items that should be used in calculations
+2. **BalanceSheetMetrics**: Configure which metrics are calculated and how
+    - Standard metrics: quantity, book value, interest rates, impairments
+    - Add custom metrics specific to your institution
+    - Control metric calculation order and dependencies
+3. **AccountingMethodRegistry**: Define how book value is determined and income is accounted:
+    - Amortized cost
+    - Fair value through P&L
+    - Fair value through OCI
+4. **MetricRegistry**: Defines the output metrics, for example regulatory capital and liquidity ratios
+5. **ValuationRegistry**: Defines how items must be reevaluated
+6. **RedemptionRegistry**: Defines how items redeem (principal payments)
+
+Most registries correspond to a column in the input balance sheet containing the registry keys. This way the relevant
+calculations can be orchestrated for each balance item.
+
+This registry approach means you can adapt BankProjections to your bank's specific needs by **registering custom
+handlers** rather than forking and modifying the core codebase. Simply extend the registries with your
+institution-specific logic while maintaining compatibility with updates.
 
 ## Installation
 
@@ -41,12 +80,27 @@ cd BankProjections
 pip install -e ".[dev]"
 ```
 
-## Usage
+## Quick Start
 
-For an example, see the `src/examples/` directory. It contains a script `main.py` that demonstrates how to use the
-library. It is based on synthetic data confidered in `example_bs.csv` and `example_params.yaml`, and uses an example
-scenario input file `example_scenario.xlsx`. The script generate a synthethic balance sheet, perform the projections and
-metric calculations, and output the results to Excel.
+### Basic Usage
+
+Check out the `src/examples/` directory for a complete working example:
+
+```bash
+# Navigate to examples
+cd src/examples
+
+# Run the example projection
+python main.py
+```
+
+The example demonstrates:
+
+- Loading a synthetic balance sheet (`example_bs.csv`)
+- Applying scenario parameters `example_scenario.xlsx`
+- Running a projection with this scenario
+- Computing regulatory metrics
+- Exporting results to Excel
 
 ## Development
 
@@ -86,7 +140,39 @@ This project is licensed under the GNU Affero General Public License v3.0 - see 
 
 Contributions are welcome! Please ensure all tests pass and code meets quality standards before submitting pull requests.
 
+## Project Status & Roadmap
+
+**Current Status**: Alpha - Core functionality is implemented but the API may change
+
+### Completed
+
+- ✅ Core projection engine with scenario support
+- ✅ Amortization and runoff calculations
+- ✅ Basic regulatory metrics (capital ratios, liquidity ratios)
+- ✅ Synthetic data generation
+- ✅ Registry-based customization system
+
+### In Progress
+
+- 🔨 Enhanced documentation and examples
+- 🔨 Additional scenario templates
+- 🔨 Performance optimizations for large portfolios
+- 🔨 Off-balance modelling and hedging
+- 🔨 IFRS9 Stage migrations and impairments changes
+- 🔨 Performance metrics (e.g. ROC)
+
+### Planned
+
+- 📋 Web-based visualization dashboard
+- 📋 Additional regulatory metrics
+
 ## Disclaimer
 
-This tool is work in progress and not production-ready yet. It needs to be tailored to the specific needs of each bank
-and should be used with caution. Always validate results against known benchmarks.
+**⚠️ This tool is under active development and not production-ready.**
+
+- Results should be validated against known benchmarks and existing systems
+- The tool needs to be tailored to the specific needs of each institution
+- No warranty is provided - use at your own risk (see AGPL v3 license)
+- Not intended to replace professional financial advice or regulatory compliance systems
+
+Always perform thorough validation and testing before using for any critical decision-making.
