@@ -100,20 +100,20 @@ class TestProductionRule:
         with pytest.raises(KeyError, match="UnknownKey not recognized in BalanceSheetMutationRule"):
             ProductionRule(rule_input)
 
-    def test_apply_without_reference_item(self):
+    def test_apply_without_reference_item(self, minimal_scenario):
         rule_input = {
             "Date": "2024-01-15",
         }
         rule = ProductionRule(rule_input)
 
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
         increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
         market_rates = MarketRates()
 
         with pytest.raises(NotImplementedError, match="Production without reference item not yet implement"):
             rule.apply(bs, increment, market_rates)
 
-    def test_apply_date_not_in_increment(self):
+    def test_apply_date_not_in_increment(self, minimal_scenario):
         rule_input = {
             "ReferenceItem": "cash account",
             "Date": "2024-02-15",
@@ -121,7 +121,7 @@ class TestProductionRule:
         }
         rule = ProductionRule(rule_input)
 
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
         increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
         market_rates = MarketRates()
 
@@ -129,13 +129,13 @@ class TestProductionRule:
 
         assert result == bs
 
-    def test_apply_date_is_none(self):
+    def test_apply_date_is_none(self, minimal_scenario):
         rule_input = {
             "ReferenceItem": "cash account",
         }
         rule = ProductionRule(rule_input)
 
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
         increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
         market_rates = MarketRates()
 

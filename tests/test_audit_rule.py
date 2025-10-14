@@ -43,7 +43,7 @@ class TestAuditRule:
         with pytest.raises(KeyError, match="UnknownKey not recognized in AuditRule"):
             AuditRule(rule_input)
 
-    def test_apply_no_audit_in_increment(self):
+    def test_apply_no_audit_in_increment(self, minimal_scenario):
         rule_input = {
             "ClosingMonth": 12,
             "AuditMonth": 3,
@@ -51,7 +51,7 @@ class TestAuditRule:
         }
         rule = AuditRule(rule_input)
 
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
         increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 2, 28))
         market_rates = MarketRates()
 
@@ -59,7 +59,7 @@ class TestAuditRule:
 
         assert result == bs
 
-    def test_apply_with_audit_in_increment(self):
+    def test_apply_with_audit_in_increment(self, minimal_scenario):
         rule_input = {
             "ClosingMonth": 12,
             "AuditMonth": 3,
@@ -67,7 +67,7 @@ class TestAuditRule:
         }
         rule = AuditRule(rule_input)
 
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
         increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 3, 31))
         market_rates = MarketRates()
 
@@ -75,7 +75,7 @@ class TestAuditRule:
 
         assert result is not None
 
-    def test_apply_audit_date_calculation(self):
+    def test_apply_audit_date_calculation(self, minimal_scenario):
         rule_input = {
             "ClosingMonth": 12,
             "AuditMonth": 3,
@@ -83,7 +83,7 @@ class TestAuditRule:
         }
         rule = AuditRule(rule_input)
 
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
         increment = TimeIncrement(datetime.date(2024, 3, 1), datetime.date(2024, 3, 31))
         market_rates = MarketRates()
 
@@ -91,7 +91,7 @@ class TestAuditRule:
 
         assert result is not None
 
-    def test_apply_no_audit_before_audit_month(self):
+    def test_apply_no_audit_before_audit_month(self, minimal_scenario):
         rule_input = {
             "ClosingMonth": 12,
             "AuditMonth": 6,
@@ -99,7 +99,7 @@ class TestAuditRule:
         }
         rule = AuditRule(rule_input)
 
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
         increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 3, 31))
         market_rates = MarketRates()
 

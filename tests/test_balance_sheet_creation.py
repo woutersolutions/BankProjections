@@ -9,10 +9,10 @@ from bank_projections.financials.metrics import BalanceSheetMetrics
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 
-def test_create_simple_balance_sheet():
+def test_create_simple_balance_sheet(minimal_scenario):
     """Test that a balance sheet can be created with minimal code."""
     # Create a balanced balance sheet with default parameters
-    bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31))
+    bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31), scenario=minimal_scenario)
 
     # Verify the balance sheet was created successfully
     assert len(bs) > 0
@@ -25,9 +25,9 @@ def test_create_simple_balance_sheet():
     bs.validate()
 
 
-def test_balance_sheet_components():
+def test_balance_sheet_components(minimal_scenario):
     """Test that the balance sheet has proper asset, liability, and equity components."""
-    bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31))
+    bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31), scenario=minimal_scenario)
 
     # Check assets
     assets = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Assets"), BalanceSheetMetrics.get("book_value"))

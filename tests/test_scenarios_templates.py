@@ -372,7 +372,7 @@ class TestTaxTemplate:
         rule = TaxRule(tax_rate=0.25)
         assert rule.tax_rate == 0.25
 
-    def test_tax_rule_apply(self):
+    def test_tax_rule_apply(self, minimal_scenario):
         import datetime
 
         import polars as pl
@@ -380,7 +380,7 @@ class TestTaxTemplate:
         from bank_projections.scenarios.tax import TaxRule
         from examples.synthetic_data import create_synthetic_balance_sheet
 
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1))
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
         bs.pnls = pl.DataFrame({"Amount": [100.0, -50.0, 75.0, -25.0]})
 
         increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
