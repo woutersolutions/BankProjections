@@ -31,7 +31,7 @@ class TestFrequencyRegistry:
         """Test registering a valid frequency class."""
         item = Monthly()
         FrequencyRegistry.register("Monthly", item)
-        assert "monthly" in FrequencyRegistry.items
+        assert "Monthly" in FrequencyRegistry.items
         assert item in FrequencyRegistry.items.values()
 
     def test_number_due_with_registered_frequency(self) -> None:
@@ -135,4 +135,4 @@ class TestDaily:
 
         result = df.with_columns(payments=Daily.number_due(pl.col("coupon_date"), pl.col("projection_date")))
 
-        assert result["payments"][0] == 5  # 5 days
+        assert result["payments"][0] == 6  # 6 days (inclusive: 15, 16, 17, 18, 19, 20)

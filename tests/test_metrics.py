@@ -196,9 +196,9 @@ class TestMetricIntegration:
 
         metric = DirtyPrice()
 
-        # Test get_expression (quantity * clean_price + accrued_interest)
+        # Test get_expression (clean_price + accrued_interest/quantity = price per unit)
         result = df.select(metric.get_expression.alias("dirty_price"))
-        expected = [100005.0, 190010.0]  # (1000*100+5), (2000*95+10)
+        expected = [100.005, 95.005]  # (100 + 5/1000), (95 + 10/2000)
         assert result["dirty_price"].to_list() == expected
 
     def test_exposure_with_real_data(self):

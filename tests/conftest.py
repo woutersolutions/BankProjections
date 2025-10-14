@@ -8,9 +8,12 @@ from bank_projections.scenarios.scenario import Scenario
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def minimal_scenario():
-    """Create a minimal scenario for testing that includes market data."""
+    """Create a minimal scenario for testing that includes market data.
+
+    Session-scoped to avoid recreating for every test.
+    """
     curve_data_df = pd.DataFrame(
         {
             "Date": [datetime.date(2024, 1, 1)] * 4,
@@ -26,9 +29,21 @@ def minimal_scenario():
     return Scenario(market_data=market_data)
 
 
-@pytest.fixture
-def test_balance_sheet(minimal_scenario):
-    """Create a test balance sheet with the minimal scenario."""
+@pytest.fixture(scope="session")
+def _test_balance_sheet_cached(minimal_scenario):
+    """Create a test balance sheet once per session.
+
+    Private fixture - use test_balance_sheet instead to get a fresh copy.
+    """
     bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31), scenario=minimal_scenario)
     bs.validate()
     return bs
+
+
+@pytest.fixture
+def test_balance_sheet(_test_balance_sheet_cached):
+    """Provide a fresh copy of the test balance sheet for each test.
+
+    Returns a copy to ensure test isolation while avoiding expensive recreation.
+    """
+    return _test_balance_sheet_cached.copy()
