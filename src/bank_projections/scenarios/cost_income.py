@@ -102,7 +102,7 @@ class CostIncomeRule(AmountRuleBase):
                 days_in_period = (self.pnl_end - self.pnl_start).days + 1
                 amount_to_recognize = (
                     self.amount * increment.days_overlap(self.pnl_start, self.pnl_end) / days_in_period
-                )  # TODO: Mistake in formula, causing too much P&L
+                )
                 if increment.from_date < self.pnl_start:
                     bs.add_item(
                         based_on_item=bs_item,

@@ -20,7 +20,7 @@ BankProjections enables financial institutions to:
 
 - Project financial statements into the future under various scenarios
 - Calculate runoff patterns, amortization, and repayment schedules
-- Compute regulatory metrics (Basel III capital ratios, LCR, NSFR, ROC)
+- Compute regulatory metrics (Basel IV capital ratios, LCR, NSFR, ROC)
 - Perform market valuations based on scenario curves
 - Generate income statements and cash flow projections
 - Stress test portfolios under adverse conditions
@@ -32,7 +32,7 @@ BankProjections enables financial institutions to:
 - **Multi-scenario Support**: Run multiple projection scenarios concurrently with independent assumptions
 - **Runoff Modeling**: Calculate repayments, prepayments, and coupon payments with custom amortization rules
 - **Market Valuation**: Dynamic market value calculations based on scenario yield curves
-- **Regulatory Compliance**: Basel III capital ratios, LCR, NSFR, and other regulatory metrics
+- **Regulatory Compliance**: Basel IV capital ratios, LCR, NSFR, and other regulatory metrics
 - **Synthetic Data Generation**: Built-in tools to generate realistic test data without exposing real bank information
 
 > **⚠️ Work in Progress**: This project is under active development and not yet production-ready. Contributions and
@@ -80,11 +80,13 @@ cd BankProjections
 pip install -e ".[dev]"
 ```
 
+Make sure to add the `src` directory to your `PYTHONPATH`.
+
 ## Quick Start
 
 ### Basic Usage
 
-Check out the `src/examples/` directory for a complete working example:
+See the `src/examples/` directory for a complete working example:
 
 ```bash
 # Navigate to examples
@@ -98,7 +100,7 @@ The example demonstrates:
 
 - Loading a synthetic balance sheet (`example_bs.csv`)
 - Applying scenario parameters `example_scenario.xlsx`
-- Running a projection with this scenario
+- Running a projection with this scenario `main.py`
 - Computing regulatory metrics
 - Exporting results to Excel
 
@@ -136,9 +138,13 @@ mypy src/
 
 This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
-## Contributing
+## Contributing, contact & Support
 
-Contributions are welcome! Please ensure all tests pass and code meets quality standards before submitting pull requests.
+If you have feedback, questions or offer/need help:
+
+- **Issues**: For bug reports or feature requests,
+  please [open an issue](https://github.com/woutersolutions/BankProjections/issues)
+- **LinkedIn**: [Wouter van Krieken](https://www.linkedin.com/in/wouter-van-krieken/)
 
 ## Project Status & Roadmap
 
@@ -148,6 +154,7 @@ Contributions are welcome! Please ensure all tests pass and code meets quality s
 
 - ✅ Core projection engine with scenario support
 - ✅ Amortization and runoff calculations
+- ✅ Excel scenario input templates
 - ✅ Basic regulatory metrics (capital ratios, liquidity ratios)
 - ✅ Synthetic data generation
 - ✅ Registry-based customization system

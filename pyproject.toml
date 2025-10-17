@@ -41,6 +41,7 @@ dev = [
     "ruff",
     "mypy",
     "pandas-stubs",
+    "snakeviz",
     "types-PyYAML",
     "types-python-dateutil",
 ]
