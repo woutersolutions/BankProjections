@@ -1,5 +1,6 @@
 import datetime
 import os
+import time
 from dataclasses import dataclass
 
 import polars as pl
@@ -21,6 +22,7 @@ class ProjectionResult:
     ocis: list[pl.DataFrame]
     metric_list: list[pl.DataFrame]
     horizon: TimeHorizon
+    run_info: dict
 
     def to_dict(self) -> dict[str, pl.DataFrame]:
         return {
@@ -59,6 +61,7 @@ class ProjectionResult:
                 ],
                 how="diagonal",
             ),
+            "RunInfo": pl.DataFrame(self.run_info),
         }
 
     def to_excel(self, file_path: str, open_after: bool = False) -> None:
@@ -82,6 +85,9 @@ class Projection:
 
     def run(self, bs: BalanceSheet) -> ProjectionResult:
         """Run the projection over the defined time horizon."""
+
+        start_time = time.time()
+
         balance_sheets = []
         pnls_list = []
         cashflows_list = []
@@ -89,6 +95,8 @@ class Projection:
         oci_list = []
 
         total_increments = len(self.horizon)
+
+        start_bs_size = len(bs)
 
         for i, increment in log_iterator(
             enumerate(self.horizon, 1), prefix="Time step ", suffix=f"/{total_increments}", timed=True
@@ -108,4 +116,17 @@ class Projection:
 
             bs.validate()
 
-        return ProjectionResult(balance_sheets, pnls_list, cashflows_list, oci_list, metric_list, self.horizon)
+        run_info = {
+            "StartDate": self.horizon.start_date,
+            "EndDate": self.horizon.end_date,
+            "NumberOfIncrements": total_increments,
+            "Starttime": datetime.datetime.fromtimestamp(start_time),
+            "Endtime": datetime.datetime.now(),
+            "TotalRunTimeSeconds": time.time() - start_time,
+            "StartBalanceSheetSize": start_bs_size,
+            "Rules": len(self.scenario.rules),
+        }
+
+        return ProjectionResult(
+            balance_sheets, pnls_list, cashflows_list, oci_list, metric_list, self.horizon, run_info
+        )
