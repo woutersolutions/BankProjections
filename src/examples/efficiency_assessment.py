@@ -20,6 +20,7 @@ from loguru import logger
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.valuation import Valuation
+from bank_projections.scenarios.scenario import Scenario
 from bank_projections.scenarios.template_registry import TemplateRegistry
 from bank_projections.utils.time import TimeHorizon
 from examples import EXAMPLE_FOLDER, OUTPUT_FOLDER
@@ -123,7 +124,7 @@ class EfficiencyAssessment:
             logger.info(f"Testing balance sheet size multiplier: {multiplier}")
 
             # Create modified balance sheet with increased size
-            bs = self._create_scaled_balance_sheet(start_date, multiplier)
+            bs = self._create_scaled_balance_sheet(start_date, multiplier, scenario)
 
             # Calculate actual number of positions
             num_positions = self._count_balance_sheet_positions(bs)
@@ -154,7 +155,7 @@ class EfficiencyAssessment:
 
         return balance_sheet_results
 
-    def _create_scaled_balance_sheet(self, current_date: datetime.date, multiplier: int):
+    def _create_scaled_balance_sheet(self, current_date: datetime.date, multiplier: int, scenario: Scenario):
         """Create a balance sheet scaled by the given multiplier.
 
         Args:
@@ -171,7 +172,7 @@ class EfficiencyAssessment:
         scaled_config_df = config_df.with_columns((pl.col("number") * multiplier).alias("number"))
 
         # Create balance sheet with scaled config
-        bs = create_synthetic_balance_sheet(current_date=current_date, config_table=scaled_config_df)
+        bs = create_synthetic_balance_sheet(current_date=current_date, config_table=scaled_config_df, scenario=scenario)
 
         return bs
 

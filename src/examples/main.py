@@ -16,9 +16,9 @@ if __name__ == "__main__":
     scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
     horizon = TimeHorizon.from_numbers(
         start_date=start_date,
-        number_of_days=7,
-        number_of_months=36,
-        number_of_years=5,
+        number_of_days=3,
+        number_of_months=12,
+        number_of_years=3,
         end_of_month=True,
     )
 

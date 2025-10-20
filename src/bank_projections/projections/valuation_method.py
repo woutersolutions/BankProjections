@@ -291,46 +291,75 @@ def _price_spread_instrument(
     include_par: bool,
 ) -> pl.DataFrame:
     """
-    Generic present value builder:
+    Optimized present value builder using vectorized approach:
       start value = (par if include_par) + accrued
       add sum_i rate_expr * Δ_i * DF_i for remaining periods
-    Assumes:
-      - 'Spread' (or supplied rate_expr) per period
-      - Frequency data via FrequencyRegistry
-      - Accrued interest provided (quantity-scaled externally)
+    Builds all cashflows at once, then does single discount rate lookup.
     """
     if data.height == 0:
         return data.with_columns(pl.lit(None, dtype=pl.Float64).alias(output_column))
 
-    df = data.with_columns(
-        NumberOfCoupons=FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate")),
-        _acc=pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity")),
+    # Add row index and calculate number of coupons
+    data = data.with_row_index(name="_inst_idx").with_columns(
+        NumberOfCoupons=FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate"))
     )
 
-    start_val = pl.lit(0.0)
-    if include_par:
-        start_val = start_val + pl.lit(1.0)
-    start_val = start_val + pl.col("_acc")
+    max_coupons_value = data["NumberOfCoupons"].max()
+    if max_coupons_value is None:
+        max_coupons = 0
+    else:
+        max_coupons = int(float(max_coupons_value))  # type: ignore[arg-type]
 
-    out = df.with_columns(start_val.alias(output_column))
+    # Build all cashflows at once
+    cashflow_parts = []
 
-    max_cpn_value = out["NumberOfCoupons"].max() if out.height > 0 else None
-    max_cpn = 0 if max_cpn_value is None else int(float(max_cpn_value))  # type: ignore[arg-type]
-    for i in range(max_cpn + 1):
-        cpn_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
-        dt_years_i = (cpn_date_i - pl.lit(projection_date)).dt.total_days() / 365.25
-        dfs_i = get_discount_rates(out, zero_rates, dt_years_i)
+    for i in range(max_coupons + 1):
+        # Calculate coupon date for this period
+        coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
+        years_to_coupon = (coupon_date - pl.lit(projection_date)).dt.total_days() / 365.25
 
+        # Calculate previous coupon date to get delta (period length)
         if i == 0:
-            prev_date_i = pl.col("PreviousCouponDate")
+            prev_coupon_date = pl.col("PreviousCouponDate")
         else:
-            prev_date_i = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i - 1)
-        delta_i = (cpn_date_i - prev_date_i).dt.total_days() / 365.25
+            prev_coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i - 1)
 
-        contrib_i = pl.when(pl.col("NumberOfCoupons") >= i).then(rate_expr * delta_i * dfs_i).otherwise(0.0)
-        out = out.with_columns((pl.col(output_column) + contrib_i).alias(output_column))
+        delta = (coupon_date - prev_coupon_date).dt.total_days() / 365.25
 
-    return out.drop("_acc", "NumberOfCoupons")
+        # Create cashflow records for instruments that have this coupon
+        part = data.filter(pl.col("NumberOfCoupons") >= i).with_columns(
+            _years=years_to_coupon, _payment=rate_expr * delta
+        )
+        cashflow_parts.append(part)
+
+    # Combine all cashflows into one table
+    all_cashflows = pl.concat(cashflow_parts)
+
+    # Get discount factors for ALL cashflows in ONE operation
+    discount_factors = get_discount_rates(all_cashflows, zero_rates, pl.col("_years"))
+    all_cashflows = all_cashflows.with_columns(pl.Series("_discount_factor", discount_factors))
+
+    # Calculate present value for each cashflow
+    all_cashflows = all_cashflows.with_columns(_pv=pl.col("_payment") * pl.col("_discount_factor"))
+
+    # Sum present values by instrument
+    result = all_cashflows.group_by("_inst_idx").agg(pl.col("_pv").sum().alias(output_column))
+
+    # Join back to original data
+    data = data.join(result, on="_inst_idx", how="left")
+
+    # Add starting value (principal + accrued interest)
+    accrued = pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity"))
+    start_val = accrued
+    if include_par:
+        # Add principal at maturity for floating rate bonds
+        years_to_maturity = (pl.col("MaturityDate") - pl.lit(projection_date)).dt.total_days() / 365.25
+        maturity_df = get_discount_rates(data, zero_rates, years_to_maturity)
+        start_val = start_val + maturity_df
+
+    data = data.with_columns((pl.col(output_column) + start_val).alias(output_column))
+
+    return data.drop("_inst_idx", "NumberOfCoupons")
 
 
 class ValuationMethodRegistry(BaseRegistry[ValuationMethod]):
