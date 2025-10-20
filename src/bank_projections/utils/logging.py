@@ -13,7 +13,7 @@ from typing import Any
 from loguru import logger
 
 # Thread-safe context stack using contextvars
-_context_stack: ContextVar[list[str]] = ContextVar("_context_stack", default=[])
+_context_stack: ContextVar[list[str] | None] = ContextVar("_context_stack", default=None)
 
 
 @contextmanager
@@ -45,7 +45,7 @@ def log_context(name: str, timed: bool = True) -> Iterator[None]:
     start_time = time.time() if timed else None
 
     # Get current stack and add new context
-    stack = _context_stack.get().copy()
+    stack = (_context_stack.get() or []).copy()
     stack.append(name)
     _context_stack.set(stack)
 
@@ -59,12 +59,12 @@ def log_context(name: str, timed: bool = True) -> Iterator[None]:
         try:
             yield
         finally:
-            if timed:
+            if timed and start_time is not None:
                 elapsed = time.time() - start_time
                 logger.info(f"Ending {name} in {elapsed:.2f} seconds")
 
             # Pop context from stack
-            stack = _context_stack.get().copy()
+            stack = (_context_stack.get() or []).copy()
             if stack and stack[-1] == name:
                 stack.pop()
             _context_stack.set(stack)
@@ -98,17 +98,14 @@ def log_iterator(iterable: Iterable[Any], prefix: str = "", suffix: str = "", ti
         # (no ending message)
     """
     for item in iterable:
-        if isinstance(item, tuple):
-            name = str(item[0])
-        else:
-            name = str(item)
+        name = str(item[0]) if isinstance(item, tuple) else str(item)
         context_name = f"{prefix}{name}{suffix}"
         with log_context(context_name, timed=timed):
             yield item
 
 
 # Configure logger format to include context if present
-def setup_logger_format():
+def setup_logger_format() -> None:
     """
     Configure loguru to display context in log messages.
     Call this function to set up the default log format with context support.
@@ -116,19 +113,20 @@ def setup_logger_format():
     logger.remove()  # Remove default handler
     logger.add(
         lambda msg: print(msg, end=""),
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>{extra[context]}\n",
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | "
+        "<level>{message}</level>{extra[context]}\n",
         colorize=True,
     )
 
 
-def setup_logger_format_with_context():
+def setup_logger_format_with_context() -> None:
     """
     Configure loguru to display context as a prefix in log messages.
     This is the recommended setup for use with log_context and log_iterator.
     """
     logger.remove()  # Remove default handler
 
-    def format_with_context(record):
+    def format_with_context(record: dict[str, Any]) -> str:
         """Custom formatter that adds context before the message with colors."""
         context = record["extra"].get("context", "")
         context_prefix = f"<cyan> {context}</cyan>" if context else ""

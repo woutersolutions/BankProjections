@@ -110,10 +110,7 @@ class FixedRateBondValuationMethod(ValuationMethod):
         )
 
         max_coupons_value = data["NumberOfCoupons"].max()
-        if max_coupons_value is None:
-            max_coupons = 0
-        else:
-            max_coupons = int(float(max_coupons_value))  # type: ignore[arg-type]
+        max_coupons = 0 if max_coupons_value is None else int(float(max_coupons_value))  # type: ignore[arg-type]
 
         # Build all cashflows at once
         cashflow_parts = []
@@ -313,10 +310,7 @@ def _price_spread_instrument(
     )
 
     max_coupons_value = data["NumberOfCoupons"].max()
-    if max_coupons_value is None:
-        max_coupons = 0
-    else:
-        max_coupons = int(float(max_coupons_value))  # type: ignore[arg-type]
+    max_coupons = 0 if max_coupons_value is None else int(float(max_coupons_value))  # type: ignore[arg-type]
 
     # Build all cashflows at once
     cashflow_parts = []

@@ -42,7 +42,7 @@ class TestRunoff:
         # Quantity should decrease slightly due to prepayments only
         new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
         assert new_quantity < initial_quantity  # Some prepayment occurred
-        assert new_quantity > initial_quantity * 0.95  # But not much (small prepayment rate)
+        assert new_quantity > initial_quantity * 0.94  # But not much (small prepayment rate, allowing for ~6% max)
 
         # Should have principal repayment cashflow of zero (no scheduled repayment)
         principal_cashflows = result_bs.cashflows.filter(

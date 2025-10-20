@@ -2,6 +2,7 @@ import datetime
 import os
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import polars as pl
 import xlsxwriter
@@ -21,7 +22,7 @@ class ProjectionResult:
     cashflows: list[pl.DataFrame]
     ocis: list[pl.DataFrame]
     metric_list: list[pl.DataFrame]
-    run_info: dict
+    run_info: dict[str, Any]
 
     def to_dict(self) -> dict[str, pl.DataFrame]:
         return {
@@ -70,7 +71,7 @@ class Projection:
         for scenario_name, scenario in log_iterator(self.scenarios.items(), prefix="Scenario "):
             bs = start_bs.copy()
 
-            for i, increment in log_iterator(
+            for _i, increment in log_iterator(
                 enumerate(self.horizon, 1), prefix="Time step ", suffix=f"/{total_increments}", timed=True
             ):
                 bs = bs.initialize_new_date(increment.to_date)
@@ -91,7 +92,7 @@ class Projection:
 
                 bs.validate()
 
-        run_info = {
+        run_info: dict[str, Any] = {
             "StartDate": self.horizon.start_date,
             "EndDate": self.horizon.end_date,
             "NumberOfIncrements": total_increments,

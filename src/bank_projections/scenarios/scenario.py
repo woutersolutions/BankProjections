@@ -12,7 +12,7 @@ class Scenario(Rule, Combinable):
         self.market_data = market_data or MarketData()
 
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
-        for name, rule in log_iterator(self.rules.items()):
+        for _name, rule in log_iterator(self.rules.items()):
             bs = rule.apply(bs, increment, market_rates)
         return bs
 

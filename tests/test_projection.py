@@ -21,53 +21,105 @@ class TestProjectionResult:
         cashflows = [pl.DataFrame({"cf_col": [100, 200]})]
         ocis = [pl.DataFrame({"oci_col": [5, 10]})]
         metric_list = [pl.DataFrame({"metric": [5]})]
-        horizon = TimeHorizon([datetime.date(2023, 1, 31)])
+        run_info: dict[str, int | datetime.date | datetime.datetime | float] = {
+            "StartDate": datetime.date(2023, 1, 1),
+            "EndDate": datetime.date(2023, 1, 31),
+            "NumberOfIncrements": 1,
+            "Scenarios": 1,
+        }
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, horizon)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, run_info)
 
         assert result.balance_sheets == balance_sheets
         assert result.pnls == pnls
         assert result.cashflows == cashflows
         assert result.ocis == ocis
         assert result.metric_list == metric_list
-        assert result.horizon == horizon
+        assert result.run_info == run_info
 
     def test_projection_result_to_dict(self):
         """Test converting ProjectionResult to dictionary."""
         balance_sheets = [
-            pl.DataFrame({"asset": [1000], "liability": [-800]}),
-            pl.DataFrame({"asset": [1100], "liability": [-900]}),
+            pl.DataFrame(
+                {
+                    "Scenario": ["base"],
+                    "ProjectionDate": [datetime.date(2023, 1, 31)],
+                    "asset": [1000],
+                    "liability": [-800],
+                }
+            ),
+            pl.DataFrame(
+                {
+                    "Scenario": ["base"],
+                    "ProjectionDate": [datetime.date(2023, 2, 28)],
+                    "asset": [1100],
+                    "liability": [-900],
+                }
+            ),
         ]
-        pnls = [pl.DataFrame({"income": [50]}), pl.DataFrame({"income": [60]})]
-        cashflows = [pl.DataFrame({"cash_in": [100]}), pl.DataFrame({"cash_in": [110]})]
-        ocis = [pl.DataFrame({"oci": [5]}), pl.DataFrame({"oci": [6]})]
-        metric_list = [pl.DataFrame({"metric": [5]}), pl.DataFrame({"metric": [6]})]
-        horizon = TimeHorizon([datetime.date(2023, 1, 31), datetime.date(2023, 2, 28)])
+        pnls = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "income": [50]}),
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "income": [60]}),
+        ]
+        cashflows = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "cash_in": [100]}),
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "cash_in": [110]}),
+        ]
+        ocis = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "oci": [5]}),
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "oci": [6]}),
+        ]
+        metric_list = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "metric": [5]}),
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "metric": [6]}),
+        ]
+        run_info: dict[str, int | datetime.date | datetime.datetime | float] = {
+            "StartDate": datetime.date(2023, 1, 1),
+            "EndDate": datetime.date(2023, 2, 28),
+            "NumberOfIncrements": 2,
+            "Scenarios": 1,
+        }
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, horizon)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, run_info)
         result_dict = result.to_dict()
 
         assert "BalanceSheets" in result_dict
         assert "P&Ls" in result_dict
         assert "Cashflows" in result_dict
         assert "OCIs" in result_dict
+        assert "RunInfo" in result_dict
 
-        # Check that ProjectionDate column was added
+        # Check that Scenario and ProjectionDate columns exist
+        assert "Scenario" in result_dict["BalanceSheets"].columns
         assert "ProjectionDate" in result_dict["BalanceSheets"].columns
+        assert "Scenario" in result_dict["P&Ls"].columns
         assert "ProjectionDate" in result_dict["P&Ls"].columns
+        assert "Scenario" in result_dict["Cashflows"].columns
         assert "ProjectionDate" in result_dict["Cashflows"].columns
+        assert "Scenario" in result_dict["OCIs"].columns
         assert "ProjectionDate" in result_dict["OCIs"].columns
 
     def test_projection_result_to_excel(self):
         """Test exporting ProjectionResult to Excel."""
-        balance_sheets = [pl.DataFrame({"asset": [1000]})]
-        pnls = [pl.DataFrame({"income": [50]})]
-        cashflows = [pl.DataFrame({"cash_in": [100]})]
-        ocis = [pl.DataFrame({"oci": [5]})]
-        metric_list = [pl.DataFrame({"metric": [5]})]
-        horizon = TimeHorizon([datetime.date(2023, 1, 31)])
+        balance_sheets = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "asset": [1000]})
+        ]
+        pnls = [pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "income": [50]})]
+        cashflows = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "cash_in": [100]})
+        ]
+        ocis = [pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "oci": [5]})]
+        metric_list = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "metric": [5]})
+        ]
+        run_info: dict[str, int | datetime.date | datetime.datetime | float] = {
+            "StartDate": datetime.date(2023, 1, 1),
+            "EndDate": datetime.date(2023, 1, 31),
+            "NumberOfIncrements": 1,
+            "Scenarios": 1,
+        }
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, horizon)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, run_info)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = os.path.join(temp_dir, "test_output.xlsx")
@@ -81,28 +133,31 @@ class TestProjectionResult:
 
 class TestProjection:
     def test_projection_initialization(self):
-        mock_rule = Mock(spec=Rule)
+        mock_scenario = Mock(spec=Scenario)
         mock_horizon = Mock(spec=TimeHorizon)
 
-        projection = Projection(mock_rule, mock_horizon)
+        projection = Projection({"base": mock_scenario}, mock_horizon)
 
-        assert projection.scenario == mock_rule
+        assert "base" in projection.scenarios
+        assert projection.scenarios["base"] == mock_scenario
         assert projection.horizon == mock_horizon
 
     @patch("bank_projections.projections.projection.calculate_metrics")
-    @patch("bank_projections.projections.projection.logger")
-    def test_projection_run_single_increment(self, mock_logger, mock_calculate_metrics):
+    def test_projection_run_single_increment(self, mock_calculate_metrics):
         # Create mock dependencies
         mock_rule = Mock(spec=Rule)
-        mock_bs = Mock(spec=BalanceSheet)
+        mock_bs = MagicMock(spec=BalanceSheet)
         mock_increment = Mock(spec=TimeIncrement)
         mock_increment.from_date = datetime.date(2023, 1, 1)
         mock_increment.to_date = datetime.date(2023, 1, 31)
 
         # Mock the balance sheet methods
+        mock_bs.__len__.return_value = 1000
         mock_bs.validate.return_value = None
+        mock_bs_copy = Mock(spec=BalanceSheet)
+        mock_bs.copy.return_value = mock_bs_copy
         mock_bs_initialized = Mock(spec=BalanceSheet)
-        mock_bs.initialize_new_date.return_value = mock_bs_initialized
+        mock_bs_copy.initialize_new_date.return_value = mock_bs_initialized
 
         # Mock rule apply method - note this receives the initialized balance sheet
         mock_rule.apply.return_value = mock_bs_initialized
@@ -130,7 +185,7 @@ class TestProjection:
         mock_horizon.__len__.return_value = 1
         mock_horizon.__iter__.return_value = iter([mock_increment])
 
-        projection = Projection(scenario, mock_horizon)
+        projection = Projection({"base": scenario}, mock_horizon)
         result = projection.run(mock_bs)
 
         # Verify calls
@@ -143,17 +198,15 @@ class TestProjection:
         assert len(result.balance_sheets) == 1
         assert len(result.pnls) == 1
         assert len(result.cashflows) == 1
-
-        # Verify logger call
-        mock_logger.info.assert_called_once_with("Time increment 1/1 - From 2023-01-01 to 2023-01-31")
+        assert "run_info" in dir(result)
 
     @patch("bank_projections.projections.projection.calculate_metrics")
-    @patch("bank_projections.projections.projection.logger")
-    def test_projection_run_multiple_increments(self, mock_logger, mock_calculate_metrics):
+    def test_projection_run_multiple_increments(self, mock_calculate_metrics):
         # Create mock dependencies
         mock_rule1 = Mock(spec=Rule)
         mock_rule2 = Mock(spec=Rule)
-        mock_bs = Mock(spec=BalanceSheet)
+        mock_bs = MagicMock(spec=BalanceSheet)
+        mock_bs.__len__.return_value = 1000
 
         mock_increment1 = Mock(spec=TimeIncrement)
         mock_increment1.from_date = datetime.date(2023, 1, 1)
@@ -165,22 +218,28 @@ class TestProjection:
 
         # Mock the balance sheet methods
         mock_bs.validate.return_value = None
+        mock_bs_copy = Mock(spec=BalanceSheet)
+        mock_bs.copy.return_value = mock_bs_copy
         mock_bs_initialized1 = Mock(spec=BalanceSheet)
         mock_bs_initialized2 = Mock(spec=BalanceSheet)
 
         # Setup multiple initialize_new_date calls for multiple increments
         # But we also need to set up chained calls as each iteration reassigns bs
-        mock_bs.initialize_new_date.return_value = mock_bs_initialized1
+        mock_bs_copy.initialize_new_date.return_value = mock_bs_initialized1
         mock_bs_initialized1.initialize_new_date.return_value = mock_bs_initialized2
 
-        # Mock aggregate method
-        mock_agg_bs = pl.DataFrame({"asset": [1000]})
-        mock_pnl = pl.DataFrame({"income": [50]})
-        mock_cashflow = pl.DataFrame({"cash": [100]})
-        mock_oci = pl.DataFrame({"oci": [10]})
-        mock_bs_initialized1.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow, mock_oci)
+        # Mock aggregate method - return fresh dataframes for each call
+        def make_aggregate_return():
+            return (
+                pl.DataFrame({"asset": [1000]}),
+                pl.DataFrame({"income": [50]}),
+                pl.DataFrame({"cash": [100]}),
+                pl.DataFrame({"oci": [10]}),
+            )
+
+        mock_bs_initialized1.aggregate.side_effect = [make_aggregate_return()]
         mock_bs_initialized1.validate.return_value = None
-        mock_bs_initialized2.aggregate.return_value = (mock_agg_bs, mock_pnl, mock_cashflow, mock_oci)
+        mock_bs_initialized2.aggregate.side_effect = [make_aggregate_return()]
         mock_bs_initialized2.validate.return_value = None
 
         # Mock calculate_metrics to return a DataFrame
@@ -202,7 +261,7 @@ class TestProjection:
         mock_horizon.__len__.return_value = 2
         mock_horizon.__iter__.return_value = iter([mock_increment1, mock_increment2])
 
-        projection = Projection(composite_rule, mock_horizon)
+        projection = Projection({"base": composite_rule}, mock_horizon)
         result = projection.run(mock_bs)
 
         # Verify the composite rule is applied for each increment
@@ -222,26 +281,20 @@ class TestProjection:
         assert len(result.pnls) == 2
         assert len(result.cashflows) == 2
 
-        # Verify logger calls
-        expected_calls = [
-            "Time increment 1/2 - From 2023-01-01 to 2023-01-31",
-            "Time increment 2/2 - From 2023-02-01 to 2023-02-28",
-        ]
-        actual_calls = [call.args[0] for call in mock_logger.info.call_args_list]
-        assert actual_calls == expected_calls
-
     @patch("bank_projections.projections.projection.calculate_metrics")
-    @patch("bank_projections.projections.projection.logger")
-    def test_projection_run_no_rules(self, mock_logger, mock_calculate_metrics):
-        mock_bs = Mock(spec=BalanceSheet)
+    def test_projection_run_no_rules(self, mock_calculate_metrics):
+        mock_bs = MagicMock(spec=BalanceSheet)
+        mock_bs.__len__.return_value = 1000
         mock_increment = Mock(spec=TimeIncrement)
         mock_increment.from_date = datetime.date(2023, 1, 1)
         mock_increment.to_date = datetime.date(2023, 1, 31)
 
         # Mock the balance sheet methods
         mock_bs.validate.return_value = None
+        mock_bs_copy = Mock(spec=BalanceSheet)
+        mock_bs.copy.return_value = mock_bs_copy
         mock_bs_initialized = Mock(spec=BalanceSheet)
-        mock_bs.initialize_new_date.return_value = mock_bs_initialized
+        mock_bs_copy.initialize_new_date.return_value = mock_bs_initialized
 
         # Mock aggregate method
         mock_agg_bs = pl.DataFrame({"asset": [1000]})
@@ -265,7 +318,7 @@ class TestProjection:
         mock_market_rates = Mock(spec=MarketRates)
         mock_market_data.get_market_rates.return_value = mock_market_rates
         empty_rule = Scenario(rules={}, market_data=mock_market_data)
-        projection = Projection(empty_rule, mock_horizon)
+        projection = Projection({"base": empty_rule}, mock_horizon)
         result = projection.run(mock_bs)
 
         # Verify calls
@@ -278,21 +331,22 @@ class TestProjection:
         assert len(result.pnls) == 1
         assert len(result.cashflows) == 1
 
-    @patch("bank_projections.projections.projection.logger")
-    def test_projection_run_empty_horizon(self, mock_logger):
-        mock_rule = Mock(spec=Rule)
-        mock_bs = Mock(spec=BalanceSheet)
+    def test_projection_run_empty_horizon(self):
+        mock_bs = MagicMock(spec=BalanceSheet)
+        mock_bs.__len__.return_value = 1000
 
         # Create empty horizon mock
         mock_horizon = MagicMock()
         mock_horizon.__len__.return_value = 0
         mock_horizon.__iter__.return_value = iter([])
+        mock_horizon.start_date = datetime.date(2023, 1, 1)
+        mock_horizon.end_date = datetime.date(2023, 1, 1)
 
-        projection = Projection(mock_rule, mock_horizon)
+        mock_scenario = Mock(spec=Scenario)
+        projection = Projection({"base": mock_scenario}, mock_horizon)
         result = projection.run(mock_bs)
 
-        # Verify no calls were made
-        mock_rule.apply.assert_not_called()
+        # Verify no calls were made (no rule.apply to check since we use empty horizon)
         mock_bs.validate.assert_not_called()
 
         # Verify empty result
@@ -301,14 +355,17 @@ class TestProjection:
         assert len(result.pnls) == 0
         assert len(result.cashflows) == 0
 
-    @patch("bank_projections.projections.projection.logger")
-    def test_projection_run_rule_exception_handling(self, mock_logger):
+    def test_projection_run_rule_exception_handling(self):
         """Test that exceptions in rule application are propagated."""
         mock_rule = Mock(spec=Rule)
-        mock_bs = Mock(spec=BalanceSheet)
+        mock_bs = MagicMock(spec=BalanceSheet)
+        mock_bs.__len__.return_value = 1000
         mock_increment = Mock(spec=TimeIncrement)
         mock_increment.from_date = datetime.date(2023, 1, 1)
         mock_increment.to_date = datetime.date(2023, 1, 31)
+
+        # Mock copy method to return a copy of the balance sheet
+        mock_bs.copy.return_value = mock_bs
 
         # Make rule apply raise an exception
         mock_rule.apply.side_effect = ValueError("Rule application failed")
@@ -324,7 +381,7 @@ class TestProjection:
         mock_horizon.__len__.return_value = 1
         mock_horizon.__iter__.return_value = iter([mock_increment])
 
-        projection = Projection(scenario, mock_horizon)
+        projection = Projection({"base": scenario}, mock_horizon)
 
         with pytest.raises(ValueError, match="Rule application failed"):
             projection.run(mock_bs)

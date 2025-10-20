@@ -108,5 +108,5 @@ class TimeIncrement:
         overlap_end = min(self.to_date, end_date)
         return (overlap_end - overlap_start).days + 1
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"TimeIncrement(from_date={self.from_date}, to_date={self.to_date})"
