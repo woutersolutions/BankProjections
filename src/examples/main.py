@@ -25,6 +25,6 @@ if __name__ == "__main__":
     )
 
     start_bs = create_synthetic_balance_sheet(start_date, scenario)
-    projection = Projection(scenario, horizon)
+    projection = Projection({"base": scenario}, horizon)
     result = projection.run(start_bs)
     result.to_excel(os.path.join(OUTPUT_FOLDER, "main example.xlsx"), open_after=True)

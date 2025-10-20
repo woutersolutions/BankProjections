@@ -66,7 +66,9 @@ class EfficiencyAssessment:
 
         # Base configuration for balance sheet
         start_date = datetime.date(2024, 12, 31)
-        base_bs = create_synthetic_balance_sheet(current_date=start_date, config_path=str(self.synthetic_data_config), scenario=self.scenario)
+        base_bs = create_synthetic_balance_sheet(
+            current_date=start_date, config_path=str(self.synthetic_data_config), scenario=self.scenario
+        )
 
         for n in log_iterator(self.number_of_projections, prefix="Number of Projections "):
             # Create time horizon
@@ -80,7 +82,7 @@ class EfficiencyAssessment:
             logger.info(f"Testing time horizon: {num_time_steps} steps")
 
             # Measure performance
-            projection = Projection(self.scenario, horizon)
+            projection = Projection({"base": self.scenario}, horizon)
 
             start_time = time.perf_counter()
             _ = projection.run(base_bs)
@@ -134,7 +136,7 @@ class EfficiencyAssessment:
             logger.info(f"Balance sheet positions: {num_positions}")
 
             # Measure performance
-            projection = Projection(scenario, horizon)
+            projection = Projection({"base": scenario}, horizon)
 
             start_time = time.perf_counter()
             _ = projection.run(bs)
@@ -175,7 +177,9 @@ class EfficiencyAssessment:
         scaled_config_df = config_df.with_columns((pl.col("number") * multiplier).alias("number"))
 
         # Create balance sheet with scaled config
-        bs = create_synthetic_balance_sheet(current_date=current_date, config_table=scaled_config_df, scenario=self.scenario)
+        bs = create_synthetic_balance_sheet(
+            current_date=current_date, config_table=scaled_config_df, scenario=self.scenario
+        )
 
         return bs
 

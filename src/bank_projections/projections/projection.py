@@ -21,46 +21,15 @@ class ProjectionResult:
     cashflows: list[pl.DataFrame]
     ocis: list[pl.DataFrame]
     metric_list: list[pl.DataFrame]
-    horizon: TimeHorizon
     run_info: dict
 
     def to_dict(self) -> dict[str, pl.DataFrame]:
         return {
-            "BalanceSheets": pl.concat(
-                [
-                    self.balance_sheets[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
-                    for i, increment in enumerate(self.horizon)
-                ],
-                how="diagonal",
-            ),
-            "P&Ls": pl.concat(
-                [
-                    self.pnls[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
-                    for i, increment in enumerate(self.horizon)
-                ],
-                how="diagonal",
-            ),
-            "Cashflows": pl.concat(
-                [
-                    self.cashflows[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
-                    for i, increment in enumerate(self.horizon)
-                ],
-                how="diagonal",
-            ),
-            "OCIs": pl.concat(
-                [
-                    self.ocis[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
-                    for i, increment in enumerate(self.horizon)
-                ],
-                how="diagonal",
-            ),
-            "Metrics": pl.concat(
-                [
-                    self.metric_list[i].insert_column(0, pl.lit(increment.to_date).alias("ProjectionDate"))
-                    for i, increment in enumerate(self.horizon)
-                ],
-                how="diagonal",
-            ),
+            "BalanceSheets": pl.concat(self.balance_sheets, how="diagonal"),
+            "P&Ls": pl.concat(self.pnls, how="diagonal"),
+            "Cashflows": pl.concat(self.cashflows, how="diagonal"),
+            "OCIs": pl.concat(self.ocis, how="diagonal"),
+            "Metrics": pl.concat(self.metric_list, how="diagonal"),
             "RunInfo": pl.DataFrame(self.run_info),
         }
 
@@ -79,11 +48,11 @@ class ProjectionResult:
 
 
 class Projection:
-    def __init__(self, scenario: Scenario, horizon: TimeHorizon):
-        self.scenario = scenario
+    def __init__(self, scenarios: dict[str, Scenario], horizon: TimeHorizon):
+        self.scenarios = scenarios
         self.horizon = horizon
 
-    def run(self, bs: BalanceSheet) -> ProjectionResult:
+    def run(self, start_bs: BalanceSheet) -> ProjectionResult:
         """Run the projection over the defined time horizon."""
 
         start_time = time.time()
@@ -96,25 +65,31 @@ class Projection:
 
         total_increments = len(self.horizon)
 
-        start_bs_size = len(bs)
+        start_bs_size = len(start_bs)
 
-        for i, increment in log_iterator(
-            enumerate(self.horizon, 1), prefix="Time step ", suffix=f"/{total_increments}", timed=True
-        ):
-            bs = bs.initialize_new_date(increment.to_date)
-            market_rates = self.scenario.market_data.get_market_rates(increment.to_date)
-            bs = self.scenario.apply(bs, increment, market_rates)
+        for scenario_name, scenario in log_iterator(self.scenarios.items(), prefix="Scenario "):
+            bs = start_bs.copy()
 
-            metrics = calculate_metrics(bs)
+            for i, increment in log_iterator(
+                enumerate(self.horizon, 1), prefix="Time step ", suffix=f"/{total_increments}", timed=True
+            ):
+                bs = bs.initialize_new_date(increment.to_date)
+                market_rates = scenario.market_data.get_market_rates(increment.to_date)
+                bs = scenario.apply(bs, increment, market_rates)
 
-            agg_bs, pnls, cashflows, ocis = bs.aggregate()
-            balance_sheets.append(agg_bs)
-            pnls_list.append(pnls)
-            cashflows_list.append(cashflows)
-            metric_list.append(metrics)
-            oci_list.append(ocis)
+                metrics = calculate_metrics(bs)
 
-            bs.validate()
+                agg_bs, pnls, cashflows, ocis = bs.aggregate()
+                for df in [agg_bs, pnls, cashflows, ocis]:
+                    df.insert_column(0, pl.lit(scenario_name).alias("Scenario"))
+                    df.insert_column(1, pl.lit(increment.to_date).alias("ProjectionDate"))
+                balance_sheets.append(agg_bs)
+                pnls_list.append(pnls)
+                cashflows_list.append(cashflows)
+                metric_list.append(metrics)
+                oci_list.append(ocis)
+
+                bs.validate()
 
         run_info = {
             "StartDate": self.horizon.start_date,
@@ -124,9 +99,7 @@ class Projection:
             "Endtime": datetime.datetime.now(),
             "TotalRunTimeSeconds": time.time() - start_time,
             "StartBalanceSheetSize": start_bs_size,
-            "Rules": len(self.scenario.rules),
+            "Scenarios": len(self.scenarios),
         }
 
-        return ProjectionResult(
-            balance_sheets, pnls_list, cashflows_list, oci_list, metric_list, self.horizon, run_info
-        )
+        return ProjectionResult(balance_sheets, pnls_list, cashflows_list, oci_list, metric_list, run_info)
