@@ -81,6 +81,11 @@ class AmortizedCostValuationMethod(ValuationMethod):
 
 
 class FixedRateBondValuationMethod(ValuationMethod):
+    """
+    Optimized version that builds all cashflows in one table,
+    performs a single discount rate lookup, then aggregates.
+    """
+
     @classmethod
     def _correction_method(cls) -> ScalingMethod:
         return MultiplicativeScaling()
@@ -93,46 +98,59 @@ class FixedRateBondValuationMethod(ValuationMethod):
         zero_rates: pd.DataFrame,
         output_column: str,
     ) -> pl.DataFrame:
-        data = data.with_columns(
-            **{
-                "YearsToMaturity": (pl.col("MaturityDate") - pl.lit(projection_date)).dt.total_days() / 365.25,
-                "NumberOfCoupons": FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate")),
-            }
-        )
+        if data.height == 0:
+            return data.with_columns(pl.lit(None, dtype=pl.Float64).alias(output_column))
 
-        data = data.with_columns(get_discount_rates(data, zero_rates, pl.col("YearsToMaturity")).alias(output_column))
+        # Add row index to preserve order
+        data = data.with_row_index(name="_bond_idx")
+
+        # Calculate number of coupons for each bond
+        data = data.with_columns(
+            NumberOfCoupons=FrequencyRegistry.number_due(pl.col("NextCouponDate"), pl.col("MaturityDate"))
+        )
 
         max_coupons_value = data["NumberOfCoupons"].max()
         if max_coupons_value is None:
             max_coupons = 0
         else:
-            # Cast to float first, handling polars scalar types
             max_coupons = int(float(max_coupons_value))  # type: ignore[arg-type]
+
+        # Build all cashflows at once
+        cashflow_parts = []
+
         for i in range(max_coupons + 1):
+            # Calculate coupon date for this period
             coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
             years_to_coupon = (coupon_date - pl.lit(projection_date)).dt.total_days() / 365.25
-            discount_rates_i = get_discount_rates(data, zero_rates, years_to_coupon)
-            payment_i = (
-                pl.when(pl.col("NumberOfCoupons") >= i)
-                .then(pl.col("InterestRate") * FrequencyRegistry.portion_year())
-                .otherwise(0.0)
+
+            # Create cashflow records for bonds that have this coupon
+            part = data.filter(pl.col("NumberOfCoupons") >= i).with_columns(
+                _years=years_to_coupon, _payment=(pl.col("InterestRate") * FrequencyRegistry.portion_year())
             )
+            cashflow_parts.append(part)
 
-            assert (
-                data.with_columns(discount_rates_i.alias("test"))
-                .select(pl.col("test").is_not_null().all())
-                .to_series()[0]
-            ), "Discounted price calculation error"
+        # Combine all cashflows into one table
+        all_cashflows = pl.concat(cashflow_parts)
 
-            data = data.with_columns((pl.col(output_column) + payment_i * discount_rates_i).alias(output_column))
+        # Get discount factors for ALL cashflows in ONE operation
+        discount_factors = get_discount_rates(all_cashflows, zero_rates, pl.col("_years"))
+        all_cashflows = all_cashflows.with_columns(pl.Series("_discount_factor", discount_factors))
 
-        assert (
-            data.with_columns(data[output_column].alias("test"))
-            .select(pl.col("test").is_not_null().all())
-            .to_series()[0]
-        ), "Discounted price calculation error"
+        # Calculate present value for each cashflow
+        all_cashflows = all_cashflows.with_columns(_pv=(pl.col("_payment") * pl.col("_discount_factor")))
 
-        return data.drop("YearsToMaturity", "NumberOfCoupons")
+        # Sum present values by bond
+        result = all_cashflows.group_by("_bond_idx").agg(pl.col("_pv").sum().alias(output_column))
+
+        # Join back to original data
+        data = data.join(result, on="_bond_idx", how="left")
+
+        # Add principal repayment at maturity (1.0 * discount factor at maturity)
+        years_to_maturity = (pl.col("MaturityDate") - pl.lit(projection_date)).dt.total_days() / 365.25
+        maturity_df = get_discount_rates(data, zero_rates, years_to_maturity)
+        data = data.with_columns((pl.col(output_column) + maturity_df).alias(output_column))
+
+        return data.drop("_bond_idx", "NumberOfCoupons")
 
 
 class FloatingRateBondValuationMethod(ValuationMethod):
