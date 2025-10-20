@@ -22,6 +22,7 @@ from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.valuation import Valuation
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.scenarios.template_registry import TemplateRegistry
+from bank_projections.utils.logging import log_iterator, setup_logger_format_with_context
 from bank_projections.utils.time import TimeHorizon
 from examples import EXAMPLE_FOLDER, OUTPUT_FOLDER
 from examples.synthetic_data import create_synthetic_balance_sheet
@@ -51,6 +52,10 @@ class EfficiencyAssessment:
         self.size_multipliers = size_multipliers
         self.number_of_projections = number_of_projections
 
+        scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
+        self.scenario = scenario
+
     def measure_time_horizon_performance(self) -> list[dict]:
         """Measure performance across different time horizons."""
         logger.info("Starting time horizon performance assessment")
@@ -61,12 +66,9 @@ class EfficiencyAssessment:
 
         # Base configuration for balance sheet
         start_date = datetime.date(2024, 12, 31)
-        base_bs = create_synthetic_balance_sheet(current_date=start_date, config_path=str(self.synthetic_data_config))
+        base_bs = create_synthetic_balance_sheet(current_date=start_date, config_path=str(self.synthetic_data_config), scenario=self.scenario)
 
-        scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-        scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
-
-        for n in self.number_of_projections:
+        for n in log_iterator(self.number_of_projections, prefix="Number of Projections "):
             # Create time horizon
             horizon = TimeHorizon.from_numbers(
                 start_date=start_date,
@@ -78,7 +80,7 @@ class EfficiencyAssessment:
             logger.info(f"Testing time horizon: {num_time_steps} steps")
 
             # Measure performance
-            projection = Projection(scenario, horizon)
+            projection = Projection(self.scenario, horizon)
 
             start_time = time.perf_counter()
             _ = projection.run(base_bs)
@@ -121,7 +123,7 @@ class EfficiencyAssessment:
         scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
         scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
 
-        for multiplier in self.size_multipliers:
+        for multiplier in log_iterator(self.size_multipliers, prefix="Multiplier "):
             logger.info(f"Testing balance sheet size multiplier: {multiplier}")
 
             # Create modified balance sheet with increased size
@@ -173,7 +175,7 @@ class EfficiencyAssessment:
         scaled_config_df = config_df.with_columns((pl.col("number") * multiplier).alias("number"))
 
         # Create balance sheet with scaled config
-        bs = create_synthetic_balance_sheet(current_date=current_date, config_table=scaled_config_df, scenario=scenario)
+        bs = create_synthetic_balance_sheet(current_date=current_date, config_table=scaled_config_df, scenario=self.scenario)
 
         return bs
 
@@ -326,4 +328,5 @@ def main():
 
 
 if __name__ == "__main__":
+    setup_logger_format_with_context()
     main()

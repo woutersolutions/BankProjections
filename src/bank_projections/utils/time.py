@@ -107,3 +107,6 @@ class TimeIncrement:
         overlap_start = max(self.from_date + relativedelta(days=1), start_date)
         overlap_end = min(self.to_date, end_date)
         return (overlap_end - overlap_start).days + 1
+
+    def __repr__(self):
+        return f"TimeIncrement(from_date={self.from_date}, to_date={self.to_date})"

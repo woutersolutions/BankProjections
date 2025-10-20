@@ -1,9 +1,8 @@
-from loguru import logger
-
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.market_data import MarketData, MarketRates
 from bank_projections.projections.rule import Rule
 from bank_projections.utils.combine import Combinable
+from bank_projections.utils.logging import log_iterator
 from bank_projections.utils.time import TimeIncrement
 
 
@@ -13,8 +12,7 @@ class Scenario(Rule, Combinable):
         self.market_data = market_data or MarketData()
 
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
-        for name, rule in self.rules.items():
-            logger.info(f"Applying {name}")
+        for name, rule in log_iterator(self.rules.items()):
             bs = rule.apply(bs, increment, market_rates)
         return bs
 

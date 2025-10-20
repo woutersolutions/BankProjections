@@ -5,12 +5,14 @@ from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.valuation import Valuation
 from bank_projections.scenarios.template_registry import TemplateRegistry
+from bank_projections.utils.logging import setup_logger_format_with_context
 from bank_projections.utils.time import TimeHorizon
 from examples import EXAMPLE_FOLDER, OUTPUT_FOLDER
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 if __name__ == "__main__":
     start_date = datetime.date(2024, 12, 31)
+    setup_logger_format_with_context()
 
     scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
     scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}

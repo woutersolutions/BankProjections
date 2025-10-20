@@ -9,6 +9,7 @@ from loguru import logger
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.metrics.metrics import calculate_metrics
 from bank_projections.scenarios.scenario import Scenario
+from bank_projections.utils.logging import log_iterator
 from bank_projections.utils.time import TimeHorizon
 
 
@@ -89,8 +90,9 @@ class Projection:
 
         total_increments = len(self.horizon)
 
-        for i, increment in enumerate(self.horizon, 1):
-            logger.info(f"Time increment {i}/{total_increments} - From {increment.from_date} to {increment.to_date}")
+        for i, increment in log_iterator(
+            enumerate(self.horizon, 1), prefix="Time step ", suffix=f"/{total_increments}", timed=True
+        ):
             bs = bs.initialize_new_date(increment.to_date)
             market_rates = self.scenario.market_data.get_market_rates(increment.to_date)
             bs = self.scenario.apply(bs, increment, market_rates)
