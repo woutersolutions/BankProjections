@@ -124,9 +124,7 @@ class FixedRateBondValuationMethod(ValuationMethod):
                 .to_series()[0]
             ), "Discounted price calculation error"
 
-            data.with_columns(
-                (pl.col(output_column) + payment_i * (-discount_rates_i * years_to_coupon).exp()).alias(output_column)
-            )
+            data = data.with_columns((pl.col(output_column) + payment_i * discount_rates_i).alias(output_column))
 
         assert (
             data.with_columns(data[output_column].alias("test"))
