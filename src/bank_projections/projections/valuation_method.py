@@ -196,14 +196,12 @@ def get_discount_rates(
     time_expr: pl.Expr,
 ) -> pl.Series:
     """
-    Add linear-interpolated zero rate at each loan's maturity and (optionally) a discount factor.
-    Returns a LazyFrame with added columns `out_rate_col` (and `out_df_col` if requested).
+    Add linear-interpolated zero rate at each loan's maturity and compute discount factor.
+    Returns a Series of discount factors.
     """
     lf = loans.lazy() if isinstance(loans, pl.DataFrame) else loans
 
-    # TODO: Performance improvements
-    # TODO: Move this to market data class
-
+    # Convert and prepare zero curve once
     zero_pl = (
         pl.from_pandas(zero_rates)
         .select(
@@ -215,56 +213,56 @@ def get_discount_rates(
         .lazy()
     )
 
-    # Years to maturity
-    base = lf.with_columns(YearsToMat=time_expr).with_row_index(name="_idx").sort("YearsToMat")
-
-    # Lower bracket (t0,r0): last curve point <= t
-    lower = base.join_asof(zero_pl, left_on="YearsToMat", right_on="zc_t", strategy="backward").select(
-        pl.all(),
-        pl.col("zc_t").alias("t0"),
-        pl.col("zc_r").alias("r0"),
+    # Single pass: compute YearsToMat, add index, and sort
+    base = (
+        lf.with_columns(YearsToMat=time_expr).with_row_index(name="_idx").sort("YearsToMat")  # Sort once upfront
     )
 
-    # Upper bracket (t1,r1): first curve point >= t
-    upper = base.join_asof(zero_pl, left_on="YearsToMat", right_on="zc_t", strategy="forward").select(
-        pl.all(),
-        pl.col("zc_t").alias("t1"),
-        pl.col("zc_r").alias("r1"),
+    # Get lower bound
+    with_lower = base.join_asof(zero_pl, left_on="YearsToMat", right_on="zc_t", strategy="backward").rename(
+        {"zc_t": "t0", "zc_r": "r0"}
     )
 
-    # Combine & interpolate
-    rates = (
-        lower.join(
-            upper.select("_idx", "YearsToMat", "t1", "r1"),
-            on=["_idx", "YearsToMat"],
-            how="inner",
+    # Get upper bound - need to sort again after first join
+    with_bounds = with_lower.sort("YearsToMat").join_asof(  # Re-sort for second join_asof
+        zero_pl.select(pl.col("zc_name"), pl.col("zc_t").alias("t1"), pl.col("zc_r").alias("r1")),
+        left_on="YearsToMat",
+        right_on="t1",
+        strategy="forward",
+    )
+
+    # Compute interpolated rate and discount factor in one go
+    result = (
+        with_bounds.with_columns(
+            [
+                # Simplified interpolation
+                pl.when(pl.col("t0").is_null())
+                .then(pl.col("r1"))  # Below min tenor
+                .when(pl.col("t1").is_null())
+                .then(pl.col("r0"))  # Above max tenor
+                .when(pl.col("t1") == pl.col("t0"))
+                .then(pl.col("r0"))  # Exact match
+                .otherwise(
+                    # Linear interpolation
+                    pl.col("r0")
+                    + (pl.col("r1") - pl.col("r0"))
+                    * (pl.col("YearsToMat") - pl.col("t0"))
+                    / (pl.col("t1") - pl.col("t0"))
+                )
+                .alias("rate")
+            ]
+        )
+        .with_columns(
+            [
+                # Compute discount factor
+                (-pl.col("rate") * pl.col("YearsToMat")).exp().alias("dfs")
+            ]
         )
         .sort("_idx")
-        .with_columns(
-            # linear interpolation with sensible edge handling
-            pl.when(pl.col("t0").is_not_null() & pl.col("t1").is_not_null() & (pl.col("t1") == pl.col("t0")))
-            .then(pl.coalesce([pl.col("r0"), pl.col("r1")]))  # both rates equal
-            .when(pl.col("t0").is_not_null() & pl.col("t1").is_not_null() & (pl.col("t1") != pl.col("t0")))
-            .then(
-                pl.col("r0")
-                + (pl.col("r1") - pl.col("r0")) * (pl.col("YearsToMat") - pl.col("t0")) / (pl.col("t1") - pl.col("t0"))
-            )
-            .when(pl.col("t0").is_not_null() & pl.col("t1").is_null())  # above max tenor
-            .then(pl.col("r0"))
-            .when(pl.col("t1").is_not_null() & pl.col("t0").is_null())  # below min tenor
-            .then(pl.col("r1"))
-            .otherwise(pl.lit(None, dtype=pl.Float64))
-            .alias("rate"),
-        )
-        .select(
-            pl.col("_idx"),
-            pl.col("YearsToMat"),
-            pl.col("rate"),
-            (-pl.col("rate") * pl.col("YearsToMat")).exp().alias("dfs"),
-        )
-    ).collect()
+    )
 
-    return base.collect().join(rates, on="_idx", how="left").sort("_idx").select(pl.col("dfs")).to_series()
+    # Collect once at the end and return only the discount factor series
+    return result.select("dfs").collect().to_series()
 
 
 # Shared helper for floating-like instruments (floating notes, swaps)
