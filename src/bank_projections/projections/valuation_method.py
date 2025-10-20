@@ -229,22 +229,36 @@ def get_discount_rates(
         .lazy()
     )
 
-    # Single pass: compute YearsToMat, add index, and sort
+    # Compute years-to-maturity and add curve key on the left; preserve row order via index
     base = (
-        lf.with_columns(YearsToMat=time_expr).with_row_index(name="_idx").sort("YearsToMat")  # Sort once upfront
+        lf.with_columns(
+            [
+                pl.col("ValuationCurve").cast(pl.Utf8).alias("zc_name"),
+                time_expr.alias("YearsToMat"),
+            ]
+        )
+        .with_row_index(name="_idx")
+        .sort(["zc_name", "YearsToMat"])
     )
 
-    # Get lower bound
-    with_lower = base.join_asof(zero_pl, left_on="YearsToMat", right_on="zc_t", strategy="backward").rename(
-        {"zc_t": "t0", "zc_r": "r0"}
-    )
+    # Lower bound (backward asof) within the same curve
+    with_lower = base.join_asof(
+        zero_pl,
+        left_on="YearsToMat",
+        right_on="zc_t",
+        strategy="backward",
+        by="zc_name",
+        check_sortedness=False,
+    ).rename({"zc_t": "t0", "zc_r": "r0"})
 
-    # Get upper bound - need to sort again after first join
-    with_bounds = with_lower.sort("YearsToMat").join_asof(  # Re-sort for second join_asof
+    # Upper bound (forward asof) within the same curve
+    with_bounds = with_lower.sort(["zc_name", "YearsToMat"]).join_asof(
         zero_pl.select(pl.col("zc_name"), pl.col("zc_t").alias("t1"), pl.col("zc_r").alias("r1")),
         left_on="YearsToMat",
         right_on="t1",
         strategy="forward",
+        by="zc_name",
+        check_sortedness=False,
     )
 
     # Compute interpolated rate and discount factor in one go
@@ -268,16 +282,10 @@ def get_discount_rates(
                 .alias("rate")
             ]
         )
-        .with_columns(
-            [
-                # Compute discount factor
-                (-pl.col("rate") * pl.col("YearsToMat")).exp().alias("dfs")
-            ]
-        )
+        .with_columns(((-pl.col("rate") * pl.col("YearsToMat")).exp()).alias("dfs"))
         .sort("_idx")
     )
 
-    # Collect once at the end and return only the discount factor series
     return result.select("dfs").collect().to_series()
 
 

@@ -22,6 +22,7 @@ class Config:
         "SubItemType",
         "Currency",
         "ReferenceRate",
+        "ValuationCurve",
         "IsAccumulating",
     ]
     DATE_COLUMNS = ["OriginationDate", "MaturityDate", "PreviousCouponDate", "NextCouponDate"]

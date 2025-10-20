@@ -43,10 +43,11 @@ def generate_synthetic_positions(
     coupon_type: str,
     curves: Curves = generate_synthetic_curves(),
     valuation_method: str | None = None,
+    valuation_curve: str | None = None,
     currency: str = "EUR",
     hqla_class: str = "n/a",
     ifrs9_stage: str = "n/a",
-    reference_rate: str = None,
+    reference_rate: str | None = None,
     coverage_rate_range: tuple[float, float] | None = None,
     interest_rate_range: tuple[float, float] | None = None,
     agio_range: tuple[float, float] | None = None,
@@ -66,6 +67,7 @@ def generate_synthetic_positions(
     coupon_frequency = strip_identifier(coupon_frequency)
     accounting_method = strip_identifier(accounting_method)
     reference_rate = strip_identifier(reference_rate)
+    valuation_curve = strip_identifier(valuation_curve)
     valuation_method = "none" if valuation_method is None else strip_identifier(valuation_method)
 
     # For notional-based instruments (like swaps), generate notionals separately
@@ -181,6 +183,7 @@ def generate_synthetic_positions(
         "InterestRate": interest_rates,
         "CouponType": coupon_types,
         "ValuationMethod": [valuation_method] * number,
+        "ValuationCurve": [valuation_curve] * number,
         "ReferenceRate": [reference_rate] * number,
         "CouponFrequency": [coupon_frequency] * number,
         "OriginationDate": origination_dates,
@@ -255,6 +258,7 @@ def generate_synthetic_positions(
         Agio=pl.col("Quantity") * pl.col("AgioWeight"),
         OffBalance=pl.col("Quantity") * off_balance,
         ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
+        ValuationCurve=pl.col("ValuationCurve").cast(pl.String),
         CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
     ).with_columns(
         FloatingRate=curves.floating_rate_expr(), Spread=pl.col("InterestRate") - curves.floating_rate_expr()
