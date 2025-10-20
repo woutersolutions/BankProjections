@@ -424,6 +424,7 @@ class BalanceSheet(Positions):
 
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         pnls = data.group_by(Config.PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+        pnls = pnls.filter(pl.col("Amount") != 0.0)
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
         self.mutate_metric(
@@ -435,6 +436,9 @@ class BalanceSheet(Positions):
         )
 
     def add_single_pnl(self, amount: float, reason: MutationReason, offset_liquidity: bool = False) -> None:
+        if amount == 0.0:
+            return
+
         pnls = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
@@ -451,6 +455,7 @@ class BalanceSheet(Positions):
 
     def add_oci(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         ocis = data.group_by(Config.OCI_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+        ocis = ocis.filter(pl.col("Amount") != 0.0)
 
         self.ocis = pl.concat([self.ocis, ocis], how="diagonal")
         self.mutate_metric(
@@ -462,6 +467,9 @@ class BalanceSheet(Positions):
         )
 
     def add_single_oci(self, amount: float, reason: MutationReason) -> None:
+        if amount == 0.0:
+            return
+
         ocis = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
 
         self.ocis = pl.concat([self.ocis, ocis], how="diagonal")
@@ -475,6 +483,7 @@ class BalanceSheet(Positions):
 
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         cashflows = data.group_by(Config.CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+        cashflows = cashflows.filter(pl.col("Amount") != 0.0)
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
@@ -486,6 +495,9 @@ class BalanceSheet(Positions):
         )
 
     def add_single_liquidity(self, amount: float, reason: MutationReason, offset_pnl: bool = False) -> None:
+        if amount == 0.0:
+            return
+
         cashflows = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
