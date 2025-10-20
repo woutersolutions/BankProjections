@@ -2,6 +2,7 @@ import datetime
 import os
 import random
 
+import numpy as np
 import pandas as pd
 import polars as pl
 
@@ -16,7 +17,9 @@ from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.parsing import strip_identifier
 from examples import EXAMPLE_FOLDER
 
-random.seed(42)
+SEED = 42
+
+random.seed(SEED)
 
 
 # TODO: Generate synthetic market data from csvs
@@ -287,9 +290,11 @@ def generate_random_numbers(number: int, minimum: float, maximum: float, mean: f
 
     alpha = ((mean - minimum) / (maximum - minimum)) * 5
     beta = ((maximum - mean) / (maximum - minimum)) * 5
-    random_numbers = [random.betavariate(alpha, beta) * (maximum - minimum) + minimum for _ in range(number)]
 
-    return random_numbers
+    # Seed NumPy from Python's RNG to keep reproducibility with `random.seed(...)`
+    rng = np.random.default_rng(random.getrandbits(64))
+    arr = rng.beta(alpha, beta, size=number) * (maximum - minimum) + minimum
+    return arr.tolist()
 
 
 def create_synthetic_balance_sheet(

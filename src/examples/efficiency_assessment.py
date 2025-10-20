@@ -34,8 +34,8 @@ class EfficiencyAssessment:
         self,
         output_dir: str = OUTPUT_FOLDER,
         synthetic_data_config: str = os.path.join(EXAMPLE_FOLDER, "example_bs.csv"),
-        size_multipliers=(1, 5, 10, 100, 500, 1000),
-        number_of_projections=(1, 5, 10, 20, 50, 100),
+        size_multipliers=(1, 5, 10, 100),
+        number_of_projections=(1, 10, 50, 100),
     ):
         """Initialize efficiency assessment.
 
@@ -112,8 +112,9 @@ class EfficiencyAssessment:
         # Fixed time horizon for all balance sheet size tests
         horizon = TimeHorizon.from_numbers(
             start_date=start_date,
-            number_of_days=7,
-            number_of_months=12 * 4,
+            number_of_days=3,
+            number_of_months=12,
+            number_of_years=2,
             end_of_month=True,
         )
 
