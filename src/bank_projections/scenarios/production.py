@@ -79,9 +79,9 @@ class ProductionRule(AmountRuleBase):
 
                 bs.add_item(
                     self.reference_item,
-                    origination_date=self.date,
                     labels=self.labels,
                     metrics=self.metrics,
+                    origination_date=self.date,
                     maturity_date=maturity_date,
                     pnls={reason: pl.col("Impairment")},
                     cashflows={reason: -pl.col("Quantity") - pl.col("AccruedInterest") - pl.col("Agio")},

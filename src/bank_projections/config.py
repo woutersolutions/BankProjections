@@ -1,10 +1,13 @@
 # TODO: Properly arrange these configurations into a config file or environment variables
 from typing import Any
 
+import polars as pl
+
 from bank_projections.financials.accounting_method import AccountingMethodRegistry
 from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
 from bank_projections.financials.hqla_class import HQLARegistry
 from bank_projections.financials.stage import IFRS9StageRegistry
+from bank_projections.projections.book import BookRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
@@ -35,6 +38,7 @@ class Config:
         "CouponType": CouponTypeRegistry,
         "IFRS9Stage": IFRS9StageRegistry,
         "HQLAClass": HQLARegistry,
+        "Book": BookRegistry,
     }
 
     BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType", "SubItemType"] + list(CLASSIFICATIONS.keys())
@@ -55,3 +59,10 @@ class Config:
     @classmethod
     def non_null_columns(cls) -> list[str]:
         return list(cls.CLASSIFICATIONS.keys()) + ["Quantity", "Impairment", "AccruedInterest", "Agio"]
+
+    @classmethod
+    def cast_columns(cls, df: pl.DataFrame) -> pl.DataFrame:
+        # TODO: Also cast other columns
+        return df.with_columns(
+            [pl.col(name).cast(pl.Enum(registry.stripped_names())) for name, registry in cls.CLASSIFICATIONS.items()]
+        )

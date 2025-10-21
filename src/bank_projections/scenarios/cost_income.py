@@ -78,8 +78,8 @@ class CostIncomeRule(AmountRuleBase):
                 bs.add_item(
                     based_on_item=bs_item,
                     labels={},
-                    origination_date=self.cashflow_date,
                     metrics={"Quantity": -self.amount},
+                    origination_date=self.cashflow_date,
                     cashflows={self.reason: -pl.col("Quantity")},
                 )
             if increment.overlaps(self.pnl_start, self.pnl_end):
@@ -107,8 +107,8 @@ class CostIncomeRule(AmountRuleBase):
                     bs.add_item(
                         based_on_item=bs_item,
                         labels={},
-                        origination_date=self.cashflow_date,
                         metrics={"Quantity": amount_to_recognize},
+                        origination_date=self.cashflow_date,
                         pnls={self.reason: pl.col("Quantity")},
                     )
                 else:

@@ -174,27 +174,11 @@ def generate_synthetic_positions(
         "CoverageRate": coverage_rates,
         "CleanPrice": clean_prices,
         "AgioWeight": agios,
-        "ItemType": [item_type] * number,
-        "SubItemType": [sub_item_type] * number,
-        "Currency": [strip_identifier(currency)] * number,
-        "HQLAClass": [strip_identifier(hqla_class)] * number,
         "IFRS9Stage": ifrs9_stages,
-        "AccountingMethod": [accounting_method] * number,
         "InterestRate": interest_rates,
         "CouponType": coupon_types,
-        "ValuationMethod": [valuation_method] * number,
-        "ValuationCurve": [valuation_curve] * number,
-        "ReferenceRate": [reference_rate] * number,
-        "CouponFrequency": [coupon_frequency] * number,
         "OriginationDate": origination_dates,
         "MaturityDate": maturity_dates,
-        "PrepaymentRate": [prepayment_rate] * number,
-        "IsAccumulating": [accumulating] * number,
-        "RedemptionType": [redemption_type] * number,
-        "BalanceSheetSide": [balance_sheet_side] * number,
-        "TREAWeight": [trea_weight] * number,
-        "EncumberedWeight": [encumbrance_weight] * number,
-        "StableFundingWeight": [stable_funding_weight] * number,
     }
 
     # Add either book_values or notionals depending on instrument type
@@ -209,6 +193,25 @@ def generate_synthetic_positions(
             schema_overrides={
                 "MaturityDate": pl.Date,
             },
+        )
+        .with_columns(
+            ItemType=pl.lit(item_type),
+            SubItemType=pl.lit(sub_item_type),
+            Currency=pl.lit(strip_identifier(currency)),
+            HQLAClass=pl.lit(strip_identifier(hqla_class)),
+            PrepaymentRate=pl.lit(prepayment_rate),
+            IsAccumulating=pl.lit(accumulating),
+            RedemptionType=pl.lit(redemption_type),
+            BalanceSheetSide=pl.lit(balance_sheet_side),
+            TREAWeight=pl.lit(trea_weight),
+            EncumberedWeight=pl.lit(encumbrance_weight),
+            StableFundingWeight=pl.lit(stable_funding_weight),
+            ValuationMethod=pl.lit(valuation_method),
+            ValuationCurve=pl.lit(valuation_curve),
+            ReferenceRate=pl.lit(reference_rate),
+            CouponFrequency=pl.lit(coupon_frequency),
+            AccountingMethod=pl.lit(accounting_method),
+            Book=pl.lit("old"),
         )
         .with_columns(
             PreviousCouponDate=FrequencyRegistry.previous_coupon_date(

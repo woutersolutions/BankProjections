@@ -39,7 +39,7 @@ class MutationReason:
 
 class Positions:
     def __init__(self, data: pl.DataFrame):
-        self._data = data.with_columns([pl.col(Config.CLASSIFICATIONS).cast(pl.Categorical)])
+        self._data = Config.cast_columns(data)
 
     def validate(self) -> None:
         if len(self) == 0:
@@ -173,6 +173,10 @@ class BalanceSheet(Positions):
         labels = correct_identifier_keys(labels, Config.label_columns())
         metrics = strip_identifier_keys(metrics)
 
+        # TODO: Should pl lit be put on all labels?
+        if "book" not in labels:
+            labels["Book"] = pl.lit("new")
+
         if based_on_item is None:
             raise NotImplementedError("Based on no item not yet implement")
         if origination_date is None:
@@ -201,7 +205,9 @@ class BalanceSheet(Positions):
         new_data = (
             self._data.filter(based_on_item.filter_expression)
             .with_columns(
-                **labels, OriginationDate=pl.lit(origination_date), MaturityDate=pl.lit(maturity_date, dtype=pl.Date)
+                **labels,
+                OriginationDate=pl.lit(origination_date),
+                MaturityDate=pl.lit(maturity_date, dtype=pl.Date),
             )
             .group_by(
                 set(constant_cols)
@@ -233,6 +239,7 @@ class BalanceSheet(Positions):
                     self.date,
                 )
             )
+            .pipe(Config.cast_columns)
         )
 
         # process the metrics
