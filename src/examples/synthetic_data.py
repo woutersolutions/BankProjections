@@ -60,6 +60,7 @@ def generate_synthetic_positions(
     off_balance: float = 0.0,
     trea_weight: float = 0.0,
     stable_funding_weight: float = 0.0,
+    stressed_outflow_weight: float | None = None,
     encumbrance_weight: float = 0.0,
     notional_range: tuple[float, float] | None = None,
 ) -> Positions:
@@ -96,6 +97,8 @@ def generate_synthetic_positions(
 
     if prepayment_rate is None:
         prepayment_rate = 0.0
+    if stressed_outflow_weight is None:
+        stressed_outflow_weight = 0.0
 
     if coverage_rate_range is None:
         coverage_rates = [0.0] * number
@@ -206,6 +209,7 @@ def generate_synthetic_positions(
             TREAWeight=pl.lit(trea_weight),
             EncumberedWeight=pl.lit(encumbrance_weight),
             StableFundingWeight=pl.lit(stable_funding_weight),
+            StressedOutflowWeight=pl.lit(stressed_outflow_weight),
             ValuationMethod=pl.lit(valuation_method),
             ValuationCurve=pl.lit(valuation_curve),
             ReferenceRate=pl.lit(reference_rate),

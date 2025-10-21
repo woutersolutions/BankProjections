@@ -260,6 +260,9 @@ BalanceSheetMetrics.register("Encumbered", DerivedAmount("EncumberedWeight"))
 BalanceSheetMetrics.register("StableFundingWeight", StoredWeight("StableFundingWeight"))
 BalanceSheetMetrics.register("StableFunding", DerivedAmount("StableFundingWeight"))
 
+BalanceSheetMetrics.register("StressedOutflowWeight", StoredWeight("StressedOutflowWeight"))
+BalanceSheetMetrics.register("StressedOutflow", DerivedAmount("StressedOutflowWeight"))
+
 BalanceSheetMetrics.register("HQLA", HQLA())
 BalanceSheetMetrics.register("EncumberedHQLA", EncumberedHQLA())
 BalanceSheetMetrics.register("UnencumberedHQLA", UnencumberedHQLA())

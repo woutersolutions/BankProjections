@@ -315,10 +315,16 @@ MetricRegistry.register(
 MetricRegistry.register("Contractual coupon inflow", ContractualInflowCoupon(BalanceSheetItemRegistry.get("Assets")))
 MetricRegistry.register("Contractual coupon outflow", -ContractualInflowCoupon(BalanceSheetItemRegistry.get("Funding")))
 MetricRegistry.register(
+    "Stressed outflow", -BalanceSheetAggregation("Stressed outflow", BalanceSheetItemRegistry.get("Funding"))
+)
+MetricRegistry.register(
     "Inflow", MetricRegistry.get("Contractual principal inflow") + MetricRegistry.get("Contractual coupon inflow")
 )
 MetricRegistry.register(
-    "Outflow", MetricRegistry.get("Contractual principal outflow") + MetricRegistry.get("Contractual coupon outflow")
+    "Outflow",
+    MetricRegistry.get("Contractual principal outflow")
+    + MetricRegistry.get("Contractual coupon outflow")
+    + MetricRegistry.get("Stressed outflow"),
 )
 MetricRegistry.register("Net Outflow", NetOutflow())
 MetricRegistry.register(
