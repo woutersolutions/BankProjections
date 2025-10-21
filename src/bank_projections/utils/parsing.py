@@ -25,6 +25,14 @@ def read_bool(value: str | bool) -> bool:
     raise ValueError(f"Cannot convert {value} to bool")
 
 
+def read_int(value: str | int) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        return int(value.strip())
+    raise ValueError(f"Cannot convert {value} to int")
+
+
 def get_identifier(input_identifier: str, reference_identifiers: Iterable[str]) -> str:
     cleaned = strip_identifier(input_identifier)
     for id in reference_identifiers:

@@ -1,8 +1,10 @@
 import datetime
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
+import polars as pl
+from dateutil.relativedelta import relativedelta
 
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
@@ -10,7 +12,14 @@ from bank_projections.financials.balance_sheet_item import BalanceSheetItem, Bal
 from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.template import AmountRuleBase
-from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_bool, read_date, strip_identifier
+from bank_projections.utils.parsing import (
+    get_identifier,
+    is_in_identifiers,
+    read_bool,
+    read_date,
+    read_int,
+    strip_identifier,
+)
 from bank_projections.utils.time import TimeIncrement
 
 
@@ -23,6 +32,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
         self.offset_pnl = False
         self.reason = MutationReason(rule="BalanceSheetMutationRule")
         self.date: datetime.date | None = None
+        self.cohorts: list[Cohort] = []
 
         if is_in_identifiers("item", list(rule_input.keys())):
             value = rule_input[get_identifier("item", list(rule_input.keys()))]
@@ -42,6 +52,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
             self.counter_item = None
 
         for key, value in rule_input.items():
+            # TODO: Use walrus operator
             match strip_identifier(key):
                 case _ if value in ["", np.nan, None]:
                     pass
@@ -60,6 +71,9 @@ class BalanceSheetMutationRule(AmountRuleBase):
                         raise KeyError(f"{key} not recognized as valid balance sheet label")
                 case _ if is_in_identifiers(key, Config.label_columns()):
                     self.item = self.item.add_identifier(key, value)
+                case _ if strip_identifier(key).startswith(("age", "minage", "maxage")):
+                    cohort = Cohort.from_string(strip_identifier(key), read_int(value))
+                    self.cohorts.append(cohort)
                 case "relative":
                     self.relative = read_bool(value)
                 case "multiplicative":
@@ -77,9 +91,14 @@ class BalanceSheetMutationRule(AmountRuleBase):
         # Implement the logic to apply the mutation to the balance sheet based on rule_input
         # This is a placeholder implementation
 
+        item = self.item
+        for cohort in self.cohorts:
+            expr = cohort.get_expression(increment.to_date)
+            item = item.add_condition(expr)
+
         if self.date is None or increment.contains(self.date):
             bs.mutate_metric(
-                self.item,
+                item,
                 self.metric,
                 self.amount,
                 self.reason,
@@ -93,3 +112,46 @@ class BalanceSheetMutationRule(AmountRuleBase):
         bs.validate()
 
         return bs
+
+
+class Cohort:
+    def __init__(
+        self, age: int, unit: Literal["days", "months", "years"], minimum: bool = False, maximum: bool = False
+    ) -> None:
+        self.age = age
+        self.unit = unit
+        self.minimum = minimum
+        self.maximum = maximum
+        assert not (minimum and maximum), "Cohort cannot be both minimum and maximum"
+
+    @staticmethod
+    def from_string(label: str, value: int) -> "Cohort":
+        if label.startswith("minage"):
+            minimum = True
+            maximum = False
+            unit = label[len("minage") :]
+        elif label.startswith("maxage"):
+            minimum = False
+            maximum = True
+            unit = label[len("maxage") :]
+        elif label.startswith("age"):
+            minimum = False
+            maximum = False
+            unit = label[len("age") :]
+        else:
+            raise ValueError(f"Cohort string '{label}' must start with 'age', 'minage', or 'maxage'")
+
+        return Cohort(age=value, unit=unit, minimum=minimum, maximum=maximum)
+
+    def get_expression(self, reference_date: datetime.date) -> pl.Expr:
+        offset_date = reference_date - relativedelta(**{self.unit: self.age})
+
+        if self.minimum:
+            return pl.col("OriginationDate") >= pl.lit(offset_date)
+        elif self.maximum:
+            return pl.col("OriginationDate") <= pl.lit(offset_date)
+        else:
+            offset_date2 = reference_date - relativedelta(**{self.unit: self.age + 1})
+            return (pl.col("OriginationDate") > pl.lit(offset_date2)) & (
+                pl.col("OriginationDate") <= pl.lit(offset_date)
+            )
