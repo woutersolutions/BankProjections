@@ -187,7 +187,10 @@ MetricRegistry.register(
     ),
 )
 MetricRegistry.register(
-    "Leverage exposure", BalanceSheetAggregation("Exposure", BalanceSheetItemRegistry.get("Assets"))
+    "Basel exposure", BalanceSheetAggregation("BaselExposure", BalanceSheetItemRegistry.get("Assets"))
+)
+MetricRegistry.register(
+    "Leverage exposure", BalanceSheetAggregation("LeverageExposure", BalanceSheetItemRegistry.get("Assets"))
 )
 MetricRegistry.register("TREA", BalanceSheetAggregation("trea", BalanceSheetItemRegistry.get("Assets")))
 MetricRegistry.register(

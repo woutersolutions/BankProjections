@@ -3,10 +3,10 @@ import pytest
 
 from bank_projections.financials.balance_sheet_metrics import (
     BalanceSheetMetric,
+    BaselExposure,
     BookValue,
     DerivedMetric,
     DirtyPrice,
-    Exposure,
     StoredAmount,
     StoredColumn,
     StoredWeight,
@@ -135,15 +135,15 @@ class TestDirtyPrice:
 
 class TestExposure:
     def test_exposure_initialization(self):
-        metric = Exposure()
+        metric = BaselExposure()
 
     def test_get_expression(self):
-        metric = Exposure()
+        metric = BaselExposure()
         expr = metric.get_expression
         assert isinstance(expr, pl.Expr)
 
     def test_aggregation_expression(self):
-        metric = Exposure()
+        metric = BaselExposure()
         expr = metric.aggregation_expression
         assert isinstance(expr, pl.Expr)
 
@@ -195,7 +195,7 @@ class TestMetricIntegration:
         # Create test data
         df = pl.DataFrame({"Quantity": [1000.0, 2000.0], "OffBalance": [100.0, 150.0]})
 
-        metric = Exposure()
+        metric = BaselExposure()
 
         # Test get_expression (quantity + off_balance)
         result = df.select(metric.get_expression.alias("exposure"))
