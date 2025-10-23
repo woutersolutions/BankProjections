@@ -12,6 +12,7 @@ from bank_projections.financials.balance_sheet_metrics import (
     SMALL_NUMBER,
     BalanceSheetMetric,
     BalanceSheetMetrics,
+    StoredColumn,
 )
 from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
 from bank_projections.projections.redemption import RedemptionRegistry
@@ -219,7 +220,7 @@ class BalanceSheet(Positions):
                 [
                     metric.aggregation_expression.alias(metric.column)
                     for metric in BalanceSheetMetrics.values()
-                    if metric.is_stored
+                    if isinstance(metric, StoredColumn)
                 ]
             )
             .with_columns(

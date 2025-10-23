@@ -32,15 +32,8 @@ class BalanceSheetMetric(ABC):
     def mutation_column(self) -> str:
         pass
 
-    @property
-    @abstractmethod
-    def is_stored(self) -> bool:
-        pass
-
 
 class StoredColumn(BalanceSheetMetric, ABC):
-    is_stored = True
-
     def __init__(self, column: str):
         self.column = column
 
@@ -83,8 +76,6 @@ class StoredWeight(StoredColumn):
 
 
 class DerivedMetric(BalanceSheetMetric, ABC):
-    is_stored: bool = False
-
     def set_expression(self, amounts: pl.Expr) -> pl.Expr:
         raise NotImplementedError("Derived metric cannot be modified")
 
@@ -224,7 +215,7 @@ class UnencumberedHQLA(DerivedMetric):
 class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
     @classmethod
     def stored_columns(cls) -> list[str]:
-        return [metric.column for metric in cls.values() if metric.is_stored]
+        return [metric.column for metric in cls.values() if isinstance(metric, StoredColumn)]
 
 
 BalanceSheetMetrics.register("Quantity", StoredAmount("Quantity"))

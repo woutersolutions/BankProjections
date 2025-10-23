@@ -31,7 +31,6 @@ class TestStoredAmount:
     def test_stored_amount_initialization(self):
         metric = StoredAmount("TestColumn")
         assert metric.column == "TestColumn"
-        assert metric.is_stored is True
 
     def test_get_expression(self):
         metric = StoredAmount("TestColumn")
@@ -64,7 +63,6 @@ class TestStoredWeight:
     def test_stored_weight_initialization_default(self):
         metric = StoredWeight("TestColumn")
         assert metric.column == "TestColumn"
-        assert metric.is_stored is True
 
     def test_stored_weight_initialization_with_allocation(self):
         weight_expr = pl.col("CustomWeight")
@@ -104,11 +102,6 @@ class TestDerivedMetric:
         with pytest.raises(TypeError):
             DerivedMetric()
 
-    def test_derived_metric_is_stored_property(self):
-        """Test the is_stored property through a concrete subclass"""
-        metric = DirtyPrice()
-        assert metric.is_stored is False
-
     def test_derived_metric_mutation_expression_raises_error(self):
         """Test that mutation_expression raises NotImplementedError"""
         metric = DirtyPrice()
@@ -128,7 +121,6 @@ class TestDerivedMetric:
 class TestDirtyPrice:
     def test_dirty_price_initialization(self):
         metric = DirtyPrice()
-        assert metric.is_stored is False
 
     def test_get_expression(self):
         metric = DirtyPrice()
@@ -144,7 +136,6 @@ class TestDirtyPrice:
 class TestExposure:
     def test_exposure_initialization(self):
         metric = Exposure()
-        assert metric.is_stored is False
 
     def test_get_expression(self):
         metric = Exposure()
@@ -160,7 +151,6 @@ class TestExposure:
 class TestBookValue:
     def test_book_value_initialization(self):
         metric = BookValue()
-        assert metric.is_stored is False
 
     def test_get_expression(self):
         metric = BookValue()
