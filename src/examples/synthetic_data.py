@@ -50,8 +50,10 @@ def generate_synthetic_positions(
     reference_rate: str | None = None,
     coverage_rate_range: tuple[float, float] | None = None,
     interest_rate_range: tuple[float, float] | None = None,
+    undrawn_portion_range: tuple[float, float] | None = None,
     agio_range: tuple[float, float] | None = None,
     prepayment_rate: float | None = 0.0,
+    ccf: float | None = 0.0,
     minimum_age: int | None = None,
     maximum_age: int | None = None,
     minimum_maturity: int | None = None,
@@ -97,6 +99,8 @@ def generate_synthetic_positions(
 
     if prepayment_rate is None:
         prepayment_rate = 0.0
+    if ccf is None:
+        ccf = 0.0
     if stressed_outflow_weight is None:
         stressed_outflow_weight = 0.0
 
@@ -117,6 +121,16 @@ def generate_synthetic_positions(
             interest_rate_range[0],
             interest_rate_range[1],
             (interest_rate_range[0] + interest_rate_range[1]) / 2,
+        )
+
+    if undrawn_portion_range is None:
+        undrawn_portions = [0.0] * number
+    else:
+        undrawn_portions = generate_random_numbers(
+            number,
+            undrawn_portion_range[0],
+            undrawn_portion_range[1],
+            (undrawn_portion_range[0] + undrawn_portion_range[1]) / 2,
         )
 
     coupon_type = strip_identifier(coupon_type)
@@ -179,6 +193,7 @@ def generate_synthetic_positions(
         "AgioWeight": agios,
         "IFRS9Stage": ifrs9_stages,
         "InterestRate": interest_rates,
+        "UndrawnPortion": undrawn_portions,
         "CouponType": coupon_types,
         "OriginationDate": origination_dates,
         "MaturityDate": maturity_dates,
@@ -203,6 +218,7 @@ def generate_synthetic_positions(
             Currency=pl.lit(strip_identifier(currency)),
             HQLAClass=pl.lit(strip_identifier(hqla_class)),
             PrepaymentRate=pl.lit(prepayment_rate),
+            CCF=pl.lit(ccf),
             IsAccumulating=pl.lit(accumulating),
             RedemptionType=pl.lit(redemption_type),
             BalanceSheetSide=pl.lit(balance_sheet_side),
@@ -263,6 +279,7 @@ def generate_synthetic_positions(
         Impairment=-pl.col("Quantity") * pl.col("CoverageRate"),
         AccruedInterest=pl.col("Quantity") * pl.col("AccruedInterestWeight"),
         Agio=pl.col("Quantity") * pl.col("AgioWeight"),
+        Undrawn=pl.col("Quantity") * pl.col("UndrawnPortion"),
         OffBalance=pl.col("Quantity") * off_balance,
         ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
         ValuationCurve=pl.col("ValuationCurve").cast(pl.String),
@@ -279,7 +296,7 @@ def generate_synthetic_positions(
         valuation_method_object.valuation_error(
             pl.col("CalculatedPrice"), pl.col("CleanPrice") + pl.col("AccruedInterestWeight")
         ).alias("ValuationError")
-    ).drop(["AgioWeight", "AccruedInterestWeight", "CoverageRate", "CalculatedPrice"])
+    ).drop(["AgioWeight", "AccruedInterestWeight", "UndrawnPortion", "CoverageRate", "CalculatedPrice"])
 
     positions = Positions(df)
 

@@ -170,7 +170,7 @@ class DerivedWeight(DerivedMetric):
 class Exposure(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("Quantity") + pl.col("OffBalance")
+        return pl.col("Quantity") + pl.col("CCF") * pl.col("Undrawn") + pl.col("OffBalance")
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -230,6 +230,7 @@ class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
 BalanceSheetMetrics.register("Quantity", StoredAmount("Quantity"))
 BalanceSheetMetrics.register("Impairment", StoredAmount("Impairment"))
 BalanceSheetMetrics.register("AccruedInterest", StoredAmount("AccruedInterest"))
+BalanceSheetMetrics.register("Undrawn", StoredAmount("Undrawn"))
 BalanceSheetMetrics.register("Agio", StoredAmount("Agio"))
 BalanceSheetMetrics.register("CleanPrice", StoredWeight("CleanPrice"))
 BalanceSheetMetrics.register("Off-Balance", StoredWeight("OffBalance"))
@@ -241,6 +242,8 @@ BalanceSheetMetrics.register("MarketValue", MarketValue())
 BalanceSheetMetrics.register("CoverageRate", DerivedWeight("Impairment"))
 BalanceSheetMetrics.register("AccruedInterestWeight", DerivedWeight("AccruedInterest"))
 BalanceSheetMetrics.register("AgioWeight", DerivedWeight("Agio"))
+BalanceSheetMetrics.register("UndrawnPortion", DerivedWeight("Undrawn"))
+
 
 BalanceSheetMetrics.register("BookValue", BookValue())
 BalanceSheetMetrics.register("Exposure", Exposure())
@@ -249,6 +252,7 @@ BalanceSheetMetrics.register("FloatingRate", StoredWeight("FloatingRate"))
 BalanceSheetMetrics.register("Spread", StoredWeight("Spread"))
 BalanceSheetMetrics.register("InterestRate", StoredWeight("InterestRate"))
 BalanceSheetMetrics.register("PrepaymentRate", StoredWeight("PrepaymentRate"))
+BalanceSheetMetrics.register("CCF", StoredWeight("CCF", pl.col("Undrawn")))
 
 
 BalanceSheetMetrics.register("TREAWeight", StoredWeight("TREAWeight", Exposure().get_expression))

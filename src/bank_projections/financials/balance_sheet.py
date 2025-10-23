@@ -248,16 +248,22 @@ class BalanceSheet(Positions):
         else:
             raise ValueError("Must specify quantity when adding new item to balance sheet")
 
+        # Assume zero undrawn if not specified
+        if "undrawn" in metrics and "undrawnportion" in metrics:
+            raise ValueError("Cannot specify both undrawn and undrawn portion in ProductionRule")
+        elif "undrawn" not in metrics and "undrawnportion" not in metrics:
+            metrics["undrawn"] = 0.0
+
+        # Assume the same coverage rate if not specified
         if "impairment" in metrics and "coveragerate" in metrics:
             raise ValueError("Cannot specify both impairment and coverage rate in ProductionRule")
         elif "impairment" not in metrics and "coverageRate" not in metrics:
-            # Assume the same coverage rate if not specified
             metrics["coveragerate"] = self.get_amount(based_on_item, "CoverageRate")
 
+        # Assume zero agio if not specified
         if "agio" in metrics and "agioWeight" in metrics:
             raise ValueError("Cannot specify both agio and agio weight in ProductionRule")
         elif "agio" not in metrics and "agioWeight" not in metrics:
-            # Assume the same coverage rate if not specified
             metrics["Agio"] = 0.0
 
         new_data = new_data.with_columns(
