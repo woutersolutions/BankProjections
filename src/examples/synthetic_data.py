@@ -137,7 +137,7 @@ def generate_synthetic_positions(
     if coupon_type in CouponTypeRegistry.stripped_names():
         coupon_types = [strip_identifier(coupon_type)] * number
     elif coupon_type == "both":
-        coupon_types = [random.choice(["fixed", "floating"]) for _ in range(number)]
+        coupon_types = random.choices(["fixed", "floating"], weights=(0.6, 0.4), k=number)
     else:
         raise ValueError(f"Unknown coupon type: {coupon_type}")
 
@@ -168,7 +168,7 @@ def generate_synthetic_positions(
 
     ifrs9_stage = strip_identifier(ifrs9_stage)
     if ifrs9_stage == "mixed":
-        ifrs9_stages = [random.choice(["1", "2", "3", "poci"]) for _ in range(number)]
+        ifrs9_stages = random.choices(["1", "2", "3", "poci"], weights=(0.9, 0.07, 0.02, 0.01), k=number)
     else:
         ifrs9_stages = [ifrs9_stage] * number
 

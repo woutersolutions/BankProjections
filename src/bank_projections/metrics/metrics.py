@@ -6,6 +6,7 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.stage import IFRS9StageRegistry
 from bank_projections.projections.frequency import FrequencyRegistry, coupon_payment
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.utils.base_registry import BaseRegistry
@@ -300,7 +301,7 @@ MetricRegistry.register(
     ),
 )
 
-MetricRegistry.register("Loans", BalanceSheetAggregation("Book value", BalanceSheetItem(ItemType="Loans")))
+MetricRegistry.register("Loans", BalanceSheetAggregation("OnBalanceExposure", BalanceSheetItem(ItemType="Loans")))
 MetricRegistry.register(
     "Deposits", -BalanceSheetAggregation("Book value", BalanceSheetItem(ItemType="Savings deposits"))
 )
@@ -308,6 +309,13 @@ MetricRegistry.register(
     "Loan-to-Deposit Ratio",
     Ratio(MetricRegistry.get("Loans"), MetricRegistry.get("Deposits")),
 )
+MetricRegistry.register(
+    "NonPerformingLoans",
+    BalanceSheetAggregation(
+        "OnBalanceExposure", BalanceSheetItem(ItemType="Loans").add_condition(IFRS9StageRegistry.is_default_expr())
+    ),
+)
+MetricRegistry.register("NPL Ratio", Ratio(MetricRegistry.get("NonPerformingLoans"), MetricRegistry.get("Loans")))
 
 MetricRegistry.register(
     "Contractual principal inflow", ContractualInflowPrincipal(BalanceSheetItemRegistry.get("Assets"))

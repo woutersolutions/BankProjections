@@ -1,3 +1,5 @@
+import polars as pl
+
 from bank_projections.utils.base_registry import BaseRegistry
 
 
@@ -7,7 +9,12 @@ class IFRS9Stage:
 
 
 class IFRS9StageRegistry(BaseRegistry[IFRS9Stage]):
-    pass
+    @classmethod
+    def is_default_expr(cls) -> pl.Expr:
+        expr = pl.lit(False)
+        for name, stage_cls in cls.stripped_items.items():
+            expr = pl.when(pl.col("IFRS9Stage") == name).then(pl.lit(stage_cls.is_default)).otherwise(expr)
+        return expr
 
 
 IFRS9StageRegistry.register("1", IFRS9Stage(is_default=False))

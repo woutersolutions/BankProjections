@@ -269,7 +269,6 @@ BalanceSheetMetrics.register("AccruedInterestWeight", DerivedWeight("AccruedInte
 BalanceSheetMetrics.register("AgioWeight", DerivedWeight("Agio"))
 BalanceSheetMetrics.register("UndrawnPortion", DerivedWeight("Undrawn"))
 
-
 BalanceSheetMetrics.register("BookValue", BookValue())
 
 BalanceSheetMetrics.register("OtherOffBalance", DerivedAmount("OtherOffBalanceWeight"))
