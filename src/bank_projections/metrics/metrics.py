@@ -12,12 +12,12 @@ from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.utils.base_registry import BaseRegistry
 
 
-def calculate_metrics(bs: BalanceSheet) -> pl.DataFrame:
+def calculate_metrics(bs: BalanceSheet) -> dict[str, float]:
     metrics: dict[str, float] = {}
     for name, metric in MetricRegistry.items.items():
         metrics[name] = metric.calculate(bs, metrics)
 
-    return pl.DataFrame(metrics)
+    return metrics
 
 
 class Metric(ABC):
@@ -181,10 +181,24 @@ class MetricRegistry(BaseRegistry[Metric]):
 
 
 MetricRegistry.register(
-    "Size",
+    "Total Assets",
     BalanceSheetAggregation(
         "Book value",
         BalanceSheetItemRegistry.get("Assets"),
+    ),
+)
+MetricRegistry.register(
+    "Total Liabilities",
+    -BalanceSheetAggregation(
+        "Book value",
+        BalanceSheetItemRegistry.get("liabilities"),
+    ),
+)
+MetricRegistry.register(
+    "Total Equity",
+    -BalanceSheetAggregation(
+        "Book value",
+        BalanceSheetItemRegistry.get("equity"),
     ),
 )
 MetricRegistry.register(
@@ -243,12 +257,14 @@ MetricRegistry.register(
 MetricRegistry.register(
     "Encumbered Assets", BalanceSheetAggregation("Encumbered", BalanceSheetItemRegistry.get("Assets"))
 )
-MetricRegistry.register("Unencumbered Assets", MetricRegistry.get("Size") - MetricRegistry.get("Encumbered Assets"))
+MetricRegistry.register(
+    "Unencumbered Assets", MetricRegistry.get("Total Assets") - MetricRegistry.get("Encumbered Assets")
+)
 MetricRegistry.register(
     "Encumbrance Ratio",
     Ratio(
         MetricRegistry.get("Encumbered Assets"),
-        MetricRegistry.get("Size"),
+        MetricRegistry.get("Total Assets"),
     ),
 )
 
@@ -283,9 +299,9 @@ MetricRegistry.register(
     "Encumbered HQLA Ratio", Ratio(MetricRegistry.get("EncumberedHQLA"), MetricRegistry.get("HQLA"))
 )
 MetricRegistry.register(
-    "Unencumbered HQLA Ratio", Ratio(MetricRegistry.get("UnencumberedHQLA"), MetricRegistry.get("Size"))
+    "Unencumbered HQLA Ratio", Ratio(MetricRegistry.get("UnencumberedHQLA"), MetricRegistry.get("Total Assets"))
 )
-MetricRegistry.register("HQLA Ratio", Ratio(MetricRegistry.get("HQLA"), MetricRegistry.get("Size")))
+MetricRegistry.register("HQLA Ratio", Ratio(MetricRegistry.get("HQLA"), MetricRegistry.get("Total Assets")))
 MetricRegistry.register("UnencumberedHQLACapped", UnencumberedHQLACapped())
 MetricRegistry.register(
     "Required Stable Funding", BalanceSheetAggregation("StableFunding", BalanceSheetItemRegistry.get("Assets"))

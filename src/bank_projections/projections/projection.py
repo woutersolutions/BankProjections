@@ -10,6 +10,7 @@ from loguru import logger
 
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.metrics.metrics import calculate_metrics
+from bank_projections.metrics.profitability import calculate_profitability
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.logging import log_iterator
 from bank_projections.utils.time import TimeHorizon
@@ -22,6 +23,8 @@ class ProjectionResult:
     cashflows: list[pl.DataFrame]
     ocis: list[pl.DataFrame]
     metric_list: list[pl.DataFrame]
+    profitability_list: list[pl.DataFrame]
+
     run_info: dict[str, Any]
 
     def to_dict(self) -> dict[str, pl.DataFrame]:
@@ -31,6 +34,7 @@ class ProjectionResult:
             "Cashflows": pl.concat(self.cashflows, how="diagonal"),
             "OCIs": pl.concat(self.ocis, how="diagonal"),
             "Metrics": pl.concat(self.metric_list, how="diagonal"),
+            "Profitability": pl.concat(self.profitability_list, how="diagonal"),
             "RunInfo": pl.DataFrame(self.run_info),
         }
 
@@ -61,7 +65,9 @@ class Projection:
         balance_sheets = []
         pnls_list = []
         cashflows_list = []
+        metric_dicts = []
         metric_list = []
+        profitability_list = []
         oci_list = []
 
         total_increments = len(self.horizon)
@@ -77,20 +83,32 @@ class Projection:
                 bs = bs.initialize_new_date(increment.to_date)
                 market_rates = scenario.market_data.get_market_rates(increment.to_date)
                 bs = scenario.apply(bs, increment, market_rates)
+                bs.validate()
 
-                metrics = calculate_metrics(bs)
+                metrics_dict = calculate_metrics(bs)
+                metrics_df = pl.DataFrame(metrics_dict)
 
                 agg_bs, pnls, cashflows, ocis = bs.aggregate()
-                for df in [agg_bs, pnls, cashflows, ocis]:
-                    df.insert_column(0, pl.lit(scenario_name).alias("Scenario"))
-                    df.insert_column(1, pl.lit(increment.to_date).alias("ProjectionDate"))
                 balance_sheets.append(agg_bs)
                 pnls_list.append(pnls)
                 cashflows_list.append(cashflows)
-                metric_list.append(metrics)
+                metric_dicts.append(metrics_dict)
+                metric_list.append(metrics_df)
                 oci_list.append(ocis)
 
-                bs.validate()
+                for df in [agg_bs, pnls, cashflows, ocis, metrics_df]:
+                    if len(df) > 0:
+                        df.insert_column(0, pl.lit(scenario_name).alias("Scenario"))
+                        df.insert_column(1, pl.lit(increment.to_date).alias("ProjectionDate"))
+
+                profitability_dicts = calculate_profitability(metric_dicts, pnls_list, self.horizon)
+                profitability = pl.DataFrame(profitability_dicts)
+                profitability_list.append(profitability)
+
+                for df in [profitability]:
+                    if len(df) > 0:
+                        df.insert_column(0, pl.lit(scenario_name).alias("Scenario"))
+                        df.insert_column(1, pl.lit(increment.to_date).alias("ProjectionDate"))
 
         run_info: dict[str, Any] = {
             "StartDate": self.horizon.start_date,
@@ -103,4 +121,6 @@ class Projection:
             "Scenarios": len(self.scenarios),
         }
 
-        return ProjectionResult(balance_sheets, pnls_list, cashflows_list, oci_list, metric_list, run_info)
+        return ProjectionResult(
+            balance_sheets, pnls_list, cashflows_list, oci_list, metric_list, profitability_list, run_info
+        )

@@ -1,4 +1,4 @@
-# TODO: Properly arrange these configurations into a config file or environment variables
+# TODO: Arrange these configurations into a config file
 from typing import Any
 
 import polars as pl
@@ -42,6 +42,8 @@ class Config:
     }
 
     BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType", "SubItemType"] + list(CLASSIFICATIONS.keys())
+
+    PROFITABILITY_OUTLOOKS: list[str] = ["Monthly", "Quarterly", "Annual"]
 
     @classmethod
     def label_columns(cls) -> list[str]:
