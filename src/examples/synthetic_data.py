@@ -48,23 +48,21 @@ def generate_synthetic_positions(
     hqla_class: str = "n/a",
     ifrs9_stage: str = "n/a",
     reference_rate: str | None = None,
-    coverage_rate_range: tuple[float, float] | None = None,
-    interest_rate_range: tuple[float, float] | None = None,
-    undrawn_portion_range: tuple[float, float] | None = None,
-    agio_range: tuple[float, float] | None = None,
-    prepayment_rate: float | None = 0.0,
-    ccf: float | None = 0.0,
-    minimum_age: int | None = None,
-    maximum_age: int | None = None,
-    minimum_maturity: int | None = None,
-    maximum_maturity: int | None = None,
+    coverage_rate: float | tuple[float, float] | None = None,
+    interest_rate: float | tuple[float, float] | None = None,
+    undrawn_portion: float | tuple[float, float] | None = None,
+    agio: float | tuple[float, float] | None = None,
+    prepayment_rate: float | tuple[float, float] | None = 0.0,
+    ccf: float | tuple[float, float] | None = 0.0,
+    age: int | tuple[int, int] | None = None,
+    maturity: int | tuple[int, int] | None = None,
     accumulating: bool | None = False,
-    other_off_balance_weight: float = 0.0,
-    trea_weight: float = 0.0,
-    stable_funding_weight: float = 0.0,
-    stressed_outflow_weight: float | None = None,
-    encumbrance_weight: float = 0.0,
-    notional_range: tuple[float, float] | None = None,
+    other_off_balance_weight: float | tuple[float, float] = 0.0,
+    trea_weight: float | tuple[float, float] = 0.0,
+    stable_funding_weight: float | tuple[float, float] = 0.0,
+    stressed_outflow_weight: float | tuple[float, float] | None = None,
+    encumbrance_weight: float | tuple[float, float] = 0.0,
+    notional: float | tuple[float, float] | None = None,
 ) -> Positions:
     redemption_type = strip_identifier(redemption_type)
     coupon_frequency = strip_identifier(coupon_frequency)
@@ -74,10 +72,8 @@ def generate_synthetic_positions(
     valuation_method = "none" if valuation_method is None else strip_identifier(valuation_method)
 
     # For notional-based instruments (like swaps), generate notionals separately
-    if notional_range is not None:
-        notionals = generate_random_numbers(
-            number, notional_range[0], notional_range[1], (notional_range[0] + notional_range[1]) / 2
-        )
+    if notional is not None:
+        notionals = generate_values_from_input(number, notional)
         # Book values will be derived from notionals and market values
         book_values = None
     else:
@@ -92,46 +88,19 @@ def generate_synthetic_positions(
             book_values = [value * book_value / sum(book_values) for value in book_values]
         notionals = None
 
-    if agio_range is None:
-        agios = [0.0] * number
-    else:
-        agios = generate_random_numbers(number, agio_range[0], agio_range[1], (agio_range[0] + agio_range[1]) / 2)
+    agios = generate_values_from_input(number, agio, default=0.0)
+    coverage_rates = generate_values_from_input(number, coverage_rate, default=0.0)
+    interest_rates = generate_values_from_input(number, interest_rate, default=0.0)
+    undrawn_portions = generate_values_from_input(number, undrawn_portion, default=0.0)
 
-    if prepayment_rate is None:
-        prepayment_rate = 0.0
-    if ccf is None:
-        ccf = 0.0
-    if stressed_outflow_weight is None:
-        stressed_outflow_weight = 0.0
-
-    if coverage_rate_range is None:
-        coverage_rates = [0.0] * number
-    else:
-        coverage_rates = generate_random_numbers(
-            number,
-            coverage_rate_range[0],
-            coverage_rate_range[1],
-            (coverage_rate_range[0] + coverage_rate_range[1]) / 2,
-        )
-    if interest_rate_range is None:
-        interest_rates = [0.0] * number
-    else:
-        interest_rates = generate_random_numbers(
-            number,
-            interest_rate_range[0],
-            interest_rate_range[1],
-            (interest_rate_range[0] + interest_rate_range[1]) / 2,
-        )
-
-    if undrawn_portion_range is None:
-        undrawn_portions = [0.0] * number
-    else:
-        undrawn_portions = generate_random_numbers(
-            number,
-            undrawn_portion_range[0],
-            undrawn_portion_range[1],
-            (undrawn_portion_range[0] + undrawn_portion_range[1]) / 2,
-        )
+    # Convert single values to the appropriate type (these are used as scalars in the dataframe)
+    prepayment_rate_value = generate_values_from_input(1, prepayment_rate, default=0.0)[0]
+    ccf_value = generate_values_from_input(1, ccf, default=0.0)[0]
+    stressed_outflow_weight_value = generate_values_from_input(1, stressed_outflow_weight, default=0.0)[0]
+    other_off_balance_weight_value = generate_values_from_input(1, other_off_balance_weight, default=0.0)[0]
+    trea_weight_value = generate_values_from_input(1, trea_weight, default=0.0)[0]
+    stable_funding_weight_value = generate_values_from_input(1, stable_funding_weight, default=0.0)[0]
+    encumbrance_weight_value = generate_values_from_input(1, encumbrance_weight, default=0.0)[0]
 
     coupon_type = strip_identifier(coupon_type)
     if coupon_type in CouponTypeRegistry.stripped_names():
@@ -141,27 +110,27 @@ def generate_synthetic_positions(
     else:
         raise ValueError(f"Unknown coupon type: {coupon_type}")
 
-    if minimum_age is None and maximum_age is None:
+    # Generate origination dates from age
+    if age is None:
         origination_dates = [None] * number
-    elif maximum_age is None:
-        raise ValueError("If minimum_age is set, maximum_age must also be set")
     else:
-        if minimum_age is None:
-            minimum_age = 0
+        age_values = generate_int_values_from_input(number, age)
         origination_dates = [
-            current_date - datetime.timedelta(days=random.randint(minimum_age * 365, maximum_age * 365))
-            for _ in range(number)
+            current_date - datetime.timedelta(days=age_val * 365) if age_val is not None else None
+            for age_val in age_values
         ]
 
+    # Generate maturity dates
     match strip_identifier(redemption_type):
         case "perpetual":
             maturity_dates = [None] * number
         case "bullet" | "linear" | "annuity" | "notional":
-            # Generate uniform random based on current date and min/max maturity in years,
-            # by adding a random number of days
+            if maturity is None:
+                raise ValueError(f"Maturity must be specified for redemption type: {redemption_type}")
+            maturity_values = generate_int_values_from_input(number, maturity)
             maturity_dates = [
-                current_date + datetime.timedelta(days=random.randint(minimum_maturity * 365, maximum_maturity * 365))
-                for _ in range(number)
+                current_date + datetime.timedelta(days=mat_val * 365) if mat_val is not None else None
+                for mat_val in maturity_values
             ]
         case _:
             raise ValueError(f"Unknown redemption type: {redemption_type}")
@@ -217,15 +186,15 @@ def generate_synthetic_positions(
             SubItemType=pl.lit(sub_item_type),
             Currency=pl.lit(strip_identifier(currency)),
             HQLAClass=pl.lit(strip_identifier(hqla_class)),
-            PrepaymentRate=pl.lit(prepayment_rate),
-            CCF=pl.lit(ccf),
+            PrepaymentRate=pl.lit(prepayment_rate_value),
+            CCF=pl.lit(ccf_value),
             IsAccumulating=pl.lit(accumulating),
             RedemptionType=pl.lit(redemption_type),
             BalanceSheetSide=pl.lit(balance_sheet_side),
-            TREAWeight=pl.lit(trea_weight),
-            EncumberedWeight=pl.lit(encumbrance_weight),
-            StableFundingWeight=pl.lit(stable_funding_weight),
-            StressedOutflowWeight=pl.lit(stressed_outflow_weight),
+            TREAWeight=pl.lit(trea_weight_value),
+            EncumberedWeight=pl.lit(encumbrance_weight_value),
+            StableFundingWeight=pl.lit(stable_funding_weight_value),
+            StressedOutflowWeight=pl.lit(stressed_outflow_weight_value),
             ValuationMethod=pl.lit(valuation_method),
             ValuationCurve=pl.lit(valuation_curve),
             ReferenceRate=pl.lit(reference_rate),
@@ -280,7 +249,7 @@ def generate_synthetic_positions(
         AccruedInterest=pl.col("Quantity") * pl.col("AccruedInterestWeight"),
         Agio=pl.col("Quantity") * pl.col("AgioWeight"),
         Undrawn=pl.col("Quantity") * pl.col("UndrawnPortion"),
-        OtherOffBalanceWeight=other_off_balance_weight,
+        OtherOffBalanceWeight=other_off_balance_weight_value,
         ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
         ValuationCurve=pl.col("ValuationCurve").cast(pl.String),
         CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
@@ -325,6 +294,47 @@ def generate_random_numbers(number: int, minimum: float, maximum: float, mean: f
     return arr.tolist()
 
 
+def generate_values_from_input(
+    number: int, value: float | tuple[float, float] | None, default: float = 0.0
+) -> list[float]:
+    """
+    Generate a list of values from either a single value or a range.
+
+    - If None, return list of default values
+    - If single value, return list of that value
+    - If tuple (min, max), generate random values in that range
+    """
+    if value is None:
+        return [default] * number
+    elif isinstance(value, tuple):
+        minimum, maximum = value
+        mean = (minimum + maximum) / 2
+        if minimum == maximum:
+            return [minimum] * number
+        return generate_random_numbers(number, minimum, maximum, mean)
+    else:
+        return [float(value)] * number
+
+
+def generate_int_values_from_input(
+    number: int, value: int | float | tuple[int | float, int | float] | None
+) -> list[int | None]:
+    """
+    Generate a list of integer values from either a single value or a range.
+
+    - If None, return list of None values
+    - If single value, return list of that value (converted to int)
+    - If tuple (min, max), generate random integer values in that range
+    """
+    if value is None:
+        return [None] * number
+    elif isinstance(value, tuple):
+        minimum, maximum = int(value[0]), int(value[1])
+        return [random.randint(minimum, maximum) for _ in range(number)]
+    else:
+        return [int(value)] * number
+
+
 def create_synthetic_balance_sheet(
     current_date: datetime.date,
     scenario: Scenario,
@@ -340,9 +350,27 @@ def create_synthetic_balance_sheet(
 
     market_rates = scenario.market_data.get_market_rates(current_date)
 
+    # List of numeric columns that should be parsed with read_range
+    numeric_columns = {
+        "coverage_rate",
+        "interest_rate",
+        "undrawn_portion",
+        "agio",
+        "prepayment_rate",
+        "ccf",
+        "age",
+        "maturity",
+        "other_off_balance_weight",
+        "trea_weight",
+        "stable_funding_weight",
+        "stressed_outflow_weight",
+        "encumbrance_weight",
+        "notional",
+    }
+
     positions = []
     for row in config_table.iter_rows(named=True):
-        position_input = {name: read_range(value) if name.endswith("_range") else value for name, value in row.items()}
+        position_input = {name: read_range(value) if name in numeric_columns else value for name, value in row.items()}
         if row["number"] > 0:
             positions.append(
                 generate_synthetic_positions(
@@ -357,8 +385,40 @@ def create_synthetic_balance_sheet(
     return bs
 
 
-def read_range(value: str) -> tuple | None:
-    if value is None or len(value.strip()) == 0:
+def read_range(value: str | float | int) -> float | tuple[float, float] | None:
+    """
+    Parse a value that can be either:
+    - None or empty string -> None
+    - Already a number (from CSV parsing) -> return as is
+    - Single number string "0.5" -> 0.5
+    - Range string "(0.1, 0.5)" -> (0.1, 0.5)
+    """
+    # Handle None
+    if value is None:
         return None
-    else:
-        return tuple(float(x.strip()) for x in value.strip("()").split(","))
+
+    # If already a number (int or float), return it
+    if isinstance(value, int | float):
+        return float(value)
+
+    # Handle string values
+    if isinstance(value, str):
+        value = value.strip()
+        if len(value) == 0:
+            return None
+
+        # Check if it's a range (has parentheses and comma)
+        if value.startswith("(") and value.endswith(")") and "," in value:
+            parts = value.strip("()").split(",")
+            if len(parts) == 2:
+                return tuple(float(x.strip()) for x in parts)
+            else:
+                raise ValueError(f"Invalid range format: {value}. Expected format: (min, max)")
+        else:
+            # Single number string
+            try:
+                return float(value)
+            except ValueError as err:
+                raise ValueError(f"Invalid numeric value: {value}. Expected a number or range (min, max)") from err
+
+    raise ValueError(f"Unexpected value type: {type(value)}")

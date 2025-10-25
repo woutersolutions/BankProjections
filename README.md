@@ -166,7 +166,6 @@ If you have feedback, questions or offer/need help:
 - 🔨 Performance optimizations for large portfolios
 - 🔨 Off-balance modelling and hedging
 - 🔨 IFRS9 Stage migrations and impairments changes
-- 🔨 Performance metrics (e.g. ROC)
 
 ### Planned
 
