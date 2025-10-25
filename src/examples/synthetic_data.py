@@ -52,8 +52,8 @@ def generate_synthetic_positions(
     interest_rate: float | tuple[float, float] | None = None,
     undrawn_portion: float | tuple[float, float] | None = None,
     agio: float | tuple[float, float] | None = None,
-    prepayment_rate: float | tuple[float, float] | None = 0.0,
-    ccf: float | tuple[float, float] | None = 0.0,
+    prepayment_rate: float | tuple[float, float] | None = None,
+    ccf: float | tuple[float, float] | None = None,
     age: int | tuple[int, int] | None = None,
     maturity: int | tuple[int, int] | None = None,
     accumulating: bool | None = False,
@@ -88,19 +88,19 @@ def generate_synthetic_positions(
             book_values = [value * book_value / sum(book_values) for value in book_values]
         notionals = None
 
-    agios = generate_values_from_input(number, agio, default=0.0)
-    coverage_rates = generate_values_from_input(number, coverage_rate, default=0.0)
-    interest_rates = generate_values_from_input(number, interest_rate, default=0.0)
-    undrawn_portions = generate_values_from_input(number, undrawn_portion, default=0.0)
-
-    # Convert single values to the appropriate type (these are used as scalars in the dataframe)
-    prepayment_rate_value = generate_values_from_input(1, prepayment_rate, default=0.0)[0]
-    ccf_value = generate_values_from_input(1, ccf, default=0.0)[0]
-    stressed_outflow_weight_value = generate_values_from_input(1, stressed_outflow_weight, default=0.0)[0]
-    other_off_balance_weight_value = generate_values_from_input(1, other_off_balance_weight, default=0.0)[0]
-    trea_weight_value = generate_values_from_input(1, trea_weight, default=0.0)[0]
-    stable_funding_weight_value = generate_values_from_input(1, stable_funding_weight, default=0.0)[0]
-    encumbrance_weight_value = generate_values_from_input(1, encumbrance_weight, default=0.0)[0]
+    agios = generate_values_from_input(number, agio if agio is not None else 0.0)
+    coverage_rates = generate_values_from_input(number, coverage_rate if coverage_rate is not None else 0.0)
+    interest_rates = generate_values_from_input(number, interest_rate if interest_rate is not None else 0.0)
+    undrawn_portions = generate_values_from_input(number, undrawn_portion if undrawn_portion is not None else 0.0)
+    prepayment_rates = generate_values_from_input(number, prepayment_rate if prepayment_rate is not None else 0.0)
+    ccf_values = generate_values_from_input(number, ccf if ccf is not None else 0.0)
+    stressed_outflow_weights = generate_values_from_input(
+        number, stressed_outflow_weight if stressed_outflow_weight is not None else 0.0
+    )
+    other_off_balance_weights = generate_values_from_input(number, other_off_balance_weight)
+    trea_weights = generate_values_from_input(number, trea_weight)
+    stable_funding_weights = generate_values_from_input(number, stable_funding_weight)
+    encumbrance_weights = generate_values_from_input(number, encumbrance_weight)
 
     coupon_type = strip_identifier(coupon_type)
     if coupon_type in CouponTypeRegistry.stripped_names():
@@ -166,6 +166,13 @@ def generate_synthetic_positions(
         "CouponType": coupon_types,
         "OriginationDate": origination_dates,
         "MaturityDate": maturity_dates,
+        "PrepaymentRate": prepayment_rates,
+        "CCF": ccf_values,
+        "TREAWeight": trea_weights,
+        "EncumberedWeight": encumbrance_weights,
+        "StableFundingWeight": stable_funding_weights,
+        "StressedOutflowWeight": stressed_outflow_weights,
+        "OtherOffBalanceWeight": other_off_balance_weights,
     }
 
     # Add either book_values or notionals depending on instrument type
@@ -186,15 +193,9 @@ def generate_synthetic_positions(
             SubItemType=pl.lit(sub_item_type),
             Currency=pl.lit(strip_identifier(currency)),
             HQLAClass=pl.lit(strip_identifier(hqla_class)),
-            PrepaymentRate=pl.lit(prepayment_rate_value),
-            CCF=pl.lit(ccf_value),
             IsAccumulating=pl.lit(accumulating),
             RedemptionType=pl.lit(redemption_type),
             BalanceSheetSide=pl.lit(balance_sheet_side),
-            TREAWeight=pl.lit(trea_weight_value),
-            EncumberedWeight=pl.lit(encumbrance_weight_value),
-            StableFundingWeight=pl.lit(stable_funding_weight_value),
-            StressedOutflowWeight=pl.lit(stressed_outflow_weight_value),
             ValuationMethod=pl.lit(valuation_method),
             ValuationCurve=pl.lit(valuation_curve),
             ReferenceRate=pl.lit(reference_rate),
@@ -249,7 +250,6 @@ def generate_synthetic_positions(
         AccruedInterest=pl.col("Quantity") * pl.col("AccruedInterestWeight"),
         Agio=pl.col("Quantity") * pl.col("AgioWeight"),
         Undrawn=pl.col("Quantity") * pl.col("UndrawnPortion"),
-        OtherOffBalanceWeight=other_off_balance_weight_value,
         ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
         ValuationCurve=pl.col("ValuationCurve").cast(pl.String),
         CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
@@ -295,18 +295,15 @@ def generate_random_numbers(number: int, minimum: float, maximum: float, mean: f
 
 
 def generate_values_from_input(
-    number: int, value: float | tuple[float, float] | None, default: float = 0.0
+    number: int, value: float | tuple[float, float]
 ) -> list[float]:
     """
     Generate a list of values from either a single value or a range.
 
-    - If None, return list of default values
     - If single value, return list of that value
     - If tuple (min, max), generate random values in that range
     """
-    if value is None:
-        return [default] * number
-    elif isinstance(value, tuple):
+    if isinstance(value, tuple):
         minimum, maximum = value
         mean = (minimum + maximum) / 2
         if minimum == maximum:

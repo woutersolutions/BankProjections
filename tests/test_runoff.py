@@ -173,7 +173,7 @@ class TestRunoff:
         loan_filter = pl.col("SubItemType") == "Mortgages"
         bs._data = bs._data.with_columns(
             pl.when(loan_filter & (pl.int_range(pl.len()) % 2 == 0))
-            .then(pl.lit("Quarterly"))
+            .then(pl.lit("quarterly"))
             .otherwise(pl.col("CouponFrequency"))
             .alias("CouponFrequency"),
             pl.when(loan_filter & (pl.int_range(pl.len()) % 2 == 0))

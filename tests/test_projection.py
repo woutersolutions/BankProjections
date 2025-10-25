@@ -21,6 +21,7 @@ class TestProjectionResult:
         cashflows = [pl.DataFrame({"cf_col": [100, 200]})]
         ocis = [pl.DataFrame({"oci_col": [5, 10]})]
         metric_list = [pl.DataFrame({"metric": [5]})]
+        profitability_list = [pl.DataFrame({"profitability": [0.05]})]
         run_info: dict[str, int | datetime.date | datetime.datetime | float] = {
             "StartDate": datetime.date(2023, 1, 1),
             "EndDate": datetime.date(2023, 1, 31),
@@ -28,13 +29,14 @@ class TestProjectionResult:
             "Scenarios": 1,
         }
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, run_info)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, profitability_list, run_info)
 
         assert result.balance_sheets == balance_sheets
         assert result.pnls == pnls
         assert result.cashflows == cashflows
         assert result.ocis == ocis
         assert result.metric_list == metric_list
+        assert result.profitability_list == profitability_list
         assert result.run_info == run_info
 
     def test_projection_result_to_dict(self):
@@ -73,6 +75,10 @@ class TestProjectionResult:
             pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "metric": [5]}),
             pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "metric": [6]}),
         ]
+        profitability_list = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "profitability": [0.05]}),
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "profitability": [0.06]}),
+        ]
         run_info: dict[str, int | datetime.date | datetime.datetime | float] = {
             "StartDate": datetime.date(2023, 1, 1),
             "EndDate": datetime.date(2023, 2, 28),
@@ -80,7 +86,7 @@ class TestProjectionResult:
             "Scenarios": 1,
         }
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, run_info)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, profitability_list, run_info)
         result_dict = result.to_dict()
 
         assert "BalanceSheets" in result_dict
@@ -112,6 +118,9 @@ class TestProjectionResult:
         metric_list = [
             pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "metric": [5]})
         ]
+        profitability_list = [
+            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "profitability": [0.05]})
+        ]
         run_info: dict[str, int | datetime.date | datetime.datetime | float] = {
             "StartDate": datetime.date(2023, 1, 1),
             "EndDate": datetime.date(2023, 1, 31),
@@ -119,7 +128,7 @@ class TestProjectionResult:
             "Scenarios": 1,
         }
 
-        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, run_info)
+        result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, profitability_list, run_info)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = os.path.join(temp_dir, "test_output.xlsx")
