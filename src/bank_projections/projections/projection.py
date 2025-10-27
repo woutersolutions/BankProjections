@@ -1,6 +1,7 @@
 import datetime
 import os
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -57,8 +58,24 @@ class Projection:
         self.scenarios = scenarios
         self.horizon = horizon
 
-    def run(self, start_bs: BalanceSheet) -> ProjectionResult:
-        """Run the projection over the defined time horizon."""
+    def run(
+        self, start_bs: BalanceSheet, progress_callback: Callable[[int, int], None] | None = None
+    ) -> ProjectionResult:
+        """Run the projection over the defined time horizon.
+
+        Parameters
+        ----------
+        start_bs : BalanceSheet
+            Starting balance sheet
+        progress_callback : Callable[[int, int], None] | None
+            Optional callback function for progress updates.
+            Called with (current_step, total_steps) after each time increment.
+
+        Returns
+        -------
+        ProjectionResult
+            Results of the projection including balance sheets, P&Ls, cashflows, and metrics
+        """
 
         start_time = time.time()
 
@@ -71,6 +88,8 @@ class Projection:
         oci_list = []
 
         total_increments = len(self.horizon)
+        total_steps = len(self.scenarios) * total_increments
+        current_step = 0
 
         start_bs_size = len(start_bs)
 
@@ -84,6 +103,11 @@ class Projection:
                 market_rates = scenario.market_data.get_market_rates(increment.to_date)
                 bs = scenario.apply(bs, increment, market_rates)
                 bs.validate()
+
+                # Update progress
+                current_step += 1
+                if progress_callback is not None:
+                    progress_callback(current_step, total_steps)
 
                 metrics_dict = calculate_metrics(bs)
                 metrics_df = pl.DataFrame(metrics_dict)

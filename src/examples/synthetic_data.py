@@ -654,7 +654,7 @@ def create_single_asset_balance_sheet(
     # Filter out zero-quantity positions from Assets and Liabilities
     # (keep all Equity positions for balance sheet integrity)
     bs._data = bs._data.filter(
-        (pl.col("Quantity") != 0.0) | ~pl.col("BalanceSheetSide").is_in(["Assets", "Liabilities"])
+        (pl.col("Quantity").abs() > 0.00001) | ~pl.col("BalanceSheetSide").is_in(["Assets", "Liabilities"])
     )
 
     return bs

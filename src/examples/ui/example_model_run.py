@@ -69,24 +69,36 @@ def main() -> None:
     st.divider()
 
     if st.button("Run Projection", type="primary", use_container_width=True):
-        with st.spinner("Running projection... This may take a while."):
-            scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-            scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
-            horizon = TimeHorizon.from_numbers(
-                start_date=start_date,
-                number_of_days=int(number_of_days),
-                number_of_weeks=int(number_of_weeks),
-                number_of_months=int(number_of_months),
-                number_of_quarters=int(number_of_quarters),
-                number_of_years=int(number_of_years),
-                end_of_month=end_of_month,
-            )
+        scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
+        horizon = TimeHorizon.from_numbers(
+            start_date=start_date,
+            number_of_days=int(number_of_days),
+            number_of_weeks=int(number_of_weeks),
+            number_of_months=int(number_of_months),
+            number_of_quarters=int(number_of_quarters),
+            number_of_years=int(number_of_years),
+            end_of_month=end_of_month,
+        )
 
-            start_bs = create_synthetic_balance_sheet(start_date, scenario, config_table=st.session_state.config_df)
-            projection = Projection({"base": scenario}, horizon)
-            result = projection.run(start_bs)
-            st.session_state.projection_result = result
+        start_bs = create_synthetic_balance_sheet(start_date, scenario, config_table=st.session_state.config_df)
+        projection = Projection({"base": scenario}, horizon)
 
+        # Create progress bar
+        progress_bar = st.progress(0, text="Starting projection...")
+        status_text = st.empty()
+
+        def update_progress(current: int, total: int) -> None:
+            progress = current / total
+            progress_bar.progress(progress, text=f"Running projection: {current}/{total} time steps")
+            status_text.text(f"Progress: {current}/{total} ({progress * 100:.1f}%)")
+
+        result = projection.run(start_bs, progress_callback=update_progress)
+        st.session_state.projection_result = result
+
+        # Clear progress indicators
+        progress_bar.empty()
+        status_text.empty()
         st.success("Projection completed successfully!")
 
     if st.session_state.projection_result is not None:
@@ -212,9 +224,7 @@ def main() -> None:
                     selected_prof_metrics = st.multiselect(
                         "Select profitability metrics to plot",
                         profitability_columns,
-                        default=profitability_columns[:3]
-                        if len(profitability_columns) >= 3
-                        else profitability_columns,
+                        default=profitability_columns[:3] if len(profitability_columns) >= 3 else profitability_columns,
                     )
 
                     if selected_prof_metrics:
