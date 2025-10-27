@@ -55,26 +55,52 @@ def main() -> None:
     st.divider()
 
     st.header("2. Time Horizon Configuration")
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
         start_date = st.date_input("Start Date", value=datetime.date(2024, 12, 31))
 
     with col2:
-        number_of_months = st.number_input("Number of Months", value=24, min_value=1, max_value=600, key="months_sa")
+        end_of_month = st.checkbox("End of Month", value=True, key="eom_sa")
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        number_of_days = st.number_input("Number of Days", value=0, min_value=0, max_value=365, step=1, key="days_sa")
+
+    with col2:
+        number_of_weeks = st.number_input(
+            "Number of Weeks", value=0, min_value=0, max_value=260, step=1, key="weeks_sa"
+        )
 
     with col3:
-        end_of_month = st.checkbox("End of Month", value=True, key="eom_sa")
+        number_of_months = st.number_input(
+            "Number of Months", value=24, min_value=0, max_value=600, step=1, key="months_sa"
+        )
+
+    with col4:
+        number_of_quarters = st.number_input(
+            "Number of Quarters", value=0, min_value=0, max_value=200, step=1, key="quarters_sa"
+        )
+
+    with col5:
+        number_of_years = st.number_input("Number of Years", value=0, min_value=0, max_value=50, step=1, key="years_sa")
 
     st.divider()
 
     if st.button("Run Projection", type="primary", use_container_width=True):
         with st.spinner("Running projection..."):
+            # Load scenario but strip down to only basic rules needed for single asset runoff
             scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-            scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
+            # Keep only Runoff and Valuation - remove all other rules to avoid errors with missing items
+            scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation()}
             horizon = TimeHorizon.from_numbers(
                 start_date=start_date,
+                number_of_days=int(number_of_days),
+                number_of_weeks=int(number_of_weeks),
                 number_of_months=int(number_of_months),
+                number_of_quarters=int(number_of_quarters),
+                number_of_years=int(number_of_years),
                 end_of_month=end_of_month,
             )
 
@@ -111,26 +137,32 @@ def main() -> None:
             bs_df = pl.concat(result.balance_sheets, how="diagonal")
             bs_pandas = bs_df.to_pandas()
 
+            # Filter to show only the loan asset
             if len(bs_pandas) > 0:
-                fig = px.line(
-                    bs_pandas,
-                    x="ProjectionDate",
-                    y="Quantity",
-                    title="Asset Quantity Over Time",
-                    labels={"ProjectionDate": "Date", "Quantity": "Quantity"},
-                    color_discrete_sequence=get_chart_colors(),
-                )
+                bs_filtered = bs_pandas[bs_pandas["ItemType"] == "Loan"]
 
-                fig.update_layout(
-                    hovermode="x unified",
-                    xaxis_title="Date",
-                    yaxis_title="Quantity",
-                )
+                if len(bs_filtered) > 0:
+                    fig = px.line(
+                        bs_filtered,
+                        x="ProjectionDate",
+                        y="Quantity",
+                        title="Asset Quantity Over Time",
+                        labels={"ProjectionDate": "Date", "Quantity": "Quantity"},
+                        color_discrete_sequence=get_chart_colors(),
+                    )
 
-                st.plotly_chart(fig, use_container_width=True)
+                    fig.update_layout(
+                        hovermode="x unified",
+                        xaxis_title="Date",
+                        yaxis_title="Quantity",
+                    )
 
-                with st.expander("View Raw Data"):
-                    st.dataframe(bs_pandas, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    with st.expander("View Raw Data"):
+                        st.dataframe(bs_filtered, use_container_width=True)
+                else:
+                    st.warning("No loan asset data available")
             else:
                 st.warning("No balance sheet data available")
 
@@ -140,14 +172,16 @@ def main() -> None:
             pnl_df = pl.concat(result.pnls, how="diagonal")
             pnl_pandas = pnl_df.to_pandas()
 
+            # Filter to show only the loan asset P&L
             if len(pnl_pandas) > 0:
-                pnl_grouped = pnl_pandas.groupby(["ProjectionDate", "Rule"])["Amount"].sum().reset_index()
+                pnl_filtered = pnl_pandas[pnl_pandas["ItemType"] == "Loan"]
+                pnl_grouped = pnl_filtered.groupby(["ProjectionDate", "rule"])["Amount"].sum().reset_index()
 
                 fig = px.bar(
                     pnl_grouped,
                     x="ProjectionDate",
                     y="Amount",
-                    color="Rule",
+                    color="rule",
                     title="P&L by Rule Over Time",
                     labels={"ProjectionDate": "Date", "Amount": "Amount"},
                     color_discrete_sequence=get_chart_colors(),
@@ -163,7 +197,7 @@ def main() -> None:
                 st.plotly_chart(fig, use_container_width=True)
 
                 with st.expander("View Raw Data"):
-                    st.dataframe(pnl_pandas, use_container_width=True)
+                    st.dataframe(pnl_filtered, use_container_width=True)
             else:
                 st.warning("No P&L data available")
 
@@ -173,14 +207,16 @@ def main() -> None:
             cf_df = pl.concat(result.cashflows, how="diagonal")
             cf_pandas = cf_df.to_pandas()
 
+            # Filter to show only the loan asset cashflows
             if len(cf_pandas) > 0:
-                cf_grouped = cf_pandas.groupby(["ProjectionDate", "Rule"])["Amount"].sum().reset_index()
+                cf_filtered = cf_pandas[cf_pandas["ItemType"] == "Loan"]
+                cf_grouped = cf_filtered.groupby(["ProjectionDate", "rule"])["Amount"].sum().reset_index()
 
                 fig = px.bar(
                     cf_grouped,
                     x="ProjectionDate",
                     y="Amount",
-                    color="Rule",
+                    color="rule",
                     title="Cashflows by Rule Over Time",
                     labels={"ProjectionDate": "Date", "Amount": "Amount"},
                     color_discrete_sequence=get_chart_colors(),
@@ -196,7 +232,7 @@ def main() -> None:
                 st.plotly_chart(fig, use_container_width=True)
 
                 with st.expander("View Raw Data"):
-                    st.dataframe(cf_pandas, use_container_width=True)
+                    st.dataframe(cf_filtered, use_container_width=True)
             else:
                 st.warning("No cashflow data available")
 

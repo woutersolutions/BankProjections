@@ -1,7 +1,6 @@
 import datetime
 
 import pandas as pd
-import pytest
 
 from examples.ui.colors import NEUTRAL_COLORS, PRIMARY_COLORS, SEMANTIC_COLORS, get_chart_colors
 

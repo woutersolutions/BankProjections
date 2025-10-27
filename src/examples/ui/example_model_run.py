@@ -41,16 +41,30 @@ def main() -> None:
     st.divider()
 
     st.header("2. Time Horizon Configuration")
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
         start_date = st.date_input("Start Date", value=datetime.date(2024, 12, 31))
 
     with col2:
-        number_of_months = st.number_input("Number of Months", value=24, min_value=1, max_value=600)
+        end_of_month = st.checkbox("End of Month", value=True)
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        number_of_days = st.number_input("Number of Days", value=0, min_value=0, max_value=365, step=1)
+
+    with col2:
+        number_of_weeks = st.number_input("Number of Weeks", value=0, min_value=0, max_value=260, step=1)
 
     with col3:
-        end_of_month = st.checkbox("End of Month", value=True)
+        number_of_months = st.number_input("Number of Months", value=24, min_value=0, max_value=600, step=1)
+
+    with col4:
+        number_of_quarters = st.number_input("Number of Quarters", value=0, min_value=0, max_value=200, step=1)
+
+    with col5:
+        number_of_years = st.number_input("Number of Years", value=0, min_value=0, max_value=50, step=1)
 
     st.divider()
 
@@ -60,7 +74,11 @@ def main() -> None:
             scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
             horizon = TimeHorizon.from_numbers(
                 start_date=start_date,
+                number_of_days=int(number_of_days),
+                number_of_weeks=int(number_of_weeks),
                 number_of_months=int(number_of_months),
+                number_of_quarters=int(number_of_quarters),
+                number_of_years=int(number_of_years),
                 end_of_month=end_of_month,
             )
 
@@ -106,7 +124,7 @@ def main() -> None:
             st.subheader("Income Statement Over Time")
             group_by_pnl = st.selectbox(
                 "Group by",
-                ["ItemType", "SubItemType", "Rule"],
+                ["rule", "ItemType", "SubItemType"],
                 index=0,
                 key="pnl_group",
             )
@@ -127,7 +145,7 @@ def main() -> None:
             st.subheader("Cashflow Statement Over Time")
             group_by_cf = st.selectbox(
                 "Group by",
-                ["ItemType", "SubItemType", "Rule"],
+                ["rule", "ItemType", "SubItemType"],
                 index=0,
                 key="cf_group",
             )
@@ -181,31 +199,40 @@ def main() -> None:
                     key="prof_outlook",
                 )
 
-                profitability_columns = [
-                    col
-                    for col in profitability_pandas.columns
-                    if col not in ["Scenario", "ProjectionDate"] and outlook_col in col
-                ]
+                # Filter by outlook
+                profitability_filtered = profitability_pandas[profitability_pandas["outlook"] == outlook_col]
 
-                selected_prof_metrics = st.multiselect(
-                    "Select profitability metrics to plot",
-                    profitability_columns,
-                    default=profitability_columns[:3] if len(profitability_columns) >= 3 else profitability_columns,
-                )
+                if len(profitability_filtered) > 0:
+                    profitability_columns = [
+                        col
+                        for col in profitability_filtered.columns
+                        if col not in ["Scenario", "ProjectionDate", "outlook"]
+                    ]
 
-                if selected_prof_metrics:
-                    fig = create_metrics_plot(profitability_pandas, selected_prof_metrics)
-                    st.plotly_chart(fig, use_container_width=True)
+                    selected_prof_metrics = st.multiselect(
+                        "Select profitability metrics to plot",
+                        profitability_columns,
+                        default=profitability_columns[:3]
+                        if len(profitability_columns) >= 3
+                        else profitability_columns,
+                    )
 
-                with st.expander("View Raw Data"):
-                    st.dataframe(profitability_pandas, use_container_width=True)
+                    if selected_prof_metrics:
+                        fig = create_metrics_plot(profitability_filtered, selected_prof_metrics)
+                        st.plotly_chart(fig, use_container_width=True)
+
+                    with st.expander("View Raw Data"):
+                        st.dataframe(profitability_filtered, use_container_width=True)
+                else:
+                    st.info(
+                        f"No profitability data available for {outlook_col} outlook yet. "
+                        "Profitability metrics require sufficient time history."
+                    )
             else:
                 st.warning("No profitability data available")
 
 
-def create_time_series_plot(
-    df: pd.DataFrame, x_col: str, y_col: str, group_col: str, title: str
-) -> px.line:
+def create_time_series_plot(df: pd.DataFrame, x_col: str, y_col: str, group_col: str, title: str) -> px.line:
     df_grouped = df.groupby([x_col, group_col])[y_col].sum().reset_index()
 
     fig = px.line(

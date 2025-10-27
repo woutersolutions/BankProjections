@@ -585,16 +585,21 @@ def create_single_asset_balance_sheet(
 
     # Balance the sheet by:
     # 1. Keep only the new asset with its book_value
-    # 2. Zero out all other assets
-    # 3. Zero out all liabilities
-    # 4. Set one equity item (Retained earnings) to -(asset book_value), zero out other equity
-    # 5. Zero out derivatives and any other balance sheet items
+    # 2. Keep Cash with book value to match the asset (required for BalanceSheet initialization)
+    # 3. Zero out book_value for all other items (number stays > 0 to maintain schema compatibility)
+    # 4. Set Retained earnings to balance the sheet
+    # Note: Items with book_value=0 but number>0 create zero-quantity positions (minimal impact)
     modified_config = modified_config.with_columns(
         pl.when(
             # Keep the new asset with its book_value
             (pl.col("balance_sheet_side") == "Assets") & (pl.col("sub_item_type") == sub_item_type)
         )
         .then(pl.col("book_value"))
+        .when(
+            # Keep Cash with book_value matching the asset (required for BalanceSheet initialization)
+            (pl.col("balance_sheet_side") == "Assets") & (pl.col("item_type") == "Cash")
+        )
+        .then(pl.lit(int(book_value)).cast(pl.Int64))
         .when(
             # Zero out all other assets
             pl.col("balance_sheet_side") == "Assets"
@@ -606,10 +611,10 @@ def create_single_asset_balance_sheet(
         )
         .then(pl.lit(0).cast(pl.Int64))
         .when(
-            # Set Retained earnings to -(asset book_value) to balance the sheet
+            # Set Retained earnings to -(asset book_value + cash) to balance the sheet
             (pl.col("balance_sheet_side") == "Equity") & (pl.col("sub_item_type") == "Retained earnings")
         )
-        .then(pl.lit(-int(book_value)).cast(pl.Int64))
+        .then(pl.lit(-2 * int(book_value)).cast(pl.Int64))
         .when(
             # Zero out all other equity items
             pl.col("balance_sheet_side") == "Equity"
@@ -644,4 +649,12 @@ def create_single_asset_balance_sheet(
     )
 
     # Generate the balance sheet using the standard function
-    return create_synthetic_balance_sheet(current_date, scenario, config_table=modified_config)
+    bs = create_synthetic_balance_sheet(current_date, scenario, config_table=modified_config)
+
+    # Filter out zero-quantity positions from Assets and Liabilities
+    # (keep all Equity positions for balance sheet integrity)
+    bs._data = bs._data.filter(
+        (pl.col("Quantity") != 0.0) | ~pl.col("BalanceSheetSide").is_in(["Assets", "Liabilities"])
+    )
+
+    return bs
