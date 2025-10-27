@@ -102,15 +102,18 @@ def generate_synthetic_positions(
     stable_funding_weights = generate_values_from_input(number, stable_funding_weight)
     encumbrance_weights = generate_values_from_input(number, encumbrance_weight)
 
-    coupon_type = strip_identifier(coupon_type)
-    if coupon_type in CouponTypeRegistry.stripped_names():
-        coupon_types = [strip_identifier(coupon_type)] * number
-    elif coupon_type == "both":
+    coupon_type_stripped = strip_identifier(coupon_type)
+    if coupon_type_stripped is None:
+        raise ValueError(f"Invalid coupon_type: {coupon_type}")
+    if coupon_type_stripped in CouponTypeRegistry.stripped_names():
+        coupon_types = [coupon_type_stripped] * number
+    elif coupon_type_stripped == "both":
         coupon_types = random.choices(["fixed", "floating"], weights=(0.6, 0.4), k=number)
     else:
-        raise ValueError(f"Unknown coupon type: {coupon_type}")
+        raise ValueError(f"Unknown coupon type: {coupon_type_stripped}")
 
     # Generate origination dates from age
+    origination_dates: list[datetime.date | None]
     if age is None:
         origination_dates = [None] * number
     else:
@@ -121,6 +124,7 @@ def generate_synthetic_positions(
         ]
 
     # Generate maturity dates
+    maturity_dates: list[datetime.date | None]
     match strip_identifier(redemption_type):
         case "perpetual":
             maturity_dates = [None] * number
@@ -135,12 +139,15 @@ def generate_synthetic_positions(
         case _:
             raise ValueError(f"Unknown redemption type: {redemption_type}")
 
-    ifrs9_stage = strip_identifier(ifrs9_stage)
-    if ifrs9_stage == "mixed":
+    ifrs9_stage_stripped = strip_identifier(ifrs9_stage)
+    if ifrs9_stage_stripped is None:
+        raise ValueError(f"Invalid ifrs9_stage: {ifrs9_stage}")
+    if ifrs9_stage_stripped == "mixed":
         ifrs9_stages = random.choices(["1", "2", "3", "poci"], weights=(0.9, 0.07, 0.02, 0.01), k=number)
     else:
-        ifrs9_stages = [ifrs9_stage] * number
+        ifrs9_stages = [ifrs9_stage_stripped] * number
 
+    clean_prices: list[float | None]
     if accounting_method == "amortizedcost":
         clean_prices = [None] * number
     elif valuation_method == "swap" and notionals is not None:
@@ -278,7 +285,7 @@ def generate_synthetic_positions(
     return positions
 
 
-def generate_random_numbers(number: int, minimum: float, maximum: float, mean: float) -> list:
+def generate_random_numbers(number: int, minimum: float, maximum: float, mean: float) -> list[float]:
     # Use beta distribution to generate numbers
     if mean <= minimum:
         raise ValueError(f"Mean {mean} must be greater than minimum {minimum}")
@@ -294,9 +301,7 @@ def generate_random_numbers(number: int, minimum: float, maximum: float, mean: f
     return arr.tolist()
 
 
-def generate_values_from_input(
-    number: int, value: float | tuple[float, float]
-) -> list[float]:
+def generate_values_from_input(number: int, value: float | tuple[float, float]) -> list[float]:
     """
     Generate a list of values from either a single value or a range.
 
@@ -336,11 +341,13 @@ def create_synthetic_balance_sheet(
     current_date: datetime.date,
     scenario: Scenario,
     config_path: str | None = os.path.join(EXAMPLE_FOLDER, "example_bs.csv"),
-    config_table: pl.DataFrame = None,
+    config_table: pl.DataFrame | None = None,
 ) -> BalanceSheet:
     # Iterate over synthetic_data.csv using polars to create each of the items
 
     if config_table is None:
+        if config_path is None:
+            raise ValueError("Either config_table or config_path must be provided")
         config_table = pl.read_csv(config_path)
 
     curves = generate_synthetic_curves()
@@ -419,3 +426,222 @@ def read_range(value: str | float | int) -> float | tuple[float, float] | None:
                 raise ValueError(f"Invalid numeric value: {value}. Expected a number or range (min, max)") from err
 
     raise ValueError(f"Unexpected value type: {type(value)}")
+
+
+def create_single_asset_balance_sheet(
+    current_date: datetime.date,
+    scenario: Scenario,
+    book_value: float,
+    accounting_method: str,
+    redemption_type: str,
+    coupon_frequency: str,
+    coupon_type: str,
+    item_type: str = "Loan",
+    sub_item_type: str = "Loan",
+    ifrs9_stage: str | None = None,
+    coverage_rate: float | tuple[float, float] | None = None,
+    interest_rate: float | tuple[float, float] | None = None,
+    undrawn_portion: float | tuple[float, float] | None = None,
+    agio: float | tuple[float, float] | None = None,
+    prepayment_rate: float | tuple[float, float] | None = None,
+    age: int | tuple[int, int] | None = None,
+    maturity: int | tuple[int, int] | None = None,
+    accumulating: bool = False,
+    other_off_balance_weight: float | tuple[float, float] | None = None,
+    trea_weight: float | tuple[float, float] | None = None,
+    reference_rate: str | None = None,
+    notional: float | tuple[float, float] | None = None,
+    stable_funding_weight: float | tuple[float, float] | None = None,
+    encumbrance_weight: float | tuple[float, float] | None = None,
+    hqla_class: str | None = None,
+    stressed_outflow_weight: float | tuple[float, float] | None = None,
+    ccf: float | tuple[float, float] | None = None,
+    valuation_method: str | None = None,
+    valuation_curve: str | None = None,
+    config_table: pl.DataFrame | None = None,
+) -> BalanceSheet:
+    """
+    Create a synthetic balance sheet with a specified asset added to the default configuration.
+
+    This is a demo/UI function that adds a new asset with the specified parameters to the
+    default balance sheet configuration. Useful for demonstrating runoff behavior of different
+    asset types in a realistic balance sheet environment.
+
+    Parameters
+    ----------
+    current_date : datetime.date
+        Starting date for the balance sheet
+    scenario : Scenario
+        Scenario configuration with market data and curves
+    item_type : str
+        Type of asset (e.g., "Loans", "Debt securities")
+    sub_item_type : str
+        Subtype of asset (e.g., "Mortgages", "SME loans")
+    book_value : float
+        Total book value for the asset
+    number : int
+        Number of positions to generate
+    accounting_method : str
+        Accounting method (e.g., "amortized cost", "fair value through oci")
+    redemption_type : str
+        Redemption type (e.g., "annuity", "bullet", "perpetual")
+    coupon_frequency : str
+        Coupon payment frequency (e.g., "Monthly", "Quarterly")
+    coupon_type : str
+        Type of coupon (e.g., "fixed", "floating", "both")
+    config_table : pl.DataFrame | None
+        Optional config table to use instead of loading default
+
+    Returns
+    -------
+    BalanceSheet
+        Synthetic balance sheet with the specified asset added
+    """
+    # Load default config if not provided
+    if config_table is None:
+        config_path = os.path.join(EXAMPLE_FOLDER, "example_bs.csv")
+        config_table = pl.read_csv(config_path)
+
+    # Use the full default config with the new asset added
+    # This ensures balance and provides a realistic demo environment
+    modified_config = config_table
+
+    # Helper to format values for CSV string columns
+    def format_string_value(value: float | tuple[float, float] | int | tuple[int, int] | str | None) -> str:
+        if value is None:
+            return ""
+        elif isinstance(value, tuple):
+            return f"({value[0]}, {value[1]})"
+        else:
+            return str(value)
+
+    # Determine valuation_method if not provided
+    if valuation_method is None or valuation_method == "":
+        # Default based on accounting method
+        if "amortized cost" in accounting_method.lower():
+            valuation_method = "amortizedcost"
+        elif "fair value" in accounting_method.lower():
+            # For fair value, a specific valuation method should be provided
+            # Default to none if not specified
+            valuation_method = "none"
+        else:
+            valuation_method = "none"
+
+    # Default enum fields to valid values if not provided
+    if hqla_class is None or hqla_class == "":
+        hqla_class = "non-HQLA"  # Default for non-HQLA assets
+
+    if ifrs9_stage is None or ifrs9_stage == "":
+        ifrs9_stage = "n/a"  # Default when IFRS9 stage is not applicable
+
+    # Helper to format float values
+    def format_float_value(value: float | tuple[float, float] | None) -> float:
+        if value is None:
+            return 0.0  # Default to 0.0 for optional weight parameters
+        elif isinstance(value, tuple):
+            # For weight columns, use the midpoint of the range
+            return (value[0] + value[1]) / 2.0
+        else:
+            return float(value)
+
+    # Create new row for the single asset - match CSV schema exactly
+    new_row = pl.DataFrame(
+        {
+            "balance_sheet_side": pl.Series(["Assets"], dtype=pl.String),
+            "item_type": pl.Series([item_type], dtype=pl.String),
+            "sub_item_type": pl.Series([sub_item_type], dtype=pl.String),
+            "currency": pl.Series(["eur"], dtype=pl.String),
+            "book_value": pl.Series([int(book_value)], dtype=pl.Int64),
+            "number": pl.Series([1], dtype=pl.Int64),
+            "accounting_method": pl.Series([accounting_method], dtype=pl.String),
+            "valuation_method": pl.Series([format_string_value(valuation_method)], dtype=pl.String),
+            "valuation_curve": pl.Series([format_string_value(valuation_curve)], dtype=pl.String),
+            "redemption_type": pl.Series([redemption_type], dtype=pl.String),
+            "coupon_frequency": pl.Series([coupon_frequency], dtype=pl.String),
+            "coupon_type": pl.Series([coupon_type], dtype=pl.String),
+            "ifrs9_stage": pl.Series([format_string_value(ifrs9_stage)], dtype=pl.String),
+            "coverage_rate": pl.Series([format_string_value(coverage_rate)], dtype=pl.String),
+            "interest_rate": pl.Series([format_string_value(interest_rate)], dtype=pl.String),
+            "undrawn_portion": pl.Series([format_string_value(undrawn_portion)], dtype=pl.String),
+            "agio": pl.Series([format_string_value(agio)], dtype=pl.String),
+            "prepayment_rate": pl.Series([format_float_value(prepayment_rate)], dtype=pl.Float64),
+            "age": pl.Series([format_string_value(age)], dtype=pl.String),
+            "maturity": pl.Series([format_string_value(maturity)], dtype=pl.String),
+            "accumulating": pl.Series([accumulating], dtype=pl.Boolean),
+            "other_off_balance_weight": pl.Series([format_float_value(other_off_balance_weight)], dtype=pl.Float64),
+            "trea_weight": pl.Series([format_float_value(trea_weight)], dtype=pl.Float64),
+            "reference_rate": pl.Series([format_string_value(reference_rate)], dtype=pl.String),
+            "notional": pl.Series([format_string_value(notional)], dtype=pl.String),
+            "stable_funding_weight": pl.Series([format_float_value(stable_funding_weight)], dtype=pl.Float64),
+            "encumbrance_weight": pl.Series([format_float_value(encumbrance_weight)], dtype=pl.Float64),
+            "hqla_class": pl.Series([format_string_value(hqla_class)], dtype=pl.String),
+            "stressed_outflow_weight": pl.Series([format_float_value(stressed_outflow_weight)], dtype=pl.Float64),
+            "ccf": pl.Series([format_float_value(ccf)], dtype=pl.Float64),
+        }
+    )
+
+    # Add the new asset row
+    modified_config = pl.concat([modified_config, new_row], how="diagonal")
+
+    # Balance the sheet by:
+    # 1. Keep only the new asset with its book_value
+    # 2. Zero out all other assets
+    # 3. Zero out all liabilities
+    # 4. Set one equity item (Retained earnings) to -(asset book_value), zero out other equity
+    # 5. Zero out derivatives and any other balance sheet items
+    modified_config = modified_config.with_columns(
+        pl.when(
+            # Keep the new asset with its book_value
+            (pl.col("balance_sheet_side") == "Assets") & (pl.col("sub_item_type") == sub_item_type)
+        )
+        .then(pl.col("book_value"))
+        .when(
+            # Zero out all other assets
+            pl.col("balance_sheet_side") == "Assets"
+        )
+        .then(pl.lit(0).cast(pl.Int64))
+        .when(
+            # Zero out all liabilities
+            pl.col("balance_sheet_side") == "Liabilities"
+        )
+        .then(pl.lit(0).cast(pl.Int64))
+        .when(
+            # Set Retained earnings to -(asset book_value) to balance the sheet
+            (pl.col("balance_sheet_side") == "Equity") & (pl.col("sub_item_type") == "Retained earnings")
+        )
+        .then(pl.lit(-int(book_value)).cast(pl.Int64))
+        .when(
+            # Zero out all other equity items
+            pl.col("balance_sheet_side") == "Equity"
+        )
+        .then(pl.lit(0).cast(pl.Int64))
+        # Zero out everything else (derivatives, etc.)
+        .otherwise(pl.lit(0).cast(pl.Int64))
+        .alias("book_value")
+    )
+
+    # Ensure all rows have valid valuation_method, hqla_class, and ifrs9_stage
+    modified_config = modified_config.with_columns(
+        # Default valuation_method based on accounting_method if empty
+        pl.when((pl.col("valuation_method") == "") | pl.col("valuation_method").is_null())
+        .then(
+            pl.when(pl.col("accounting_method").str.contains("(?i)amortized cost"))
+            .then(pl.lit("amortizedcost"))
+            .otherwise(pl.lit("none"))
+        )
+        .otherwise(pl.col("valuation_method"))
+        .alias("valuation_method"),
+        # Default hqla_class if empty
+        pl.when((pl.col("hqla_class") == "") | pl.col("hqla_class").is_null())
+        .then(pl.lit("non-HQLA"))
+        .otherwise(pl.col("hqla_class"))
+        .alias("hqla_class"),
+        # Default ifrs9_stage if empty
+        pl.when((pl.col("ifrs9_stage") == "") | pl.col("ifrs9_stage").is_null())
+        .then(pl.lit("n/a"))
+        .otherwise(pl.col("ifrs9_stage"))
+        .alias("ifrs9_stage"),
+    )
+
+    # Generate the balance sheet using the standard function
+    return create_synthetic_balance_sheet(current_date, scenario, config_table=modified_config)
