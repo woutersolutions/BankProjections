@@ -15,6 +15,8 @@ from examples.synthetic_data import create_single_asset_balance_sheet
 from examples.ui.colors import get_chart_colors
 from examples.ui.styles import apply_custom_styles
 
+PLOTLY_CONFIG = {"width": "stretch"}
+
 
 def main() -> None:
     st.set_page_config(page_title="Bank Projections - Single Asset Run", layout="wide")
@@ -88,7 +90,7 @@ def main() -> None:
 
     st.divider()
 
-    if st.button("Run Projection", type="primary", use_container_width=True):
+    if st.button("Run Projection", type="primary", width="stretch"):
         # Load scenario but strip down to only basic rules needed for single asset runoff
         scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
         # Keep only Runoff and Valuation - remove all other rules to avoid errors with missing items
@@ -169,10 +171,10 @@ def main() -> None:
                         yaxis_title="Quantity",
                     )
 
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, config=PLOTLY_CONFIG)
 
                     with st.expander("View Raw Data"):
-                        st.dataframe(bs_filtered, use_container_width=True)
+                        st.dataframe(bs_filtered, width="stretch")
                 else:
                     st.warning("No loan asset data available")
             else:
@@ -206,10 +208,10 @@ def main() -> None:
                     legend_title="Rule",
                 )
 
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, config=PLOTLY_CONFIG)
 
                 with st.expander("View Raw Data"):
-                    st.dataframe(pnl_filtered, use_container_width=True)
+                    st.dataframe(pnl_filtered, width="stretch")
             else:
                 st.warning("No P&L data available")
 
@@ -241,10 +243,10 @@ def main() -> None:
                     legend_title="Rule",
                 )
 
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, config=PLOTLY_CONFIG)
 
                 with st.expander("View Raw Data"):
-                    st.dataframe(cf_filtered, use_container_width=True)
+                    st.dataframe(cf_filtered, width="stretch")
             else:
                 st.warning("No cashflow data available")
 

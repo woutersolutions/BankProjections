@@ -16,6 +16,8 @@ from examples.synthetic_data import create_synthetic_balance_sheet
 from examples.ui.colors import get_chart_colors
 from examples.ui.styles import apply_custom_styles
 
+PLOTLY_CONFIG = {"width": "stretch"}
+
 
 def main() -> None:
     st.set_page_config(page_title="Bank Projections - Example Model Run", layout="wide")
@@ -35,7 +37,7 @@ def main() -> None:
         st.session_state.config_df = pl.read_csv(config_path)
 
     config_df_pandas = st.session_state.config_df.to_pandas()
-    edited_df = st.data_editor(config_df_pandas, use_container_width=True, height=400, num_rows="dynamic")
+    edited_df = st.data_editor(config_df_pandas, width="stretch", height=400, num_rows="dynamic")
     st.session_state.config_df = pl.from_pandas(edited_df)
 
     st.divider()
@@ -68,7 +70,7 @@ def main() -> None:
 
     st.divider()
 
-    if st.button("Run Projection", type="primary", use_container_width=True):
+    if st.button("Run Projection", type="primary", width="stretch"):
         scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
         scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
         horizon = TimeHorizon.from_numbers(
@@ -125,10 +127,10 @@ def main() -> None:
 
             if len(bs_pandas) > 0:
                 fig = create_time_series_plot(bs_pandas, "ProjectionDate", "BookValue", group_by_bs, "Balance Sheet")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, config=PLOTLY_CONFIG)
 
                 with st.expander("View Raw Data"):
-                    st.dataframe(bs_pandas, use_container_width=True)
+                    st.dataframe(bs_pandas, width="stretch")
             else:
                 st.warning("No balance sheet data available")
 
@@ -146,10 +148,10 @@ def main() -> None:
 
             if len(pnl_pandas) > 0:
                 fig = create_time_series_plot(pnl_pandas, "ProjectionDate", "Amount", group_by_pnl, "Income Statement")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, config=PLOTLY_CONFIG)
 
                 with st.expander("View Raw Data"):
-                    st.dataframe(pnl_pandas, use_container_width=True)
+                    st.dataframe(pnl_pandas, width="stretch")
             else:
                 st.warning("No P&L data available")
 
@@ -167,10 +169,10 @@ def main() -> None:
 
             if len(cf_pandas) > 0:
                 fig = create_time_series_plot(cf_pandas, "ProjectionDate", "Amount", group_by_cf, "Cashflow Statement")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, config=PLOTLY_CONFIG)
 
                 with st.expander("View Raw Data"):
-                    st.dataframe(cf_pandas, use_container_width=True)
+                    st.dataframe(cf_pandas, width="stretch")
             else:
                 st.warning("No cashflow data available")
 
@@ -190,10 +192,10 @@ def main() -> None:
 
                 if selected_metrics:
                     fig = create_metrics_plot(metrics_pandas, selected_metrics)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, config=PLOTLY_CONFIG)
 
                 with st.expander("View Raw Data"):
-                    st.dataframe(metrics_pandas, use_container_width=True)
+                    st.dataframe(metrics_pandas, width="stretch")
             else:
                 st.warning("No metrics data available")
 
@@ -229,10 +231,10 @@ def main() -> None:
 
                     if selected_prof_metrics:
                         fig = create_metrics_plot(profitability_filtered, selected_prof_metrics)
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, config=PLOTLY_CONFIG)
 
                     with st.expander("View Raw Data"):
-                        st.dataframe(profitability_filtered, use_container_width=True)
+                        st.dataframe(profitability_filtered, width="stretch")
                 else:
                     st.info(
                         f"No profitability data available for {outlook_col} outlook yet. "
