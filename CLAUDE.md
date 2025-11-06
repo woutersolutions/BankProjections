@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+General: IF YOU ARE NOT SURE WHAT TO DO, ASK FOR CLARIFICATION BEFORE MAKING CHANGES.
+
 ## Project Overview
 
 BankProjections is a Python-based balance sheet forecasting tool for banks, used for capital management, liquidity management, and stress testing. The project uses AGPL v3 license.

@@ -1,26 +1,26 @@
-﻿balance_sheet_side,item_type,sub_item_type,currency,book_value,number,accounting_method,valuation_method,valuation_curve,redemption_type,coupon_frequency,coupon_type,ifrs9_stage,coverage_rate,interest_rate,undrawn_portion,agio,prepayment_rate,age,maturity,accumulating,other_off_balance_weight,trea_weight,reference_rate,notional,stable_funding_weight,encumbrance_weight,hqla_class,stressed_outflow_weight,ccf
-Assets,Loans,Mortgages,eur,13075263,1000,amortized cost,,,annuity,Monthly,both,mixed,"(0.0, 0.03)","(0.01, 0.04)","(0.00, 0.02)","(0.0, 0.01)",0.01,"(0, 10)","(0, 30)",FALSE,0.01,0.3,Euribor 3m,,0.65,0.20,non-HQLA,,0.2
-Assets,Loans,SME loans,eur,197157,100,amortized cost,,,bullet,Quarterly,both,mixed,"(0.01, 0.06)","(0.02, 0.07)","(0.00, 0.02)",,0.01,"(0, 3)","(0, 10)",FALSE,0.02,0.75,Euribor 3m,,0.85,0.10,non-HQLA,,0.2
-Assets,Loans,Consumer loans,eur,200000,0,amortized cost,,,annuity,Monthly,both,mixed,"(0.01, 0.06)","(0.03, 0.07)","(0.00, 0.02)",,0.01,"(0, 1)","(0, 3)",FALSE,0.03,0.75,Euribor 3m,,0.85,0.10,non-HQLA,,0.2
-Assets,Cash,Cash,eur,1918460,1,amortized cost,,,perpetual,Daily,floating,n/a,,"(0.01, 0.02)",,,,,,TRUE,0,0,Euribor 3m,,0.00,0.00,Level1,,0
-Assets,Debt securities,Fixed Debt securities,eur,360035,100,fair value through oci,fixedratebond,euribor,bullet,Quarterly,fixed,1,,"(0.00, 0.03)",,,,"(0, 10)","(0, 20)",FALSE,0,0,Euribor 6m,,0.05,0.05,Level1,,0
-Assets,Debt securities,Floating debt securities,eur,300000,100,fair value through oci,floatingratebond,euribor,bullet,Quarterly,floating,1,,"(0.00, 0.03)",,,,"(0, 10)","(0, 20)",FALSE,0,0,Euribor 6m,,0.15,0.05,Level2A,,0
-Assets,Intangible assets,Intangible assets,eur,21135,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0.5,,,1.00,0.00,non-HQLA,,0
-Assets,Loans,Other loans,eur,951939,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0.35,,,1.00,0.15,non-HQLA,,0
-Liabilities,Savings deposits,Savings deposits,eur,-12684867,1000,amortized cost,,,perpetual,Weekly,both,n/a,,"(0.01, 0.02)",,,,,,TRUE,0,0,Euribor 3m,,0.95,0.00,n/a,0.2,0
-Liabilities,Provisions,Provisions,eur,-3412,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,1.00,0.00,n/a,,0
-Liabilities,Borrowings,Borrowings,eur,-2156600,100,amortized cost,,,bullet,Annual,fixed,n/a,,"(0.02, 0.04)",,,,"(0, 10)","(0, 10)",FALSE,0,0,Euribor 6m,,0.50,0.00,n/a,,0
-Liabilities,Borrowings,Senior unsecured bonds,eur,-800000,50,amortized cost,,,bullet,Annual,fixed,n/a,,"(0.015, 0.035)",,,,"(0, 10)","(0, 5)",FALSE,0,0,Euribor 6m,,0.50,0.00,n/a,,0
-Liabilities,Other liabilities,Other liabilities,eur,-103453,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,0.00,0.00,n/a,,0
-Equity,CET1 capital,SharePremium,eur,-476751,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,1.00,0.00,n/a,,0
-Equity,Additional Tier 1 capital,PreferenceShares,eur,-37437,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,1.00,0.00,n/a,,0
-Equity,Unaudited earnings,Unaudited earnings,eur,-93865,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,1.00,0.00,n/a,,0
-Equity,CET1 capital,Retained earnings,eur,-468004,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,1.00,0.00,n/a,,0
-Equity,CET1 capital,Other comprehensive income,eur,-100,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,1.00,0.00,n/a,,0
-Equity,Dividends payable,Dividends payable,eur,0,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,0.00,0.00,n/a,,0
-Assets,Prepaid expenses,Prepaid expenses,eur,0,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,0.00,0.00,non-HQLA,,0
-Liabilities,Prepaid revenue,Prepaid revenue,eur,0,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,0.00,0.00,n/a,,0
-Liabilities,Unpaid expenses,Unpaid expenses,eur,0,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,0.00,0.00,n/a,,0
-Assets,Unpaid revenue,Unpaid revenue,eur,0,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,0.00,0.00,non-HQLA,,0
-Derivatives,Swaps,Swaps,eur,500,10,fair value through oci,swap,euribor,notional,Quarterly,swap,n/a,,"(-0.02, 0.02)",,,,"(0, 10)","(0, 20)",FALSE,0,0,Euribor 6m,"(100000, 1000000)",1.00,0.10,non-HQLA,,0
-Equity,Tier 2 capital,Subordinated Debt,eur,0,1,amortized cost,,,perpetual,Never,none,n/a,,,,,,,,FALSE,0,0,,,1.00,0.00,n/a,,0
+﻿balance_sheet_side,item_type,sub_item_type,currency,number,book_value,agio,coverage_rate,undrawn_portion,accounting_method,valuation_method,redemption_type,coupon_frequency,coupon_type,ifrs9_stage,valuation_curve,reference_rate,interest_rate,prepayment_rate,age,maturity,accumulating,other_off_balance_weight,trea_weight,notional,stable_funding_weight,encumbrance_weight,hqla_class,stressed_outflow_weight,ccf
+Assets,Loans,Mortgages,eur,1000,13075263,"(0.0, 0.01)","(0.0, 0.03)","(0.00, 0.02)",amortized cost,,annuity,Monthly,both,mixed,,Euribor 3m,"(0.01, 0.04)",0.01,"(0, 10)","(0, 30)",FALSE,0.01,0.3,,0.65,0.20,non-HQLA,,0.2
+Assets,Loans,SME loans,eur,100,197157,,"(0.01, 0.06)","(0.00, 0.02)",amortized cost,,bullet,Quarterly,both,mixed,,Euribor 3m,"(0.02, 0.07)",0.01,"(0, 3)","(0, 10)",FALSE,0.02,0.75,,0.85,0.10,non-HQLA,,0.2
+Assets,Loans,Consumer loans,eur,0,200000,,"(0.01, 0.06)","(0.00, 0.02)",amortized cost,,annuity,Monthly,both,mixed,,Euribor 3m,"(0.03, 0.07)",0.01,"(0, 1)","(0, 3)",FALSE,0.03,0.75,,0.85,0.10,non-HQLA,,0.2
+Assets,Cash,Cash,eur,1,1918460,,,,amortized cost,,perpetual,Daily,floating,n/a,,Euribor 3m,"(0.01, 0.02)",,,,TRUE,0,0,,0.00,0.00,Level1,,0
+Assets,Debt securities,Fixed Debt securities,eur,100,360035,,,,fair value through oci,fixedratebond,bullet,Quarterly,fixed,1,euribor,Euribor 6m,"(0.00, 0.03)",,"(0, 10)","(0, 20)",FALSE,0,0,,0.05,0.05,Level1,,0
+Assets,Debt securities,Floating debt securities,eur,100,300000,,,,fair value through oci,floatingratebond,bullet,Quarterly,floating,1,euribor,Euribor 6m,"(0.00, 0.03)",,"(0, 10)","(0, 20)",FALSE,0,0,,0.15,0.05,Level2A,,0
+Assets,Intangible assets,Intangible assets,eur,1,21135,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0.5,,1.00,0.00,non-HQLA,,0
+Assets,Loans,Other loans,eur,1,951939,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0.35,,1.00,0.15,non-HQLA,,0
+Assets,Unpaid revenue,Unpaid revenue,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,non-HQLA,,0
+Assets,Prepaid expenses,Prepaid expenses,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,non-HQLA,,0
+Liabilities,Savings deposits,Savings deposits,eur,1000,-12684867,,,,amortized cost,,perpetual,Weekly,both,n/a,,Euribor 3m,"(0.01, 0.02)",,,,TRUE,0,0,,0.95,0.00,n/a,0.2,0
+Liabilities,Provisions,Provisions,eur,1,-3412,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+Liabilities,Borrowings,Borrowings,eur,100,-2156600,,,,amortized cost,,bullet,Annual,fixed,n/a,,Euribor 6m,"(0.02, 0.04)",,"(0, 10)","(0, 10)",FALSE,0,0,,0.50,0.00,n/a,,0
+Liabilities,Borrowings,Senior unsecured bonds,eur,50,-800000,,,,amortized cost,,bullet,Annual,fixed,n/a,,Euribor 6m,"(0.015, 0.035)",,"(0, 10)","(0, 5)",FALSE,0,0,,0.50,0.00,n/a,,0
+Liabilities,Prepaid revenue,Prepaid revenue,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
+Liabilities,Unpaid expenses,Unpaid expenses,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
+Liabilities,Other liabilities,Other liabilities,eur,1,-103453,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
+Equity,CET1 capital,SharePremium,eur,1,-476751,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+Equity,Additional Tier 1 capital,PreferenceShares,eur,1,-37437,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+Equity,Unaudited earnings,Unaudited earnings,eur,1,-93865,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+Equity,CET1 capital,Retained earnings,eur,1,-468004,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+Equity,CET1 capital,Other comprehensive income,eur,1,-100,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+Equity,Dividends payable,Dividends payable,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
+Equity,Tier 2 capital,Subordinated Debt,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+Derivatives,Swaps,Swaps,eur,10,500,,,,fair value through oci,swap,notional,Quarterly,swap,n/a,euribor,Euribor 6m,"(-0.02, 0.02)",,"(0, 10)","(0, 20)",FALSE,0,0,"(100000, 1000000)",1.00,0.10,non-HQLA,,0
