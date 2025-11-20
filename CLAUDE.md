@@ -6,7 +6,8 @@ General: IF YOU ARE NOT SURE WHAT TO DO, ASK FOR CLARIFICATION BEFORE MAKING CHA
 
 ## Project Overview
 
-BankProjections is a Python-based balance sheet forecasting tool for banks, used for capital management, liquidity management, and stress testing. The project uses AGPL v3 license.
+BankProjections is a Python-based balance sheet forecasting tool for banks, used for capital management, liquidity
+management, and stress testing. The project uses Apache License 2.0.
 
 ## Architecture
 

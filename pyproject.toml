@@ -7,7 +7,7 @@ name = "bank-projections"
 version = "0.1.0"
 description = "Balance sheet forecasting tool for banks - capital management, liquidity management, and stress testing"
 readme = "README.md"
-license = { text = "AGPL-3.0" }
+license = { text = "Apache License 2.0" }
 requires-python = ">=3.13"
 authors = [
     { name = "Wouter van Krieken", email = "73380480+woutersolutions@users.noreply.github.com" }

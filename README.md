@@ -11,7 +11,7 @@ Traditional banking projection are often in various complex Excel sheets. BankPr
 - **🔧 Highly Flexible**: Adapt calculations to your bank's specific needs using configurable registries
 - **📊 Comprehensive**: Projects balance sheets, P&L, cash flows, and regulatory metrics
 - **🎯 Scenario-Based**: Run multiple concurrent scenarios with customizable assumptions
-- **🔓 Open Source**: Full transparency with AGPL v3 license
+- **🔓 Open Source**: Full transparency with Apache License 2.0
 - **🧪 Test-Driven**: Synthetic data generation for safe testing and demonstration
 
 ## What It Does
@@ -136,7 +136,7 @@ mypy src/
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Contributing, contact & Support
 
@@ -178,7 +178,7 @@ If you have feedback, questions or offer/need help:
 
 - Results should be validated against known benchmarks and existing systems
 - The tool needs to be tailored to the specific needs of each institution
-- No warranty is provided - use at your own risk (see AGPL v3 license)
+- No warranty is provided - use at your own risk (see Apache License 2.0)
 - Not intended to replace professional financial advice or regulatory compliance systems
 
 Always perform thorough validation and testing before using for any critical decision-making.
