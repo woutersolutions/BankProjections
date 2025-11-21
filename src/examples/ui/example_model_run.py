@@ -117,7 +117,7 @@ def main() -> None:
             st.subheader("Balance Sheet Book Values Over Time")
             group_by_bs = st.selectbox(
                 "Group by",
-                ["BalanceSheetSide", "ItemType", "SubItemType"],
+                ["BalanceSheetCategory", "ItemType", "SubItemType"],
                 index=0,
                 key="bs_group",
             )

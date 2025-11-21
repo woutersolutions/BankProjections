@@ -51,11 +51,11 @@ def test_create_time_series_plot() -> None:
         {
             "ProjectionDate": [datetime.date(2024, 12, 31), datetime.date(2025, 1, 31)] * 2,
             "BookValue": [100.0, 110.0, 200.0, 220.0],
-            "BalanceSheetSide": ["Assets", "Assets", "Liabilities", "Liabilities"],
+            "BalanceSheetCategory": ["assets", "assets", "liabilities", "liabilities"],
         }
     )
 
-    fig = create_time_series_plot(test_data, "ProjectionDate", "BookValue", "BalanceSheetSide", "Test Chart")
+    fig = create_time_series_plot(test_data, "ProjectionDate", "BookValue", "BalanceSheetCategory", "Test Chart")
 
     assert fig is not None
     assert fig.layout.title.text == "Test Chart"

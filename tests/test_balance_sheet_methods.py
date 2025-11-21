@@ -20,7 +20,9 @@ class TestBalanceSheetMethods:
     def test_get_amount_total_assets(self, bs) -> None:
         """Test getting total asset amounts."""
         # Get total book value for all assets
-        total_assets = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Assets"), BalanceSheetMetrics.get("book_value"))
+        total_assets = bs.get_amount(
+            BalanceSheetItem(BalanceSheetCategory="assets"), BalanceSheetMetrics.get("book_value")
+        )
 
         assert total_assets > 0, "Total assets should be positive"
 

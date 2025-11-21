@@ -121,7 +121,7 @@ class TestBalanceSheetMethods:
         elif offset_mode == "pnl":
             offset_args["offset_pnl"] = True
             # offset_column = BalanceSheetMetrics.get('quantity')
-            offset_item = BalanceSheetItem(BalanceSheetSide="Equity")
+            offset_item = BalanceSheetItem(BalanceSheetCategory="Equity")
         else:
             # offset_column = None
             offset_item = None

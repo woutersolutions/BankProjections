@@ -29,24 +29,24 @@ class TestBalanceSheetItem:
 
     def test_remove_identifier(self):
         """Test remove_identifier functionality."""
-        item = BalanceSheetItem(ItemType="Mortgages", BalanceSheetSide="Assets")
+        item = BalanceSheetItem(ItemType="Mortgages", BalanceSheetCategory="assets")
         new_item = item.remove_identifier("ItemType")
 
         assert "ItemType" not in new_item.identifiers
-        assert "BalanceSheetSide" in new_item.identifiers
+        assert "BalanceSheetCategory" in new_item.identifiers
         assert "ItemType" in item.identifiers  # Original unchanged
 
     def test_copy(self):
         """Test copy functionality."""
-        item = BalanceSheetItem(ItemType="Mortgages", BalanceSheetSide="Assets")
+        item = BalanceSheetItem(ItemType="Mortgages", BalanceSheetCategory="assets")
         copied_item = item.copy()
 
         assert copied_item.identifiers == item.identifiers
         assert copied_item is not item  # Different objects
 
         # Modifying copy shouldn't affect original
-        copied_item.add_identifier("BalanceSheetSide", "Liabilities")
-        assert item.identifiers["BalanceSheetSide"] == "Assets"
+        copied_item.add_identifier("BalanceSheetCategory", "Liabilities")
+        assert item.identifiers["BalanceSheetCategory"] == "assets"
 
     def test_calculation_tag_identifier(self):
         """Test that calculation tag identifiers are properly cleaned."""

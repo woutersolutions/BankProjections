@@ -4,6 +4,7 @@ from typing import Any
 import polars as pl
 
 from bank_projections.financials.accounting_method import AccountingMethodRegistry
+from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
 from bank_projections.financials.hqla_class import HQLARegistry
 from bank_projections.financials.stage import IFRS9StageRegistry
@@ -20,7 +21,6 @@ class Config:
     PNL_AGGREGATION_LABELS = ["ItemType", "SubItemType"]
     OCI_AGGREGATION_LABELS = ["ItemType", "SubItemType"]
     BALANCE_SHEET_LABELS = [
-        "BalanceSheetSide",
         "ItemType",
         "SubItemType",
         "Currency",
@@ -31,6 +31,7 @@ class Config:
     DATE_COLUMNS = ["OriginationDate", "MaturityDate", "PreviousCouponDate", "NextCouponDate"]
 
     CLASSIFICATIONS: dict[str, type[BaseRegistry[Any]]] = {
+        "BalanceSheetCategory": BalanceSheetCategoryRegistry,
         "AccountingMethod": AccountingMethodRegistry,
         "ValuationMethod": ValuationMethodRegistry,
         "CouponFrequency": FrequencyRegistry,
@@ -41,7 +42,7 @@ class Config:
         "Book": BookRegistry,
     }
 
-    BALANCE_SHEET_AGGREGATION_LABELS = ["BalanceSheetSide", "ItemType", "SubItemType"] + list(CLASSIFICATIONS.keys())
+    BALANCE_SHEET_AGGREGATION_LABELS = ["ItemType", "SubItemType"] + list(CLASSIFICATIONS.keys())
 
     PROFITABILITY_OUTLOOKS: list[str] = ["Monthly", "Quarterly", "Annual"]
 

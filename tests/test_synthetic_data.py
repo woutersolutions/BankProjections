@@ -121,7 +121,7 @@ class TestCreateSingleAssetBalanceSheet:
         )
 
         # Check that equity items exist
-        equity_item = BalanceSheetItem(BalanceSheetSide="Equity")
+        equity_item = BalanceSheetItem(BalanceSheetCategory="Equity")
         equity_value = bs.get_amount(equity_item, BalanceSheetMetrics.get("book_value"))
         assert equity_value < 0  # Equity is negative
 

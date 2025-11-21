@@ -33,7 +33,7 @@ def generate_synthetic_positions(
     market_rates: MarketRates,
     book_value: float,
     number: int,
-    balance_sheet_side: str,
+    balance_sheet_category: str,
     item_type: str,
     sub_item_type: str,
     accounting_method: str,
@@ -202,7 +202,7 @@ def generate_synthetic_positions(
             HQLAClass=pl.lit(strip_identifier(hqla_class)),
             IsAccumulating=pl.lit(accumulating),
             RedemptionType=pl.lit(redemption_type),
-            BalanceSheetSide=pl.lit(balance_sheet_side),
+            BalanceSheetCategory=pl.lit(balance_sheet_category),
             ValuationMethod=pl.lit(valuation_method),
             ValuationCurve=pl.lit(valuation_curve),
             ReferenceRate=pl.lit(reference_rate),
@@ -547,7 +547,7 @@ def create_single_asset_balance_sheet(
     # Create new row for the single asset - match CSV schema exactly
     new_row = pl.DataFrame(
         {
-            "balance_sheet_side": pl.Series(["Assets"], dtype=pl.String),
+            "balance_sheet_category": pl.Series(["assets"], dtype=pl.String),
             "item_type": pl.Series([item_type], dtype=pl.String),
             "sub_item_type": pl.Series([sub_item_type], dtype=pl.String),
             "currency": pl.Series(["eur"], dtype=pl.String),
@@ -592,32 +592,32 @@ def create_single_asset_balance_sheet(
     modified_config = modified_config.with_columns(
         pl.when(
             # Keep the new asset with its book_value
-            (pl.col("balance_sheet_side") == "Assets") & (pl.col("sub_item_type") == sub_item_type)
+            (pl.col("balance_sheet_category") == "assets") & (pl.col("sub_item_type") == sub_item_type)
         )
         .then(pl.col("book_value"))
         .when(
             # Keep Cash with book_value matching the asset (required for BalanceSheet initialization)
-            (pl.col("balance_sheet_side") == "Assets") & (pl.col("item_type") == "Cash")
+            (pl.col("balance_sheet_category") == "assets") & (pl.col("item_type") == "Cash")
         )
         .then(pl.lit(int(book_value)).cast(pl.Int64))
         .when(
             # Zero out all other assets
-            pl.col("balance_sheet_side") == "Assets"
+            pl.col("balance_sheet_category") == "assets"
         )
         .then(pl.lit(0).cast(pl.Int64))
         .when(
             # Zero out all liabilities
-            pl.col("balance_sheet_side") == "Liabilities"
+            pl.col("balance_sheet_category") == "liabilities"
         )
         .then(pl.lit(0).cast(pl.Int64))
         .when(
             # Set Retained earnings to -(asset book_value + cash) to balance the sheet
-            (pl.col("balance_sheet_side") == "Equity") & (pl.col("sub_item_type") == "Retained earnings")
+            (pl.col("balance_sheet_category") == "equity") & (pl.col("sub_item_type") == "Retained earnings")
         )
         .then(pl.lit(-2 * int(book_value)).cast(pl.Int64))
         .when(
             # Zero out all other equity items
-            pl.col("balance_sheet_side") == "Equity"
+            pl.col("balance_sheet_category") == "equity"
         )
         .then(pl.lit(0).cast(pl.Int64))
         # Zero out everything else (derivatives, etc.)
@@ -654,7 +654,7 @@ def create_single_asset_balance_sheet(
     # Filter out zero-quantity positions from Assets and Liabilities
     # (keep all Equity positions for balance sheet integrity)
     bs._data = bs._data.filter(
-        (pl.col("Quantity").abs() > 0.00001) | ~pl.col("BalanceSheetSide").is_in(["Assets", "Liabilities"])
+        (pl.col("Quantity").abs() > 0.00001) | ~pl.col("BalanceSheetCategory").is_in(["assets", "liabilities"])
     )
 
     return bs

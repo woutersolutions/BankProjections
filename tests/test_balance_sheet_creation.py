@@ -30,15 +30,17 @@ def test_balance_sheet_components(minimal_scenario):
     bs = create_synthetic_balance_sheet(current_date=datetime.date(2024, 12, 31), scenario=minimal_scenario)
 
     # Check assets
-    assets = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Assets"), BalanceSheetMetrics.get("book_value"))
+    assets = bs.get_amount(BalanceSheetItem(BalanceSheetCategory="assets"), BalanceSheetMetrics.get("book_value"))
     assert assets > 0, "Assets should be positive"
 
     # Check liabilities
-    liabilities = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Liabilities"), BalanceSheetMetrics.get("book_value"))
+    liabilities = bs.get_amount(
+        BalanceSheetItem(BalanceSheetCategory="liabilities"), BalanceSheetMetrics.get("book_value")
+    )
     assert liabilities < 0, "Liabilities should be negative"
 
     # Check equity
-    equity = bs.get_amount(BalanceSheetItem(BalanceSheetSide="Equity"), BalanceSheetMetrics.get("book_value"))
+    equity = bs.get_amount(BalanceSheetItem(BalanceSheetCategory="equity"), BalanceSheetMetrics.get("book_value"))
     assert equity < 0, "Equity should be negative"
 
     # Verify balance sheet is valid
