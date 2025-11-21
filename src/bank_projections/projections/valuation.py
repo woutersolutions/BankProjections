@@ -52,6 +52,4 @@ class Valuation(Rule):
 
         bs._data = bs._data.drop("NewDirtyPrice")
 
-        bs.validate()
-
         return bs

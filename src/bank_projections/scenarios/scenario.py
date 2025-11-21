@@ -12,8 +12,10 @@ class Scenario(Rule, Combinable):
         self.market_data = market_data or MarketData()
 
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
+        bs.validate()
         for _name, rule in log_iterator(self.rules.items()):
             bs = rule.apply(bs, increment, market_rates)
+            bs.validate()
         return bs
 
     def combine(self, other: "Scenario") -> "Scenario":

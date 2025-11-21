@@ -206,8 +206,8 @@ class TestProjection:
         # Verify calls
         mock_rule.apply.assert_called_once_with(mock_bs_initialized, mock_increment, mock_market_rates)
         mock_bs_initialized.aggregate.assert_called_once()
-        # Validate is called 3 times: before rule apply, after rule apply, and after scenario apply
-        assert mock_bs_initialized.validate.call_count == 3
+        # Validate is called 2 times: before rule apply and after rule apply (in scenario.apply)
+        assert mock_bs_initialized.validate.call_count == 2
 
         # Verify result
         assert isinstance(result, ProjectionResult)
@@ -287,9 +287,8 @@ class TestProjection:
         mock_bs_initialized1.aggregate.assert_called_once()
         mock_bs_initialized2.aggregate.assert_called_once()
 
-        # Verify validate is called for each increment
-        mock_bs_initialized1.validate.assert_called_once()
-        mock_bs_initialized2.validate.assert_called_once()
+        # Note: validate is not called here because composite_rule.apply is mocked (line 273)
+        # and bypasses the actual scenario.apply() logic where validate would be called
 
         # Verify result structure - now one result per increment (not per rule)
         assert isinstance(result, ProjectionResult)

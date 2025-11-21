@@ -109,8 +109,6 @@ class BalanceSheetMutationRule(AmountRuleBase):
                 self.counter_item,
             )
 
-        bs.validate()
-
         return bs
 
 

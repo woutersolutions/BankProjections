@@ -102,7 +102,6 @@ class Projection:
                 bs = bs.initialize_new_date(increment.to_date)
                 market_rates = scenario.market_data.get_market_rates(increment.to_date)
                 bs = scenario.apply(bs, increment, market_rates)
-                bs.validate()
 
                 # Update progress
                 current_step += 1

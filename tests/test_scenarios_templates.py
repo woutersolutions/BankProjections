@@ -152,7 +152,6 @@ class TestBalanceSheetMutationRule:
 
         # Should call mutate_metric on the balance sheet
         self.mock_bs.mutate_metric.assert_called_once()
-        self.mock_bs.validate.assert_called_once()
         assert result == self.mock_bs
 
     def test_apply_with_date_constraint_matching(self):
@@ -167,7 +166,6 @@ class TestBalanceSheetMutationRule:
 
         # Should call mutate_metric on the balance sheet
         self.mock_bs.mutate_metric.assert_called_once()
-        self.mock_bs.validate.assert_called_once()
         assert result == self.mock_bs
 
     def test_apply_with_date_constraint_not_matching(self):
@@ -182,7 +180,6 @@ class TestBalanceSheetMutationRule:
 
         # Should NOT call mutate_metric on the balance sheet
         self.mock_bs.mutate_metric.assert_not_called()
-        self.mock_bs.validate.assert_called_once()
         assert result == self.mock_bs
 
 

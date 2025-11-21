@@ -124,6 +124,4 @@ class CostIncomeRule(AmountRuleBase):
         else:
             raise NotImplementedError("CostIncomeRule with cashflow within P&L period not implemented")
 
-        bs.validate()
-
         return bs
