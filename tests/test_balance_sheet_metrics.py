@@ -5,7 +5,7 @@ import pytest
 
 from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 
 
 @pytest.fixture
@@ -170,7 +170,7 @@ class TestBalanceSheetMethods:
         # Verify balance sheet balance is maintained when offsets are applied
         if offset_item:
             # Check that the balance sheet remains balanced after mutation and offset
-            current_total = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
+            current_total = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value_signed"))
             assert abs(current_total) < 0.01, f"Balance sheet should remain balanced with offsets, got {current_total}"
 
             # Verify balance sheet is still valid after mutation

@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.template import AmountRuleBase
 from bank_projections.utils.parsing import (

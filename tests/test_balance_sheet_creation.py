@@ -5,7 +5,7 @@ import datetime
 import pytest
 
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 
@@ -17,8 +17,8 @@ def test_create_simple_balance_sheet(minimal_scenario):
     # Verify the balance sheet was created successfully
     assert len(bs) > 0
 
-    # Verify it's balanced (total book value should be ~0)
-    total_book_value = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
+    # Verify it's balanced (total signed book value should be ~0)
+    total_book_value = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value_signed"))
     assert abs(total_book_value) < 0.01, f"Balance sheet not balanced: {total_book_value}"
 
     # Verify balance sheet is valid
@@ -37,11 +37,11 @@ def test_balance_sheet_components(minimal_scenario):
     liabilities = bs.get_amount(
         BalanceSheetItem(BalanceSheetCategory="liabilities"), BalanceSheetMetrics.get("book_value")
     )
-    assert liabilities < 0, "Liabilities should be negative"
+    assert liabilities > 0, "Liabilities should be positive"
 
     # Check equity
     equity = bs.get_amount(BalanceSheetItem(BalanceSheetCategory="equity"), BalanceSheetMetrics.get("book_value"))
-    assert equity < 0, "Equity should be negative"
+    assert equity > 0, "Equity should be positive"
 
     # Verify balance sheet is valid
     bs.validate()

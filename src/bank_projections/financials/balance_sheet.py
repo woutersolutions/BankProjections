@@ -7,11 +7,12 @@ import pandas as pd
 import polars as pl
 
 from bank_projections.config import Config
+from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.balance_sheet_metrics import (
     SMALL_NUMBER,
     BalanceSheetMetric,
-    BalanceSheetMetrics,
     StoredColumn,
 )
 from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
@@ -119,7 +120,7 @@ class BalanceSheet(Positions):
 
         RedemptionRegistry.validate_df(self._data, self.date)
 
-        total_book_value = self.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
+        total_book_value = self.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book value signed"))
         if abs(total_book_value) > 0.01:
             raise ValueError(
                 f"Balance sheet does not balance: total book value is {total_book_value:.4f}, "
@@ -135,9 +136,9 @@ class BalanceSheet(Positions):
             BalanceSheetMetrics.get("book_value"),
         )
         total_pnl_table = self.pnls["Amount"].sum() if len(self.pnls) > 0 else 0.0
-        if abs(total_pnl_bs + total_pnl_table) > 0.01:
+        if abs(total_pnl_bs - total_pnl_table) > 0.01:
             raise ValueError(
-                f"PnL in balance sheet and PnL table do not match: {total_pnl_bs:.4f} vs {-total_pnl_table:.4f}"
+                f"PnL in balance sheet and PnL table do not match: {total_pnl_bs:.4f} vs {total_pnl_table:.4f}"
             )
 
         total_oci_bs = self.get_amount(
@@ -145,7 +146,7 @@ class BalanceSheet(Positions):
             BalanceSheetMetrics.get("book_value"),
         )
         total_oci_table = self.ocis["Amount"].sum() if len(self.ocis) > 0 else 0.0
-        if abs(total_oci_bs + total_oci_table) > 0.01:
+        if abs(total_oci_bs - total_oci_table) > 0.01:
             raise ValueError(
                 f"OCI in balance sheet and OCI table do not match: {total_oci_bs:.4f} vs {total_oci_table:.4f}"
             )
@@ -381,7 +382,7 @@ class BalanceSheet(Positions):
             raise ValueError("Can offset with 1 thing only (pnl, cash, or counter balance sheet item")
 
         if number_of_offsets > 0:
-            calculations["BookValueBefore"] = BalanceSheetMetrics.get("book_value").get_expression.alias(
+            calculations["BookValueBefore"] = BalanceSheetMetrics.get("book value signed").get_expression.alias(
                 "BookValueBefore"
             )
 
@@ -414,27 +415,46 @@ class BalanceSheet(Positions):
         if offset_pnl is not None:
             self.add_pnl(
                 self._data.filter(item.filter_expression),
-                BalanceSheetMetrics.get("book_value").get_expression - pl.col("BookValueBefore"),
+                BalanceSheetMetrics.get("book value signed").get_expression - pl.col("BookValueBefore"),
                 offset_pnl,
             )
         if offset_liquidity is not None:
             self.add_liquidity(
                 self._data.filter(item.filter_expression),
-                -(BalanceSheetMetrics.get("book_value").get_expression - pl.col("BookValueBefore")),
+                -(BalanceSheetMetrics.get("book value signed").get_expression - pl.col("BookValueBefore")),
                 offset_liquidity,
             )
 
         if counter_item is not None:
             book_value_change = (
                 self._data.filter(item.filter_expression)
-                .select((BalanceSheetMetrics.get("book_value").get_expression - pl.col("BookValueBefore")).sum())
+                .select((BalanceSheetMetrics.get("book value signed").get_expression - pl.col("BookValueBefore")).sum())
                 .item()
             )
 
-            self.mutate_metric(counter_item, BalanceSheetMetrics.get("quantity"), -book_value_change, relative=True)
+            sign = -self.get_item_book_value_sign(counter_item)
+
+            self.mutate_metric(
+                counter_item, BalanceSheetMetrics.get("quantity"), sign * book_value_change, relative=True
+            )
 
         if number_of_offsets > 0:
             self._data = self._data.drop("BookValueBefore")
+
+    def get_item_book_value_sign(self, item:BalanceSheetItem):
+        signs = (
+            self._data.filter(item.filter_expression)
+            .select(BalanceSheetCategoryRegistry.book_value_sign())
+            .unique()
+            .to_series(0)
+        )
+
+        if len(signs) == 0:
+            raise ValueError("Counter item not found on balance sheet for offset")
+        if len(signs) > 1:
+            raise ValueError("Counter item is both an asset and a liability, cannot determine sign for offset")
+
+        return signs[0]
 
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         pnls = data.group_by(Config.PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
@@ -444,7 +464,7 @@ class BalanceSheet(Positions):
         self.mutate_metric(
             BalanceSheetItemRegistry.get("pnl account").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
-            -pnls["Amount"].sum(),
+            pnls["Amount"].sum(),
             reason,
             relative=True,
         )
@@ -459,7 +479,7 @@ class BalanceSheet(Positions):
         self.mutate_metric(
             BalanceSheetItemRegistry.get("pnl account").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
-            -amount,
+            amount,
             reason,
             relative=True,
         )
@@ -475,7 +495,7 @@ class BalanceSheet(Positions):
         self.mutate_metric(
             BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
-            -ocis["Amount"].sum(),
+            ocis["Amount"].sum(),
             reason,
             relative=True,
         )
@@ -490,7 +510,7 @@ class BalanceSheet(Positions):
         self.mutate_metric(
             BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
             BalanceSheetMetrics.get("quantity"),
-            -amount,
+            amount,
             reason,
             relative=True,
         )

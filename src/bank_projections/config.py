@@ -5,7 +5,7 @@ import polars as pl
 
 from bank_projections.financials.accounting_method import AccountingMethodRegistry
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.hqla_class import HQLARegistry
 from bank_projections.financials.stage import IFRS9StageRegistry
 from bank_projections.projections.book import BookRegistry

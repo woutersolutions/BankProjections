@@ -5,7 +5,7 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.stage import IFRS9StageRegistry
 from bank_projections.projections.frequency import FrequencyRegistry, coupon_payment
 from bank_projections.projections.redemption import RedemptionRegistry

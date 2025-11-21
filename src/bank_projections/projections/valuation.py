@@ -1,6 +1,7 @@
 import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
+from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.balance_sheet_metrics import SMALL_NUMBER
 from bank_projections.financials.market_data import MarketRates
@@ -29,20 +30,20 @@ class Valuation(Rule):
         )
         new_clean_prices = pl.col("NewDirtyPrice") - pl.col("AccruedInterest") / (pl.col("Quantity") + SMALL_NUMBER)
 
+        signs = BalanceSheetCategoryRegistry.book_value_sign()
+
         # TODO: Consider doing revaluation before runoff
         bs.mutate(
             item,
             pnls={
-                MutationReason(module="Valuation", rule="Net gains fair value through P&L"): pl.when(
-                    pl.col("AccountingMethod") == "fairvaluethroughpnl"
-                )
+                MutationReason(module="Valuation", rule="Net gains fair value through P&L"): signs
+                * pl.when(pl.col("AccountingMethod") == "fairvaluethroughpnl")
                 .then((new_clean_prices - pl.col("CleanPrice")) * pl.col("Quantity"))
                 .otherwise(0.0),
             },
             ocis={
-                MutationReason(module="Valuation", rule="Net gains fair value through OCI"): pl.when(
-                    pl.col("AccountingMethod") == "fairvaluethroughoci"
-                )
+                MutationReason(module="Valuation", rule="Net gains fair value through OCI"): signs
+                * pl.when(pl.col("AccountingMethod") == "fairvaluethroughoci")
                 .then((new_clean_prices - pl.col("CleanPrice")) * pl.col("Quantity"))
                 .otherwise(0.0),
             },

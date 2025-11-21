@@ -7,7 +7,7 @@ import pytest
 
 from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.runoff import Runoff
 from bank_projections.utils.time import TimeIncrement

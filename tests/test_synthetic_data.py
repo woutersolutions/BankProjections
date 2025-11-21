@@ -7,7 +7,7 @@ import pytest
 
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import CurveData, MarketData
 from bank_projections.scenarios.scenario import Scenario
 from examples.synthetic_data import create_single_asset_balance_sheet
@@ -123,7 +123,7 @@ class TestCreateSingleAssetBalanceSheet:
         # Check that equity items exist
         equity_item = BalanceSheetItem(BalanceSheetCategory="Equity")
         equity_value = bs.get_amount(equity_item, BalanceSheetMetrics.get("book_value"))
-        assert equity_value < 0  # Equity is negative
+        assert equity_value > 0  # Equity is positive
 
         # Check that cash exists
         cash_item = BalanceSheetItem(ItemType="Cash")

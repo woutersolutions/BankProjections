@@ -5,7 +5,7 @@ import pytest
 
 from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ class TestBalanceSheetMethods:
 
     def test_get_book_value(self, bs) -> None:
         """Test difference between quantity and book value."""
-        total_book_value = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
+        total_book_value = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value_signed"))
 
         # Both should be close to zero for balanced sheet, but may differ due to valuation adjustments
         assert abs(total_book_value) < 0.01, f"Total book value should be ~0, got {total_book_value}"
@@ -238,7 +238,7 @@ class TestBalanceSheetMethods:
     def test_mutate_with_offset_pnl_flag(self, bs) -> None:
         """Test mutate with offset_pnl flag (automatic book value offset)."""
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
-        initial_balance = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
+        initial_balance = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value_signed"))
 
         # Clear existing cashflows/pnls
         bs.cashflows = pl.DataFrame()
@@ -250,7 +250,7 @@ class TestBalanceSheetMethods:
 
         # Verify PnL offset was recorded and balance is maintained
         assert len(bs.pnls) > 0, "PnL should have been recorded for offset"
-        final_balance = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
+        final_balance = bs.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value_signed"))
         assert abs(final_balance - initial_balance) < 0.01, f"Balance should be maintained, got {final_balance}"
 
         # Note: Balance sheet will be unbalanced after mutation without offset

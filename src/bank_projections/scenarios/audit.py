@@ -4,7 +4,7 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.template import KeyValueRuleBase
 from bank_projections.utils.date import add_months, is_end_of_month

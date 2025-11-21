@@ -8,7 +8,7 @@ import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, Positions
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import Curves, MarketRates
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
@@ -611,10 +611,10 @@ def create_single_asset_balance_sheet(
         )
         .then(pl.lit(0).cast(pl.Int64))
         .when(
-            # Set Retained earnings to -(asset book_value + cash) to balance the sheet
+            # Set Retained earnings to (asset book_value + cash) to balance the sheet
             (pl.col("balance_sheet_category") == "equity") & (pl.col("sub_item_type") == "Retained earnings")
         )
-        .then(pl.lit(-2 * int(book_value)).cast(pl.Int64))
+        .then(pl.lit(2 * int(book_value)).cast(pl.Int64))
         .when(
             # Zero out all other equity items
             pl.col("balance_sheet_category") == "equity"

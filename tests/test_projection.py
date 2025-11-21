@@ -76,8 +76,12 @@ class TestProjectionResult:
             pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "metric": [6]}),
         ]
         profitability_list = [
-            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "profitability": [0.05]}),
-            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "profitability": [0.06]}),
+            pl.DataFrame(
+                {"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "profitability": [0.05]}
+            ),
+            pl.DataFrame(
+                {"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 2, 28)], "profitability": [0.06]}
+            ),
         ]
         run_info: dict[str, int | datetime.date | datetime.datetime | float] = {
             "StartDate": datetime.date(2023, 1, 1),
@@ -119,7 +123,9 @@ class TestProjectionResult:
             pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "metric": [5]})
         ]
         profitability_list = [
-            pl.DataFrame({"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "profitability": [0.05]})
+            pl.DataFrame(
+                {"Scenario": ["base"], "ProjectionDate": [datetime.date(2023, 1, 31)], "profitability": [0.05]}
+            )
         ]
         run_info: dict[str, int | datetime.date | datetime.datetime | float] = {
             "StartDate": datetime.date(2023, 1, 1),
@@ -200,7 +206,8 @@ class TestProjection:
         # Verify calls
         mock_rule.apply.assert_called_once_with(mock_bs_initialized, mock_increment, mock_market_rates)
         mock_bs_initialized.aggregate.assert_called_once()
-        mock_bs_initialized.validate.assert_called_once()
+        # Validate is called 3 times: before rule apply, after rule apply, and after scenario apply
+        assert mock_bs_initialized.validate.call_count == 3
 
         # Verify result
         assert isinstance(result, ProjectionResult)

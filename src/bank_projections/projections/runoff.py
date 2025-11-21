@@ -1,6 +1,7 @@
 import polars as pl
 
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
+from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.coupon_type import CouponTypeRegistry
@@ -86,31 +87,31 @@ class Runoff(Rule):
             )
         )
 
+        signs = BalanceSheetCategoryRegistry.book_value_sign()
+
         bs.mutate(
             item,
             pnls={
-                MutationReason(module="Runoff", rule="Accrual"): new_accrual - pl.col("AccruedInterest"),
-                MutationReason(module="Runoff", rule="Coupons"): coupon_payments,
-                MutationReason(module="Runoff", rule="Impairment"): new_impairment - pl.col("Impairment"),
-                MutationReason(module="Runoff", rule="Agio"): new_agio - pl.col("Agio"),
+                MutationReason(module="Runoff", rule="Accrual"): signs
+                * (coupon_payments + (new_accrual - pl.col("AccruedInterest"))),
+                MutationReason(module="Runoff", rule="Impairment"): signs * (new_impairment - pl.col("Impairment")),
+                MutationReason(module="Runoff", rule="Agio"): signs * (new_agio - pl.col("Agio")),
             },
             cashflows={
-                MutationReason(module="Runoff", rule="Coupon payment"): pl.when(pl.col("IsAccumulating"))
-                .then(0.0)
-                .otherwise(coupon_payments),
-                MutationReason(module="Runoff", rule="Principal Repayment"): pl.when(
-                    RedemptionRegistry.has_principal_exchange()
-                )
+                MutationReason(module="Runoff", rule="Coupon payment"): signs
+                * pl.when(pl.col("IsAccumulating")).then(0.0).otherwise(coupon_payments),
+                MutationReason(module="Runoff", rule="Principal Repayment"): signs
+                * pl.when(RedemptionRegistry.has_principal_exchange())
                 .then(pl.col("Quantity") * repayment_factors)
                 .otherwise(0.0),
-                MutationReason(module="Runoff", rule="Principal Prepayment"): pl.when(
-                    RedemptionRegistry.has_principal_exchange()
-                )
+                MutationReason(module="Runoff", rule="Principal Prepayment"): signs
+                * pl.when(RedemptionRegistry.has_principal_exchange())
                 .then(pl.col("Quantity") * (1 - repayment_factors) * prepayment_factors)
                 .otherwise(0.0),
             },
             ocis={
-                MutationReason(module="Runoff", rule="Net gains fair value through OCI"): pl.when(
+                MutationReason(module="Runoff", rule="Net gains fair value through OCI"): signs
+                * pl.when(
                     (pl.col("AccountingMethod") == "fairvaluethroughoci") & RedemptionRegistry.has_principal_exchange()
                 )
                 .then(-(new_quantity - pl.col("Quantity")) * (1 - pl.col("CleanPrice")))

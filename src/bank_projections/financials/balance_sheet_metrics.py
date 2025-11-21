@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 import polars as pl
 
 from bank_projections.financials.hqla_class import HQLARegistry
-from bank_projections.utils.base_registry import BaseRegistry
 
 SMALL_NUMBER = 1e-12
 
@@ -244,58 +243,3 @@ class UnencumberedHQLA(DerivedMetric):
     @property
     def aggregation_expression(self) -> pl.Expr:
         return self.get_expression.sum()
-
-
-class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
-    @classmethod
-    def stored_columns(cls) -> list[str]:
-        return [metric.column for metric in cls.values() if isinstance(metric, StoredColumn)]
-
-
-BalanceSheetMetrics.register("Quantity", StoredAmount("Quantity"))
-BalanceSheetMetrics.register("Impairment", StoredAmount("Impairment"))
-BalanceSheetMetrics.register("AccruedInterest", StoredAmount("AccruedInterest"))
-BalanceSheetMetrics.register("Undrawn", StoredAmount("Undrawn"))
-BalanceSheetMetrics.register("Agio", StoredAmount("Agio"))
-BalanceSheetMetrics.register("CleanPrice", StoredWeight("CleanPrice"))
-BalanceSheetMetrics.register("OtherOffBalanceWeight", StoredWeight("OtherOffBalanceWeight"))
-
-BalanceSheetMetrics.register("DirtyPrice", DirtyPrice())
-BalanceSheetMetrics.register("ValuationError", StoredWeight("ValuationError"))
-BalanceSheetMetrics.register("MarketValue", MarketValue())
-
-BalanceSheetMetrics.register("CoverageRate", DerivedWeight("Impairment"))
-BalanceSheetMetrics.register("AccruedInterestWeight", DerivedWeight("AccruedInterest"))
-BalanceSheetMetrics.register("AgioWeight", DerivedWeight("Agio"))
-BalanceSheetMetrics.register("UndrawnPortion", DerivedWeight("Undrawn"))
-
-BalanceSheetMetrics.register("BookValue", BookValue())
-
-BalanceSheetMetrics.register("OtherOffBalance", DerivedAmount("OtherOffBalanceWeight"))
-BalanceSheetMetrics.register("OnBalanceExposure", OnBalanceExposure())
-BalanceSheetMetrics.register("OffBalanceExposure", OffBalanceExposure())
-BalanceSheetMetrics.register("BaselExposure", BaselExposure())
-BalanceSheetMetrics.register("LeverageExposure", LeverageExposure())
-
-BalanceSheetMetrics.register("FloatingRate", StoredWeight("FloatingRate"))
-BalanceSheetMetrics.register("Spread", StoredWeight("Spread"))
-BalanceSheetMetrics.register("InterestRate", StoredWeight("InterestRate"))
-BalanceSheetMetrics.register("PrepaymentRate", StoredWeight("PrepaymentRate"))
-BalanceSheetMetrics.register("CCF", StoredWeight("CCF", pl.col("Undrawn")))
-
-
-BalanceSheetMetrics.register("TREAWeight", StoredWeight("TREAWeight", BaselExposure().get_expression))
-BalanceSheetMetrics.register("TREA", DerivedAmount("TREAWeight", BaselExposure().get_expression))
-
-BalanceSheetMetrics.register("EncumberedWeight", StoredWeight("EncumberedWeight"))
-BalanceSheetMetrics.register("Encumbered", DerivedAmount("EncumberedWeight"))
-
-BalanceSheetMetrics.register("StableFundingWeight", StoredWeight("StableFundingWeight"))
-BalanceSheetMetrics.register("StableFunding", DerivedAmount("StableFundingWeight"))
-
-BalanceSheetMetrics.register("StressedOutflowWeight", StoredWeight("StressedOutflowWeight"))
-BalanceSheetMetrics.register("StressedOutflow", DerivedAmount("StressedOutflowWeight"))
-
-BalanceSheetMetrics.register("HQLA", HQLA())
-BalanceSheetMetrics.register("EncumberedHQLA", EncumberedHQLA())
-BalanceSheetMetrics.register("UnencumberedHQLA", UnencumberedHQLA())

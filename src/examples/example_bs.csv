@@ -9,18 +9,18 @@ assets,Intangible assets,Intangible assets,eur,1,21135,,,,amortized cost,,perpet
 assets,Loans,Other loans,eur,1,951939,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0.35,,1.00,0.15,non-HQLA,,0
 assets,Unpaid revenue,Unpaid revenue,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,non-HQLA,,0
 assets,Prepaid expenses,Prepaid expenses,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,non-HQLA,,0
-liabilities,Savings deposits,Savings deposits,eur,1000,-12684867,,,,amortized cost,,perpetual,Weekly,both,n/a,,Euribor 3m,"(0.01, 0.02)",,,,TRUE,0,0,,0.95,0.00,n/a,0.2,0
-liabilities,Provisions,Provisions,eur,1,-3412,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
-liabilities,Borrowings,Borrowings,eur,100,-2156600,,,,amortized cost,,bullet,Annual,fixed,n/a,,Euribor 6m,"(0.02, 0.04)",,"(0, 10)","(0, 10)",FALSE,0,0,,0.50,0.00,n/a,,0
-liabilities,Borrowings,Senior unsecured bonds,eur,50,-800000,,,,amortized cost,,bullet,Annual,fixed,n/a,,Euribor 6m,"(0.015, 0.035)",,"(0, 10)","(0, 5)",FALSE,0,0,,0.50,0.00,n/a,,0
+liabilities,Savings deposits,Savings deposits,eur,1000,12684867,,,,amortized cost,,perpetual,Weekly,both,n/a,,Euribor 3m,"(0.01, 0.02)",,,,TRUE,0,0,,0.95,0.00,n/a,0.2,0
+liabilities,Provisions,Provisions,eur,1,3412,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+liabilities,Borrowings,Borrowings,eur,100,2156600,,,,amortized cost,,bullet,Annual,fixed,n/a,,Euribor 6m,"(0.02, 0.04)",,"(0, 10)","(0, 10)",FALSE,0,0,,0.50,0.00,n/a,,0
+liabilities,Borrowings,Senior unsecured bonds,eur,50,800000,,,,amortized cost,,bullet,Annual,fixed,n/a,,Euribor 6m,"(0.015, 0.035)",,"(0, 10)","(0, 5)",FALSE,0,0,,0.50,0.00,n/a,,0
 liabilities,Prepaid revenue,Prepaid revenue,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
 liabilities,Unpaid expenses,Unpaid expenses,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
-liabilities,Other liabilities,Other liabilities,eur,1,-103453,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
-equity,CET1 capital,SharePremium,eur,1,-476751,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
-equity,Additional Tier 1 capital,PreferenceShares,eur,1,-37437,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
-equity,Unaudited earnings,Unaudited earnings,eur,1,-93865,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
-equity,CET1 capital,Retained earnings,eur,1,-468004,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
-equity,CET1 capital,Other comprehensive income,eur,1,-100,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+liabilities,Other liabilities,Other liabilities,eur,1,103453,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
+equity,CET1 capital,SharePremium,eur,1,476751,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+equity,Additional Tier 1 capital,PreferenceShares,eur,1,37437,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+equity,Unaudited earnings,Unaudited earnings,eur,1,93865,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+equity,CET1 capital,Retained earnings,eur,1,468004,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
+equity,CET1 capital,Other comprehensive income,eur,1,100,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
 equity,Dividends payable,Dividends payable,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
 equity,Tier 2 capital,Subordinated Debt,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
 derivatives,Swaps,Swaps,eur,10,500,,,,fair value through oci,swap,notional,Quarterly,swap,n/a,euribor,Euribor 6m,"(-0.02, 0.02)",,"(0, 10)","(0, 20)",FALSE,0,0,"(100000, 1000000)",1.00,0.10,non-HQLA,,0

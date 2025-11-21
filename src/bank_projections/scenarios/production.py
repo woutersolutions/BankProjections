@@ -7,7 +7,7 @@ import polars as pl
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
-from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.template import AmountRuleBase
 from bank_projections.utils.date import add_months
@@ -77,14 +77,16 @@ class ProductionRule(AmountRuleBase):
                     raise ValueError("Date must be specified for production")
                 maturity_date = None if self.maturity is None else add_months(self.date, 12 * self.maturity)
 
+                sign = bs.get_item_book_value_sign(self.reference_item)
+
                 bs.add_item(
                     self.reference_item,
                     labels=self.labels,
                     metrics=self.metrics,
                     origination_date=self.date,
                     maturity_date=maturity_date,
-                    pnls={reason: pl.col("Impairment")},
-                    cashflows={reason: -pl.col("Quantity") - pl.col("AccruedInterest") - pl.col("Agio")},
+                    pnls={reason: sign * pl.col("Impairment")},
+                    cashflows={reason: -sign * (pl.col("Quantity") + pl.col("AccruedInterest") + pl.col("Agio"))},
                 )
 
         return bs
