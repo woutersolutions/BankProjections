@@ -5,7 +5,7 @@ import pandas as pd
 import polars as pl
 
 from bank_projections.config import Config
-from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.utils.base_registry import BaseRegistry
 from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_date, strip_identifier
 
@@ -97,25 +97,19 @@ BalanceSheetItemRegistry.register("retained earnings", BalanceSheetItem(SubItemT
 BalanceSheetItemRegistry.register("dividend", BalanceSheetItem(ItemType="Dividends payable"))
 BalanceSheetItemRegistry.register("oci", BalanceSheetItem(SubItemType="Other comprehensive income"))
 
-BalanceSheetItemRegistry.register(
-    "positive", BalanceSheetItem(expr=BalanceSheetMetrics.get("BookValue").get_expression >= 0)
-)
-BalanceSheetItemRegistry.register(
-    "negative", BalanceSheetItem(expr=BalanceSheetMetrics.get("BookValue").get_expression < 0)
-)
-
 BalanceSheetItemRegistry.register("derivatives", BalanceSheetItem(BalanceSheetCategory="Derivatives"))
 BalanceSheetItemRegistry.register(
     "assets",
-    BalanceSheetItem(BalanceSheetCategory="assets")
-    | (BalanceSheetItemRegistry.get("Derivatives") & BalanceSheetItemRegistry.get("Positive")),
+    BalanceSheetItem(expr=BalanceSheetCategoryRegistry.is_asset_side_expr()),
 )
 BalanceSheetItemRegistry.register(
     "liabilities",
-    BalanceSheetItem(BalanceSheetCategory="Liabilities")
-    | (BalanceSheetItemRegistry.get("Derivatives") & BalanceSheetItemRegistry.get("Negative")),
+    BalanceSheetItem(
+        expr=~BalanceSheetCategoryRegistry.is_asset_side_expr() & ~pl.col("BalanceSheetCategory").eq("Equity")
+    ),
 )
 BalanceSheetItemRegistry.register("equity", BalanceSheetItem(BalanceSheetCategory="Equity"))
 BalanceSheetItemRegistry.register(
-    "Funding", BalanceSheetItemRegistry.get("Liabilities") | BalanceSheetItem(ItemType="Equity")
+    "funding",
+    BalanceSheetItem(expr=~BalanceSheetCategoryRegistry.is_asset_side_expr()),
 )
