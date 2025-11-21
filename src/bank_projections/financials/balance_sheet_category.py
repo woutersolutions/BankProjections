@@ -67,6 +67,13 @@ class BalanceSheetCategoryRegistry(BaseRegistry[BalanceSheetCategory]):
             expr = pl.when(pl.col("BalanceSheetCategory") == name).then(pl.lit(sign)).otherwise(expr)
         return expr
 
+    @classmethod
+    def is_asset_side_expr(cls) -> pl.Expr:
+        expr = pl.lit(True)
+        for name, category_cls in cls.stripped_items.items():
+            expr = pl.when(pl.col("BalanceSheetCategory") == name).then(category_cls.is_asset_side).otherwise(expr)
+        return expr
+
 
 BalanceSheetCategoryRegistry.register("Assets", AssetSide())
 BalanceSheetCategoryRegistry.register("Liabilities", FundingSide())

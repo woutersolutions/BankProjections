@@ -7,11 +7,11 @@ class Book(ABC):
     pass
 
 
-class OldBook(Book):
+class BackBook(Book):
     pass
 
 
-class NewBook(Book):
+class FrontBook(Book):
     pass
 
 
@@ -19,5 +19,5 @@ class BookRegistry(BaseRegistry[Book]):
     pass
 
 
-BookRegistry.register("old", OldBook())
-BookRegistry.register("new", NewBook())
+BookRegistry.register("back", BackBook())
+BookRegistry.register("front", FrontBook())

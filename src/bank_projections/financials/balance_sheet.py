@@ -177,7 +177,7 @@ class BalanceSheet(Positions):
 
         # TODO: Should pl lit be put on all labels?
         if "book" not in labels:
-            labels["Book"] = pl.lit("new")
+            labels["Book"] = pl.lit("front")
 
         if based_on_item is None:
             raise NotImplementedError("Based on no item not yet implement")
@@ -441,7 +441,7 @@ class BalanceSheet(Positions):
         if number_of_offsets > 0:
             self._data = self._data.drop("BookValueBefore")
 
-    def get_item_book_value_sign(self, item:BalanceSheetItem):
+    def get_item_book_value_sign(self, item: BalanceSheetItem):
         signs = (
             self._data.filter(item.filter_expression)
             .select(BalanceSheetCategoryRegistry.book_value_sign())

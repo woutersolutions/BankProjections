@@ -208,7 +208,7 @@ def generate_synthetic_positions(
             ReferenceRate=pl.lit(reference_rate),
             CouponFrequency=pl.lit(coupon_frequency),
             AccountingMethod=pl.lit(accounting_method),
-            Book=pl.lit("old"),
+            Book=pl.lit("back"),
         )
         .with_columns(
             PreviousCouponDate=FrequencyRegistry.previous_coupon_date(
