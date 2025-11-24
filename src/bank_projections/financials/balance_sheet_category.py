@@ -45,7 +45,7 @@ class SideDependsOnMarketValue(BalanceSheetCategory):
 
     @property
     def is_asset_side(self) -> pl.Expr:
-        return MarketValue().aggregation_expression >= 0
+        return MarketValue().get_expression >= 0
 
 
 class SideDependsOnQuantity(BalanceSheetCategory):
@@ -55,7 +55,7 @@ class SideDependsOnQuantity(BalanceSheetCategory):
 
     @property
     def is_asset_side(self) -> pl.Expr:
-        return pl.col("Quantity").sum() >= 0
+        return pl.col("Quantity") >= 0
 
 
 class BalanceSheetCategoryRegistry(BaseRegistry[BalanceSheetCategory]):
