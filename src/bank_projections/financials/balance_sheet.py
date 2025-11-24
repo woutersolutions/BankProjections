@@ -441,7 +441,7 @@ class BalanceSheet(Positions):
         if number_of_offsets > 0:
             self._data = self._data.drop("BookValueBefore")
 
-    def get_item_book_value_sign(self, item: BalanceSheetItem):
+    def get_item_book_value_sign(self, item: BalanceSheetItem) -> int:
         signs = (
             self._data.filter(item.filter_expression)
             .select(BalanceSheetCategoryRegistry.book_value_sign())
@@ -454,7 +454,7 @@ class BalanceSheet(Positions):
         if len(signs) > 1:
             raise ValueError("Counter item is both an asset and a liability, cannot determine sign for offset")
 
-        return signs[0]
+        return int(signs[0])
 
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
         pnls = data.group_by(Config.PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)

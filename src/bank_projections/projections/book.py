@@ -1,9 +1,7 @@
-from abc import ABC
-
 from bank_projections.utils.base_registry import BaseRegistry
 
 
-class Book(ABC):
+class Book:
     pass
 
 

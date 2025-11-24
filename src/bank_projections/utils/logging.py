@@ -130,12 +130,18 @@ def setup_logger_format_with_context() -> None:
         """Custom formatter that adds context before the message with colors."""
         context = record["extra"].get("context", "")
         context_prefix = f"<cyan> {context}</cyan>" if context else ""
-        return "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> |{context_prefix} | <level>{message}</level>\n".format(
+        template = [
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green>",
+            "<level>{level: <8}</level>",
+            "{context_prefix}",
+            "<level>{message}</level>\n",
+        ]
+        return " | ".join(template).format(
             time=record["time"], level=record["level"].name, message=record["message"], context_prefix=context_prefix
         )
 
     logger.add(
         lambda msg: print(msg, end=""),
-        format=format_with_context,
+        format=format_with_context,  # type: ignore[arg-type]
         colorize=True,
     )

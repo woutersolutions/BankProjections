@@ -17,7 +17,8 @@ def calculate_profitability(
         return []
 
     for outlook in Config.PROFITABILITY_OUTLOOKS:
-        number_of_months = FrequencyRegistry.get(outlook).number_of_months
+        # Config.PROFITABILITY_OUTLOOKS only contains monthly-based frequencies (Monthly, Quarterly, Annual)
+        number_of_months = FrequencyRegistry.get(outlook).number_of_months  # type: ignore[attr-defined]
         horizon_start_date = add_months(current_date, -number_of_months, make_end_of_month=True)
         find_index = [i for i, date in enumerate(horizon.dates) if date == horizon_start_date]
         if len(find_index) == 0:
@@ -27,7 +28,7 @@ def calculate_profitability(
         # Calculate weighted average metrics
         wa_metrics = {}
         total_days = (current_date - horizon_start_date).days
-        for metric in metric_list[0].keys():
+        for metric in metric_list[0]:
             wa_metrics[metric] = float(
                 sum(
                     metric_list[i][metric] * (horizon.dates[i + 1] - horizon.dates[i]).days / total_days
@@ -63,4 +64,4 @@ def calculate_profitability_single_horizon(
 
 
 def annualize(value: float, number_of_months: int) -> float:
-    return (1 + value) ** (12 / number_of_months) - 1
+    return float((1 + value) ** (12 / number_of_months) - 1)

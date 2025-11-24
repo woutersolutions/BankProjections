@@ -121,6 +121,9 @@ class Cohort:
         self.minimum = minimum
         self.maximum = maximum
         assert not (minimum and maximum), "Cohort cannot be both minimum and maximum"
+        # Validate unit is one of the expected values
+        if unit not in ("days", "months", "years"):
+            raise ValueError(f"Unit '{unit}' must be 'days', 'months', or 'years'")
 
     @staticmethod
     def from_string(label: str, value: int) -> "Cohort":
