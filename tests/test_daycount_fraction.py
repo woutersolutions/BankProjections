@@ -13,6 +13,7 @@ from bank_projections.projections.daycount_fraction import (
     DaycountFractionRegistry,
     Thirty360BondBasis,
     Thirty360European,
+    Thirty360ISDA,
 )
 
 
@@ -294,6 +295,94 @@ class TestThirty360European:
         assert result["fraction"][0] == pytest.approx(60 / 360, rel=1e-6)
 
 
+class TestThirty360ISDA:
+    """Test 30E/360 ISDA daycount convention with February handling."""
+
+    def test_year_fraction_basic(self) -> None:
+        """Test basic 30E/360 ISDA calculation."""
+        df = pl.DataFrame(
+            {
+                "start_date": [datetime.date(2025, 1, 15)],
+                "end_date": [datetime.date(2025, 4, 15)],
+            }
+        )
+
+        result = df.with_columns(
+            fraction=Thirty360ISDA.year_fraction(pl.col("start_date"), pl.col("end_date"))
+        )
+
+        # 3 months * 30 days / 360 = 90 / 360 = 0.25
+        assert result["fraction"][0] == pytest.approx(0.25, rel=1e-6)
+
+    def test_year_fraction_february_end_non_leap(self) -> None:
+        """Test 30E/360 ISDA treats Feb 28 as day 30 in non-leap year."""
+        df = pl.DataFrame(
+            {
+                "start_date": [datetime.date(2025, 2, 28)],  # Last day of Feb (non-leap)
+                "end_date": [datetime.date(2025, 3, 30)],
+            }
+        )
+
+        result = df.with_columns(
+            fraction=Thirty360ISDA.year_fraction(pl.col("start_date"), pl.col("end_date"))
+        )
+
+        # Feb 28 treated as day 30, Mar 30 is day 30
+        # So: 1 month * 30 + (30 - 30) = 30 days / 360 = 1/12
+        assert result["fraction"][0] == pytest.approx(30 / 360, rel=1e-6)
+
+    def test_year_fraction_february_end_leap_year(self) -> None:
+        """Test 30E/360 ISDA treats Feb 29 as day 30 in leap year."""
+        df = pl.DataFrame(
+            {
+                "start_date": [datetime.date(2024, 2, 29)],  # Last day of Feb (leap year)
+                "end_date": [datetime.date(2024, 3, 30)],
+            }
+        )
+
+        result = df.with_columns(
+            fraction=Thirty360ISDA.year_fraction(pl.col("start_date"), pl.col("end_date"))
+        )
+
+        # Feb 29 treated as day 30, Mar 30 is day 30
+        # So: 1 month * 30 + (30 - 30) = 30 days / 360 = 1/12
+        assert result["fraction"][0] == pytest.approx(30 / 360, rel=1e-6)
+
+    def test_year_fraction_february_to_february(self) -> None:
+        """Test full year from Feb end to Feb end."""
+        df = pl.DataFrame(
+            {
+                "start_date": [datetime.date(2024, 2, 29)],  # Leap year
+                "end_date": [datetime.date(2025, 2, 28)],    # Non-leap year
+            }
+        )
+
+        result = df.with_columns(
+            fraction=Thirty360ISDA.year_fraction(pl.col("start_date"), pl.col("end_date"))
+        )
+
+        # Both treated as day 30
+        # 12 months * 30 + (30 - 30) = 360 / 360 = 1.0
+        assert result["fraction"][0] == pytest.approx(1.0, rel=1e-6)
+
+    def test_year_fraction_day_31_adjustment(self) -> None:
+        """Test 30E/360 ISDA with day 31 adjustment."""
+        df = pl.DataFrame(
+            {
+                "start_date": [datetime.date(2025, 1, 31)],
+                "end_date": [datetime.date(2025, 3, 31)],
+            }
+        )
+
+        result = df.with_columns(
+            fraction=Thirty360ISDA.year_fraction(pl.col("start_date"), pl.col("end_date"))
+        )
+
+        # Both days 31 -> 30
+        # 2 months * 30 = 60 days / 360 = 1/6
+        assert result["fraction"][0] == pytest.approx(60 / 360, rel=1e-6)
+
+
 class TestAllDaycountFractionsReturnValidValues:
     """Test that all registered daycount fractions return valid numeric values."""
 
@@ -373,6 +462,7 @@ class TestAllDaycountFractionsReturnValidValues:
             (ActualActualISDA, "ActualActualISDA"),
             (Thirty360BondBasis, "Thirty360BondBasis"),
             (Thirty360European, "Thirty360European"),
+            (Thirty360ISDA, "Thirty360ISDA"),
         ]
 
         df = pl.DataFrame(

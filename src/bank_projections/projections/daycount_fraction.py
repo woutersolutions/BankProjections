@@ -186,6 +186,40 @@ class Thirty360European(DaycountFraction):
         return (year_diff + month_diff + day_diff) / 360.0
 
 
+class Thirty360ISDA(DaycountFraction):
+    """30E/360 ISDA daycount convention.
+
+    Assumes 30 days per month and 360 days per year.
+    ISDA convention: day 31 becomes 30, and the last day of February
+    is also treated as day 30.
+    """
+
+    @classmethod
+    def year_fraction(cls, start_date: pl.Expr, end_date: pl.Expr) -> pl.Expr:
+        # Cast to i32 to avoid overflow (dt.day() and dt.month() return i8)
+        start_day = start_date.dt.day().cast(pl.Int32)
+        start_month = start_date.dt.month().cast(pl.Int32)
+        start_year = start_date.dt.year()
+
+        end_day = end_date.dt.day().cast(pl.Int32)
+        end_month = end_date.dt.month().cast(pl.Int32)
+        end_year = end_date.dt.year()
+
+        # Check if date is last day of February (month_end gives last day of month)
+        start_is_last_day_of_feb = (start_month == 2) & (start_date == start_date.dt.month_end())
+        end_is_last_day_of_feb = (end_month == 2) & (end_date == end_date.dt.month_end())
+
+        # Adjust days: if 31 or last day of February, becomes 30
+        adjusted_start_day = pl.when((start_day == 31) | start_is_last_day_of_feb).then(30).otherwise(start_day)
+        adjusted_end_day = pl.when((end_day == 31) | end_is_last_day_of_feb).then(30).otherwise(end_day)
+
+        day_diff = adjusted_end_day - adjusted_start_day
+        month_diff = (end_month - start_month) * 30
+        year_diff = (end_year - start_year) * 360
+
+        return (year_diff + month_diff + day_diff) / 360.0
+
+
 # Register all daycount fractions
 DaycountFractionRegistry.register("actual360", Actual360())
 DaycountFractionRegistry.register("actual365fixed", Actual365Fixed())
@@ -193,3 +227,4 @@ DaycountFractionRegistry.register("actual36525", Actual36525())
 DaycountFractionRegistry.register("actualactual", ActualActualISDA())
 DaycountFractionRegistry.register("30360", Thirty360BondBasis())
 DaycountFractionRegistry.register("30e360", Thirty360European())
+DaycountFractionRegistry.register("30e360isda", Thirty360ISDA())
