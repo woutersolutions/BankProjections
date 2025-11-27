@@ -550,14 +550,21 @@ class BalanceSheet(Positions):
         return copy.deepcopy(self)
 
     def aggregate(
-        self, group_columns: list[str] = Config.BALANCE_SHEET_AGGREGATION_LABELS
+        self, group_columns: list[str] = Config.BALANCE_SHEET_AGGREGATION_LABELS, aggregate_positions: bool = True
     ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
-        return (
-            (
+        if aggregate_positions:
+            bs = (
                 self._data.group_by(group_columns)
                 .agg([metric.aggregation_expression.alias(name) for name, metric in BalanceSheetMetrics.items.items()])
                 .sort(by=group_columns)
-            ),
+            )
+        else:
+            bs = self._data.with_columns(
+                [metric.get_expression.alias(name) for name, metric in BalanceSheetMetrics.items.items()]
+            )
+
+        return (
+            bs,
             self.pnls,
             self.cashflows,
             self.ocis,

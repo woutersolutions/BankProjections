@@ -59,7 +59,10 @@ class Projection:
         self.horizon = horizon
 
     def run(
-        self, start_bs: BalanceSheet, progress_callback: Callable[[int, int], None] | None = None
+        self,
+        start_bs: BalanceSheet,
+        progress_callback: Callable[[int, int], None] | None = None,
+        aggregate_positions: bool = True,
     ) -> ProjectionResult:
         """Run the projection over the defined time horizon.
 
@@ -111,7 +114,7 @@ class Projection:
                 metrics_dict = calculate_metrics(bs)
                 metrics_df = pl.DataFrame(metrics_dict)
 
-                agg_bs, pnls, cashflows, ocis = bs.aggregate()
+                agg_bs, pnls, cashflows, ocis = bs.aggregate(aggregate_positions=aggregate_positions)
                 balance_sheets.append(agg_bs)
                 pnls_list.append(pnls)
                 cashflows_list.append(cashflows)

@@ -129,7 +129,7 @@ def main() -> None:
             progress_bar.progress(progress, text=f"Running projection: {current}/{total} time steps")
             status_text.text(f"Progress: {current}/{total} ({progress * 100:.1f}%)")
 
-        result = projection.run(start_bs, progress_callback=update_progress)
+        result = projection.run(start_bs, progress_callback=update_progress, aggregate_positions=False)
         st.session_state.single_asset_result = result
 
         # Clear progress indicators
