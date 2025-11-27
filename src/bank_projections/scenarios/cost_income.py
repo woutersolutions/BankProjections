@@ -2,7 +2,6 @@ import datetime
 from typing import Any
 
 import pandas as pd
-import polars as pl
 
 from bank_projections.config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
@@ -78,17 +77,17 @@ class CostIncomeRule(AmountRuleBase):
                 bs.add_item(
                     based_on_item=bs_item,
                     labels={},
-                    metrics={"Quantity": -self.amount},
+                    metrics={"Quantity": abs(self.amount)},
                     origination_date=self.cashflow_date,
-                    cashflows={self.reason: -pl.col("Quantity")},
+                    offset_liquidity=self.reason,
                 )
             if increment.overlaps(self.pnl_start, self.pnl_end):
                 days_in_period = (self.pnl_end - self.pnl_start).days + 1
                 amount_to_recognize = (
-                    self.amount * increment.days_overlap(self.pnl_start, self.pnl_end) / days_in_period
+                    abs(self.amount) * increment.days_overlap(self.pnl_start, self.pnl_end) / days_in_period
                 )
                 bs.mutate_metric(
-                    bs_item, "Quantity", amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
+                    bs_item, "Quantity", -amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
                 )
 
         elif self.pnl_end is not None and self.cashflow_date >= self.pnl_end:
@@ -101,7 +100,7 @@ class CostIncomeRule(AmountRuleBase):
             if increment.overlaps(self.pnl_start, self.pnl_end):
                 days_in_period = (self.pnl_end - self.pnl_start).days + 1
                 amount_to_recognize = (
-                    self.amount * increment.days_overlap(self.pnl_start, self.pnl_end) / days_in_period
+                    abs(self.amount) * increment.days_overlap(self.pnl_start, self.pnl_end) / days_in_period
                 )
                 if increment.from_date < self.pnl_start:
                     bs.add_item(
@@ -109,7 +108,7 @@ class CostIncomeRule(AmountRuleBase):
                         labels={},
                         metrics={"Quantity": amount_to_recognize},
                         origination_date=self.cashflow_date,
-                        pnls={self.reason: pl.col("Quantity")},
+                        offset_pnl=self.reason,
                     )
                 else:
                     bs.mutate_metric(
@@ -118,10 +117,12 @@ class CostIncomeRule(AmountRuleBase):
 
             if increment.contains(self.cashflow_date):
                 bs.mutate_metric(
-                    bs_item, "Quantity", -self.amount, offset_liquidity=True, reason=self.reason, relative=True
+                    bs_item, "Quantity", -abs(self.amount), offset_liquidity=True, reason=self.reason, relative=True
                 )
 
         else:
             raise NotImplementedError("CostIncomeRule with cashflow within P&L period not implemented")
+
+        bs.validate()
 
         return bs

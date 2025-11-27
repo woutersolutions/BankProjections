@@ -172,6 +172,8 @@ class BalanceSheet(Positions):
         maturity_date: datetime.date | None = None,
         pnls: dict[MutationReason, pl.Expr] | None = None,
         cashflows: dict[MutationReason, pl.Expr] | None = None,
+        offset_liquidity: MutationReason | None = None,
+        offset_pnl: MutationReason | None = None,
     ) -> None:
         labels = correct_identifier_keys(labels, Config.label_columns())
         metrics = strip_identifier_keys(metrics)
@@ -294,6 +296,20 @@ class BalanceSheet(Positions):
                 self.add_pnl(new_data, pnl_expr, mut_reason)
 
         self._data = pl.concat([self._data, new_data], how="diagonal")
+
+        if offset_pnl is not None or offset_liquidity is not None:
+            number_of_offsets = sum(
+                [offset_pnl is not None, offset_liquidity is not None, pnls is not None, cashflows is not None]
+            )
+            if number_of_offsets > 1:
+                raise ValueError("Can offset with 1 thing only")
+            book_value_impact = new_data.select(
+                BalanceSheetMetrics.get("book value signed").aggregation_expression
+            ).item()
+            if offset_liquidity is not None:
+                self.add_single_liquidity(-book_value_impact, offset_liquidity)
+            if offset_pnl is not None:
+                self.add_single_pnl(book_value_impact, offset_pnl)
 
     @staticmethod
     def _process_metric(data: pl.DataFrame, metrics: dict[str, Any] | float, metric_name: str) -> pl.DataFrame:
