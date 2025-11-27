@@ -89,7 +89,9 @@ class MonthlyBase(Frequency):
         )
         day_passed = pl.lit(True) if is_end_of_month(current_date) else current_date.day >= anchor_date.dt.day()
         payments_to_anchor = (months_to_anchor + pl.when(day_passed).then(0).otherwise(1)) // cls.number_of_months
-        return anchor_date.dt.offset_by(by=(-(payments_to_anchor - number) * cls.number_of_months).cast(pl.Utf8) + "mo")
+        return anchor_date.dt.offset_by(
+            by=(-(payments_to_anchor - number - 1) * cls.number_of_months).cast(pl.Utf8) + "mo"
+        )
 
     @classmethod
     def number_due(cls, coupon_date: pl.Expr, projection_date: pl.Expr) -> pl.Expr:

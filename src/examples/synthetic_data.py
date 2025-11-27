@@ -5,6 +5,7 @@ import random
 import numpy as np
 import pandas as pd
 import polars as pl
+from dateutil.relativedelta import relativedelta
 
 from bank_projections.financials.balance_sheet import BalanceSheet, Positions
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
@@ -133,7 +134,7 @@ def generate_synthetic_positions(
                 raise ValueError(f"Maturity must be specified for redemption type: {redemption_type}")
             maturity_values = generate_int_values_from_input(number, maturity)
             maturity_dates = [
-                current_date + datetime.timedelta(days=mat_val * 365) if mat_val is not None else None
+                current_date + relativedelta(years=mat_val) if mat_val is not None else None
                 for mat_val in maturity_values
             ]
         case _:
