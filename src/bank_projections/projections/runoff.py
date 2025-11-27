@@ -5,9 +5,10 @@ from bank_projections.financials.balance_sheet_category import BalanceSheetCateg
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.coupon_type import CouponTypeRegistry
-from bank_projections.projections.frequency import FrequencyRegistry, coupon_payment, interest_accrual
+from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.rule import Rule
+from bank_projections.utils.coupons import coupon_payment, interest_accrual
 from bank_projections.utils.time import TimeIncrement
 
 

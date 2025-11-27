@@ -6,7 +6,10 @@ import polars as pl
 
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.utils.base_registry import BaseRegistry
+from bank_projections.utils.daycounting import Actual36525, DaycountFraction
 from bank_projections.utils.scaling import AdditiveScaling, MultiplicativeScaling, NoScaling, ScalingMethod
+
+DAYCOUNT_VALUATION: DaycountFraction = Actual36525
 
 
 class ValuationMethod(ABC):
@@ -118,7 +121,7 @@ class FixedRateBondValuationMethod(ValuationMethod):
         for i in range(max_coupons + 1):
             # Calculate coupon date for this period
             coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
-            years_to_coupon = (coupon_date - pl.lit(projection_date)).dt.total_days() / 365.25
+            years_to_coupon = DAYCOUNT_VALUATION.year_fraction(pl.lit(projection_date), coupon_date)
 
             # Create cashflow records for bonds that have this coupon
             part = data.filter(pl.col("NumberOfCoupons") >= i).with_columns(
@@ -143,7 +146,8 @@ class FixedRateBondValuationMethod(ValuationMethod):
         data = data.join(result, on="_bond_idx", how="left")
 
         # Add principal repayment at maturity (1.0 * discount factor at maturity)
-        years_to_maturity = (pl.col("MaturityDate") - pl.lit(projection_date)).dt.total_days() / 365.25
+        years_to_maturity = DAYCOUNT_VALUATION.year_fraction(pl.lit(projection_date), pl.col("MaturityDate"))
+
         maturity_df = get_discount_rates(data, zero_rates, years_to_maturity)
         data = data.with_columns((pl.col(output_column) + maturity_df).alias(output_column))
 
@@ -318,19 +322,11 @@ def _price_spread_instrument(
     for i in range(max_coupons + 1):
         # Calculate coupon date for this period
         coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i)
-        years_to_coupon = (coupon_date - pl.lit(projection_date)).dt.total_days() / 365.25
-
-        # Calculate previous coupon date to get delta (period length)
-        if i == 0:
-            prev_coupon_date = pl.col("PreviousCouponDate")
-        else:
-            prev_coupon_date = FrequencyRegistry.step_coupon_date(projection_date, pl.col("MaturityDate"), i - 1)
-
-        delta = (coupon_date - prev_coupon_date).dt.total_days() / 365.25
+        years_to_coupon = DAYCOUNT_VALUATION.year_fraction(pl.lit(projection_date), coupon_date)
 
         # Create cashflow records for instruments that have this coupon
         part = data.filter(pl.col("NumberOfCoupons") >= i).with_columns(
-            _years=years_to_coupon, _payment=rate_expr * delta
+            _years=years_to_coupon, _payment=rate_expr * FrequencyRegistry.portion_year()
         )
         cashflow_parts.append(part)
 
@@ -355,7 +351,8 @@ def _price_spread_instrument(
     start_val = accrued
     if include_par:
         # Add principal at maturity for floating rate bonds
-        years_to_maturity = (pl.col("MaturityDate") - pl.lit(projection_date)).dt.total_days() / 365.25
+        years_to_maturity = DAYCOUNT_VALUATION.year_fraction(pl.lit(projection_date), pl.col("MaturityDate"))
+
         maturity_df = get_discount_rates(data, zero_rates, years_to_maturity)
         start_val = start_val + maturity_df
 

@@ -15,8 +15,9 @@ from bank_projections.financials.balance_sheet_metrics import (
     BalanceSheetMetric,
     StoredColumn,
 )
-from bank_projections.projections.frequency import FrequencyRegistry, interest_accrual
+from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
+from bank_projections.utils.coupons import interest_accrual
 from bank_projections.utils.parsing import correct_identifier_keys, strip_identifier_keys
 
 
