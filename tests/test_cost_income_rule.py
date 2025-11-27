@@ -204,3 +204,71 @@ class TestCostIncomeRuleApply:
 
         # Balance sheet should remain valid
         result_bs.validate()
+
+    def test_apply_mid_period_revenue(self, test_balance_sheet, market_rates):
+        """Test revenue with cashflow in the middle of the P&L period."""
+        rule_input = {
+            "date": "2025-06-15",
+            "amount": 12000.0,
+            "rule": "mid_period_revenue",
+            "pnlstart": "2025-01-01",
+            "pnlend": "2025-12-31",
+        }
+        rule = CostIncomeRule(rule_input)
+
+        # Apply before cashflow date (should accrue unpaid revenue)
+        increment = TimeIncrement(from_date=datetime.date(2025, 1, 1), to_date=datetime.date(2025, 1, 31))
+        result_bs = rule.apply(test_balance_sheet, increment, market_rates)
+        result_bs.validate()
+
+    def test_apply_mid_period_expense(self, test_balance_sheet, market_rates):
+        """Test expense with cashflow in the middle of the P&L period."""
+        rule_input = {
+            "date": "2025-06-15",
+            "amount": -12000.0,
+            "rule": "mid_period_expense",
+            "pnlstart": "2025-01-01",
+            "pnlend": "2025-12-31",
+        }
+        rule = CostIncomeRule(rule_input)
+
+        # Apply before cashflow date (should accrue unpaid expense)
+        increment = TimeIncrement(from_date=datetime.date(2025, 1, 1), to_date=datetime.date(2025, 1, 31))
+        result_bs = rule.apply(test_balance_sheet, increment, market_rates)
+        result_bs.validate()
+
+    def test_apply_mid_period_on_cashflow_date(self, test_balance_sheet, market_rates):
+        """Test cashflow within P&L period on the cashflow date itself."""
+        rule_input = {
+            "date": "2025-06-15",
+            "amount": 12000.0,
+            "rule": "mid_period_cashflow",
+            "pnlstart": "2025-01-01",
+            "pnlend": "2025-12-31",
+        }
+        rule = CostIncomeRule(rule_input)
+
+        # Apply on the cashflow date
+        increment = TimeIncrement(from_date=datetime.date(2025, 6, 1), to_date=datetime.date(2025, 6, 30))
+        result_bs = rule.apply(test_balance_sheet, increment, market_rates)
+        result_bs.validate()
+
+    def test_apply_mid_period_after_cashflow(self, test_balance_sheet, market_rates):
+        """Test cashflow within P&L period after the cashflow date."""
+        rule_input = {
+            "date": "2025-06-15",
+            "amount": 12000.0,
+            "rule": "mid_period_after",
+            "pnlstart": "2025-01-01",
+            "pnlend": "2025-12-31",
+        }
+        rule = CostIncomeRule(rule_input)
+
+        # First apply on cashflow date to create the prepaid item
+        increment1 = TimeIncrement(from_date=datetime.date(2025, 6, 1), to_date=datetime.date(2025, 6, 30))
+        result_bs = rule.apply(test_balance_sheet, increment1, market_rates)
+
+        # Then apply after cashflow date (should amortize prepaid item)
+        increment2 = TimeIncrement(from_date=datetime.date(2025, 7, 1), to_date=datetime.date(2025, 7, 31))
+        result_bs = rule.apply(result_bs, increment2, market_rates)
+        result_bs.validate()

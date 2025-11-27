@@ -121,7 +121,76 @@ class CostIncomeRule(AmountRuleBase):
                 )
 
         else:
-            raise NotImplementedError("CostIncomeRule with cashflow within P&L period not implemented")
+            # Cashflow date is within the P&L period (pnl_start < cashflow_date < pnl_end)
+            # Type narrowing: pnl_start and pnl_end are both not None
+            assert self.pnl_start is not None
+            assert self.pnl_end is not None
+
+            if self.amount > 0:
+                bs_item = BalanceSheetItem(ItemType="Unpaid revenue")
+            else:
+                bs_item = BalanceSheetItem(ItemType="Unpaid expenses")
+
+            days_in_period = (self.pnl_end - self.pnl_start).days + 1
+
+            # Before cashflow: accrue unpaid revenue/expense
+            if increment.overlaps(self.pnl_start, self.cashflow_date - datetime.timedelta(days=1)):
+                amount_to_recognize = (
+                    abs(self.amount)
+                    * increment.days_overlap(self.pnl_start, self.cashflow_date - datetime.timedelta(days=1))
+                    / days_in_period
+                )
+                if increment.from_date < self.pnl_start:
+                    bs.add_item(
+                        based_on_item=bs_item,
+                        labels={},
+                        metrics={"Quantity": amount_to_recognize},
+                        origination_date=self.cashflow_date,
+                        offset_pnl=self.reason,
+                    )
+                else:
+                    bs.mutate_metric(
+                        bs_item, "Quantity", amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
+                    )
+
+            # On cashflow date: settle the accrued amount with cash
+            if increment.contains(self.cashflow_date):
+                # First, recognize revenue/expense for the cashflow day itself
+                daily_amount = abs(self.amount) / days_in_period
+                bs.mutate_metric(
+                    bs_item, "Quantity", daily_amount, offset_pnl=True, reason=self.reason, relative=True
+                )
+                # Then settle the full accrued amount with cash
+                bs.mutate_metric(
+                    bs_item, "Quantity", -abs(self.amount), offset_liquidity=True, reason=self.reason, relative=True
+                )
+
+            # After cashflow but still within P&L period: recognize remaining revenue/expense
+            if increment.overlaps(self.cashflow_date + datetime.timedelta(days=1), self.pnl_end):
+                amount_to_recognize = (
+                    abs(self.amount)
+                    * increment.days_overlap(self.cashflow_date + datetime.timedelta(days=1), self.pnl_end)
+                    / days_in_period
+                )
+                if self.amount > 0:
+                    post_item = BalanceSheetItem(ItemType="Prepaid revenue")
+                else:
+                    post_item = BalanceSheetItem(ItemType="Prepaid expenses")
+
+                if increment.contains(self.cashflow_date):
+                    # We received/paid more than we've earned/spent, create prepaid item
+                    bs.add_item(
+                        based_on_item=post_item,
+                        labels={},
+                        metrics={"Quantity": amount_to_recognize},
+                        origination_date=self.cashflow_date,
+                        offset_liquidity=self.reason,
+                    )
+                else:
+                    # Amortize the prepaid item
+                    bs.mutate_metric(
+                        post_item, "Quantity", -amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
+                    )
 
         bs.validate()
 
