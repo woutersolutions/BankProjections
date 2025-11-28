@@ -23,4 +23,4 @@ equity,CET1 capital,Retained earnings,eur,1,468004,,,,amortized cost,,perpetual,
 equity,CET1 capital,Other comprehensive income,eur,1,100,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
 equity,Dividends payable,Dividends payable,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,0.00,0.00,n/a,,0
 equity,Tier 2 capital,Subordinated Debt,eur,1,0,,,,amortized cost,,perpetual,Never,none,n/a,,,,,,,FALSE,0,0,,1.00,0.00,n/a,,0
-derivatives,Swaps,Swaps,eur,10,500,,,,fair value through oci,swap,notional,Quarterly,swap,n/a,euribor,Euribor 6m,"(-0.02, 0.02)",,"(0, 10)","(0, 20)",FALSE,0,0,"(100000, 1000000)",1.00,0.10,non-HQLA,,0
+derivatives,Swaps,Swaps,eur,10,500,,,,fair value through oci,swap,notional,Quarterly,swap,n/a,euribor,Euribor 6m,"(-0.02, 0.02)",,"(0, 10)","(1, 20)",FALSE,0,0,"(100000, 1000000)",1.00,0.10,non-HQLA,,0

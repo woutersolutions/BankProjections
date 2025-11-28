@@ -124,7 +124,7 @@ class FixedRateBondValuationMethod(ValuationMethod):
             years_to_coupon = DAYCOUNT_VALUATION.year_fraction(pl.lit(projection_date), coupon_date)
 
             # Create cashflow records for bonds that have this coupon
-            part = data.filter(pl.col("NumberOfCoupons") >= i).with_columns(
+            part = data.filter(pl.col("NumberOfCoupons") > i).with_columns(
                 _years=years_to_coupon, _payment=(pl.col("InterestRate") * FrequencyRegistry.portion_year())
             )
             cashflow_parts.append(part)
@@ -142,14 +142,22 @@ class FixedRateBondValuationMethod(ValuationMethod):
         # Sum present values by bond
         result = all_cashflows.group_by("_bond_idx").agg(pl.col("_pv").sum().alias(output_column))
 
-        # Join back to original data
-        data = data.join(result, on="_bond_idx", how="left")
+        # Join back to original data (fill missing with 0.0 for bonds with no remaining coupons)
+        data = data.join(result, on="_bond_idx", how="left").with_columns(
+            pl.col(output_column).fill_null(0.0)
+        )
 
         # Add principal repayment at maturity (1.0 * discount factor at maturity)
+        # For instruments at or past maturity, price is exactly 1.0
         years_to_maturity = DAYCOUNT_VALUATION.year_fraction(pl.lit(projection_date), pl.col("MaturityDate"))
 
         maturity_df = get_discount_rates(data, zero_rates, years_to_maturity)
-        data = data.with_columns((pl.col(output_column) + maturity_df).alias(output_column))
+        data = data.with_columns(
+            pl.when(pl.lit(projection_date) >= pl.col("MaturityDate"))
+            .then(1.0)
+            .otherwise(pl.col(output_column) + maturity_df)
+            .alias(output_column)
+        )
 
         return data.drop("_bond_idx", "NumberOfCoupons")
 
@@ -325,7 +333,7 @@ def _price_spread_instrument(
         years_to_coupon = DAYCOUNT_VALUATION.year_fraction(pl.lit(projection_date), coupon_date)
 
         # Create cashflow records for instruments that have this coupon
-        part = data.filter(pl.col("NumberOfCoupons") >= i).with_columns(
+        part = data.filter(pl.col("NumberOfCoupons") > i).with_columns(
             _years=years_to_coupon, _payment=rate_expr * FrequencyRegistry.portion_year()
         )
         cashflow_parts.append(part)
@@ -343,8 +351,8 @@ def _price_spread_instrument(
     # Sum present values by instrument
     result = all_cashflows.group_by("_inst_idx").agg(pl.col("_pv").sum().alias(output_column))
 
-    # Join back to original data
-    data = data.join(result, on="_inst_idx", how="left")
+    # Join back to original data (fill missing with 0.0 for instruments with no remaining coupons)
+    data = data.join(result, on="_inst_idx", how="left").with_columns(pl.col(output_column).fill_null(0.0))
 
     # Add starting value (principal + accrued interest)
     accrued = pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity"))
@@ -357,6 +365,15 @@ def _price_spread_instrument(
         start_val = start_val + maturity_df
 
     data = data.with_columns((pl.col(output_column) + start_val).alias(output_column))
+
+    # For instruments at or past maturity: floating bonds = 1.0, swaps = 0.0
+    at_maturity_value = 1.0 if include_par else 0.0
+    data = data.with_columns(
+        pl.when(pl.lit(projection_date) >= pl.col("MaturityDate"))
+        .then(at_maturity_value)
+        .otherwise(pl.col(output_column))
+        .alias(output_column)
+    )
 
     return data.drop("_inst_idx", "NumberOfCoupons")
 
