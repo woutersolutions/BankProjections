@@ -15,14 +15,6 @@ class Valuation(Rule):
         if increment.from_date == increment.to_date:  # No time passed
             return bs
 
-        # Apply runoff to all instruments that origination before the current projection date # TODO: refine
-        item = BalanceSheetItem(
-            expr=(
-                (pl.col("OriginationDate").is_null() | (pl.col("OriginationDate") < increment.to_date))
-                & (pl.col("AccountingMethod") == "fairvaluethroughoci")
-            )
-        )
-
         zero_rates = market_rates.curves.get_zero_rates()
         # TODO: Find a way not to use the _.data here
         bs._data = ValuationMethodRegistry.corrected_dirty_price(
@@ -32,9 +24,8 @@ class Valuation(Rule):
 
         signs = BalanceSheetCategoryRegistry.book_value_sign()
 
-        # TODO: Consider doing revaluation before runoff
         bs.mutate(
-            item,
+            BalanceSheetItem(),
             pnls={
                 MutationReason(module="Valuation", rule="Net gains fair value through P&L"): signs
                 * pl.when(pl.col("AccountingMethod") == "fairvaluethroughpnl")

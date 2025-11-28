@@ -17,11 +17,6 @@ class Runoff(Rule):
         if increment.from_date == increment.to_date:  # No time passed
             return bs
 
-        # Apply runoff to all instruments that origination before the current projection date # TODO: refine
-        item = BalanceSheetItem(
-            expr=(pl.col("OriginationDate").is_null() | (pl.col("OriginationDate") < increment.to_date))
-        )
-
         matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
         number_of_payments = FrequencyRegistry.number_due(
             pl.col("NextCouponDate"), pl.min_horizontal(pl.col("MaturityDate"), pl.lit(increment.to_date))
@@ -91,7 +86,7 @@ class Runoff(Rule):
         signs = BalanceSheetCategoryRegistry.book_value_sign()
 
         bs.mutate(
-            item,
+            BalanceSheetItem(),
             pnls={
                 MutationReason(module="Runoff", rule="Accrual"): signs
                 * (coupon_payments + (new_accrual - pl.col("AccruedInterest"))),
