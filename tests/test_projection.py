@@ -137,10 +137,11 @@ class TestProjectionResult:
         result = ProjectionResult(balance_sheets, pnls, cashflows, ocis, metric_list, profitability_list, run_info)
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            file_path = os.path.join(temp_dir, "test_output.xlsx")
+            # Use strftime format in filename as the new implementation expects
+            file_path = os.path.join(temp_dir, "test_output_%Y%m%d_%H%M%S.xlsx")
             result.to_excel(file_path)
 
-            # Check that a file was created (with timestamp suffix)
+            # Check that a file was created (with strftime-formatted timestamp)
             files = os.listdir(temp_dir)
             excel_files = [f for f in files if f.startswith("test_output_") and f.endswith(".xlsx")]
             assert len(excel_files) == 1

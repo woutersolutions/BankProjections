@@ -91,7 +91,7 @@ class TestBalanceSheetMethods:
         initial_cashflows_len = len(bs.cashflows)
 
         # Increase loans with liquidity offset
-        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_liquidity_offset")
+        reason = MutationReason(module="Test", rule="test_mutate_with_liquidity_offset", action="test_mutation")
         bs.mutate_metric(
             loans_item, BalanceSheetMetrics.get("quantity"), 100_000, reason, relative=True, offset_liquidity=True
         )
@@ -121,7 +121,7 @@ class TestBalanceSheetMethods:
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
 
         # Mutation with liquidity offset should preserve balance
-        reason = MutationReason(action="test_mutation", test_name="test_mutate_preserves_balance")
+        reason = MutationReason(module="Test", rule="test_mutate_preserves_balance", action="test_mutation")
         bs.mutate_metric(
             loans_item, BalanceSheetMetrics.get("quantity"), 50_000, reason, relative=True, offset_liquidity=True
         )
@@ -198,7 +198,7 @@ class TestBalanceSheetMethods:
         bs.pnls = pl.DataFrame()
 
         # Test with custom PnL expression (fixed amount per row)
-        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_custom_pnl_expression")
+        reason = MutationReason(module="Test", rule="test_mutate_with_custom_pnl_expression", action="test_mutation")
         bs.mutate(loans_item, pnls={reason: pl.lit(1000.0)}, Quantity=pl.col("Quantity") + 1_000)
 
         # Verify PnL was recorded
@@ -220,7 +220,9 @@ class TestBalanceSheetMethods:
         bs.pnls = pl.DataFrame()
 
         # Test with custom liquidity expression
-        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_custom_liquidity_expression")
+        reason = MutationReason(
+            module="Test", rule="test_mutate_with_custom_liquidity_expression", action="test_mutation"
+        )
         bs.mutate(loans_item, cashflows={reason: pl.lit(-500.0)}, Quantity=pl.col("Quantity") + 2_000)
 
         # Verify cashflow was recorded
@@ -245,7 +247,7 @@ class TestBalanceSheetMethods:
         bs.pnls = pl.DataFrame()
 
         # Test with automatic PnL offset
-        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_offset_pnl_flag")
+        reason = MutationReason(module="Test", rule="test_mutate_with_offset_pnl_flag", action="test_mutation")
         bs.mutate(loans_item, offset_pnl=reason, Quantity=pl.col("Quantity") + 3_000)
 
         # Verify PnL offset was recorded and balance is maintained
@@ -266,7 +268,7 @@ class TestBalanceSheetMethods:
         bs.pnls = pl.DataFrame()
 
         # Test with automatic liquidity offset
-        reason = MutationReason(action="test_mutation", test_name="test_mutate_with_offset_liquidity_flag")
+        reason = MutationReason(module="Test", rule="test_mutate_with_offset_liquidity_flag", action="test_mutation")
         bs.mutate(loans_item, offset_liquidity=reason, Quantity=pl.col("Quantity") + 4_000)
 
         # Verify liquidity offset was recorded and balance is maintained
@@ -298,7 +300,7 @@ class TestBalanceSheetMethods:
         initial_columns = set(bs._data.columns)
 
         # Perform mutation with PnL expression (creates temporary columns)
-        reason = MutationReason(action="test_mutation", test_name="test_mutate_cleanup_temporary_columns")
+        reason = MutationReason(module="Test", rule="test_mutate_cleanup_temporary_columns", action="test_mutation")
         bs.mutate(loans_item, pnls={reason: pl.lit(100.0)}, Quantity=pl.col("Quantity") + 1000)
 
         # Check that no temporary columns remain

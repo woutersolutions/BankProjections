@@ -6,7 +6,7 @@ from typing import Any
 import pandas as pd
 import polars as pl
 
-from bank_projections.config import Config
+from bank_projections.config import AggregationConfig, Config
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
@@ -107,9 +107,9 @@ class BalanceSheet(Positions):
         )
         self.add_item(BalanceSheetItemRegistry.get("oci"), labels={}, metrics={"Quantity": 0.0}, origination_date=date)
 
-        self.cashflows = pl.DataFrame(schema={"Amount": pl.Float64})
-        self.pnls = pl.DataFrame(schema={"Amount": pl.Float64})
-        self.ocis = pl.DataFrame(schema={"Amount": pl.Float64})
+        self.cashflows = pl.DataFrame(schema={**dict.fromkeys(Config.CASHFLOW_LABELS, pl.String), "Amount": pl.Float64})
+        self.pnls = pl.DataFrame(schema={**dict.fromkeys(Config.PNL_LABELS, pl.String), "Amount": pl.Float64})
+        self.ocis = pl.DataFrame(schema={**dict.fromkeys(Config.OCI_LABELS, pl.String), "Amount": pl.Float64})
 
         self.validate()
 
@@ -216,7 +216,7 @@ class BalanceSheet(Positions):
             )
             .group_by(
                 set(constant_cols)
-                | set(Config.BALANCE_SHEET_AGGREGATION_LABELS)
+                | set(Config.BALANCE_SHEET_LABELS)
                 | set(Config.CLASSIFICATIONS.keys() | set(labels.keys()))
                 | {"OriginationDate", "MaturityDate"}
             )
@@ -474,7 +474,7 @@ class BalanceSheet(Positions):
         return int(signs[0])
 
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
-        pnls = data.group_by(Config.PNL_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+        pnls = data.pipe(reason.add_to_df).group_by(Config.PNL_LABELS).agg(Amount=expr.sum())
         pnls = pnls.filter(pl.col("Amount") != 0.0)
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
@@ -505,7 +505,7 @@ class BalanceSheet(Positions):
             self.add_single_liquidity(amount, reason)
 
     def add_oci(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
-        ocis = data.group_by(Config.OCI_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+        ocis = data.pipe(reason.add_to_df).group_by(Config.OCI_LABELS).agg(Amount=expr.sum())
         ocis = ocis.filter(pl.col("Amount") != 0.0)
 
         self.ocis = pl.concat([self.ocis, ocis], how="diagonal")
@@ -533,7 +533,7 @@ class BalanceSheet(Positions):
         )
 
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
-        cashflows = data.group_by(Config.CASHFLOW_AGGREGATION_LABELS).agg(Amount=expr.sum()).pipe(reason.add_to_df)
+        cashflows = data.pipe(reason.add_to_df).group_by(Config.CASHFLOW_LABELS).agg(Amount=expr.sum())
         cashflows = cashflows.filter(pl.col("Amount") != 0.0)
 
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
@@ -567,24 +567,31 @@ class BalanceSheet(Positions):
         return copy.deepcopy(self)
 
     def aggregate(
-        self, group_columns: list[str] = Config.BALANCE_SHEET_AGGREGATION_LABELS, aggregate_positions: bool = True
+        self, aggregation_config: AggregationConfig
     ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
-        if aggregate_positions:
-            bs = (
-                self._data.group_by(group_columns)
-                .agg([metric.aggregation_expression.alias(name) for name, metric in BalanceSheetMetrics.items.items()])
-                .sort(by=group_columns)
-            )
-        else:
+        if aggregation_config.balance_sheet is None:
             bs = self._data.with_columns(
                 [metric.get_expression.alias(name) for name, metric in BalanceSheetMetrics.items.items()]
             )
+        else:
+            bs = (
+                self._data.group_by(aggregation_config.balance_sheet + list(Config.CLASSIFICATIONS.keys()))
+                .agg([metric.aggregation_expression.alias(name) for name, metric in BalanceSheetMetrics.items.items()])
+                .sort(by=aggregation_config.balance_sheet)
+            )
 
+        # TODO: Some repetition here, can be cleaned up
         return (
             bs,
-            self.pnls,
-            self.cashflows,
-            self.ocis,
+            self.pnls
+            if aggregation_config.pnl is None
+            else self.pnls.group_by(aggregation_config.pnl).agg([pl.col("Amount").sum().alias("Amount")]),
+            self.cashflows
+            if aggregation_config.cashflow is None
+            else self.cashflows.group_by(aggregation_config.cashflow).agg([pl.col("Amount").sum().alias("Amount")]),
+            self.ocis
+            if aggregation_config.oci is None
+            else self.ocis.group_by(aggregation_config.oci).agg([pl.col("Amount").sum().alias("Amount")]),
         )
 
     @classmethod

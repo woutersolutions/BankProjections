@@ -107,7 +107,11 @@ class TestRunoff:
 
         loans_item = BalanceSheetItem(SubItemType="Mortgages", AccountingMethod="amortized cost")
         bs.mutate_metric(
-            loans_item, BalanceSheetMetrics.get("impairment"), -10000.0, MutationReason(test="test"), offset_pnl=True
+            loans_item,
+            BalanceSheetMetrics.get("impairment"),
+            -10000.0,
+            MutationReason(module="Test", rule="test_impairment", test="test"),
+            offset_pnl=True,
         )
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
@@ -128,7 +132,7 @@ class TestRunoff:
             BalanceSheetItem(SubItemType="Mortgages"),
             BalanceSheetMetrics.get("agio"),
             500.0,
-            MutationReason(test="test"),
+            MutationReason(module="Test", rule="test_agio", test="test"),
             offset_pnl=True,
         )
         bs.validate()

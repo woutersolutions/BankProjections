@@ -9,6 +9,7 @@ import polars as pl
 import xlsxwriter
 from loguru import logger
 
+from bank_projections.config import AggregationConfig
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.metrics.metrics import calculate_metrics
 from bank_projections.metrics.profitability import calculate_profitability
@@ -40,8 +41,7 @@ class ProjectionResult:
         }
 
     def to_excel(self, file_path: str, open_after: bool = False) -> None:
-        date_tag = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_path = file_path.replace(".xlsx", f"_{date_tag}.xlsx")
+        file_path = datetime.datetime.now().strftime(file_path)
 
         with xlsxwriter.Workbook(file_path) as workbook:
             for name, df in self.to_dict().items():
@@ -61,8 +61,8 @@ class Projection:
     def run(
         self,
         start_bs: BalanceSheet,
+        aggregation_config: AggregationConfig = AggregationConfig(),
         progress_callback: Callable[[int, int], None] | None = None,
-        aggregate_positions: bool = True,
     ) -> ProjectionResult:
         """Run the projection over the defined time horizon.
 
@@ -114,7 +114,7 @@ class Projection:
                 metrics_dict = calculate_metrics(bs)
                 metrics_df = pl.DataFrame(metrics_dict)
 
-                agg_bs, pnls, cashflows, ocis = bs.aggregate(aggregate_positions=aggregate_positions)
+                agg_bs, pnls, cashflows, ocis = bs.aggregate(aggregation_config)
                 balance_sheets.append(agg_bs)
                 pnls_list.append(pnls)
                 cashflows_list.append(cashflows)
@@ -123,9 +123,8 @@ class Projection:
                 oci_list.append(ocis)
 
                 for df in [agg_bs, pnls, cashflows, ocis, metrics_df]:
-                    if len(df) > 0:
-                        df.insert_column(0, pl.lit(scenario_name).alias("Scenario"))
-                        df.insert_column(1, pl.lit(increment.to_date).alias("ProjectionDate"))
+                    df.insert_column(0, pl.lit(scenario_name).alias("Scenario"))
+                    df.insert_column(1, pl.lit(increment.to_date).alias("ProjectionDate"))
 
                 profitability_dicts = calculate_profitability(metric_dicts, pnls_list, self.horizon)
                 profitability = pl.DataFrame(profitability_dicts)

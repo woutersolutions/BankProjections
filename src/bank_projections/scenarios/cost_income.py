@@ -19,18 +19,14 @@ class CostIncomeRule(AmountRuleBase):
         self.cashflow_date: datetime.date | None = None
         self.pnl_start: datetime.date | None = None
         self.pnl_end: datetime.date | None = None
-        self.rule = ""
 
         for key, value in rule_input.items():
             match strip_identifier(key):
                 case _ if pd.isna(value) or value == "":
                     pass
-                case _ if is_in_identifiers(key, Config.CASHFLOW_AGGREGATION_LABELS + Config.PNL_AGGREGATION_LABELS):
-                    label = get_identifier(key, Config.CASHFLOW_AGGREGATION_LABELS + Config.PNL_AGGREGATION_LABELS)
+                case _ if is_in_identifiers(key, Config.CASHFLOW_LABELS + Config.PNL_LABELS):
+                    label = get_identifier(key, Config.CASHFLOW_LABELS + Config.PNL_LABELS)
                     self.reason = self.reason.add_identifier(label, value)
-                case "rule":
-                    self.reason = self.reason.add_identifier("rule", value)
-                    self.rule = value
                 case "date":
                     self.cashflow_date = read_date(value)
                 case "pnlstart":
@@ -157,9 +153,7 @@ class CostIncomeRule(AmountRuleBase):
             if increment.contains(self.cashflow_date):
                 # First, recognize revenue/expense for the cashflow day itself
                 daily_amount = abs(self.amount) / days_in_period
-                bs.mutate_metric(
-                    bs_item, "Quantity", daily_amount, offset_pnl=True, reason=self.reason, relative=True
-                )
+                bs.mutate_metric(bs_item, "Quantity", daily_amount, offset_pnl=True, reason=self.reason, relative=True)
                 # Then settle the full accrued amount with cash
                 bs.mutate_metric(
                     bs_item, "Quantity", -abs(self.amount), offset_liquidity=True, reason=self.reason, relative=True

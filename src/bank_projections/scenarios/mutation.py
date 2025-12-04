@@ -30,7 +30,7 @@ class BalanceSheetMutationRule(AmountRuleBase):
         self.multiplicative = False
         self.offset_liquidity = False
         self.offset_pnl = False
-        self.reason = MutationReason(rule="BalanceSheetMutationRule")
+        self.reason = MutationReason(rule="BalanceSheetMutationRule", module="Mutation")
         self.date: datetime.date | None = None
         self.cohorts: list[Cohort] = []
 

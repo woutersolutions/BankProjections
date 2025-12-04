@@ -32,7 +32,7 @@ class TestBalanceSheetMethods:
         bs.cashflows = pl.DataFrame()
         bs.pnls = pl.DataFrame()
 
-        reason = MutationReason(action="test_mutation", test_name="test_mutate_quantity_with_cash_offset")
+        reason = MutationReason(module="Test", rule="test_mutate_quantity_with_cash_offset", action="test_mutation")
         bs.mutate_metric(
             loans_item,
             BalanceSheetMetrics.get("quantity"),
@@ -137,8 +137,9 @@ class TestBalanceSheetMethods:
 
         # Perform mutation
         reason = MutationReason(
+            module="Test",
+            rule="test_mutate_metric_with_offsets",
             action="test_mutation",
-            test_name="test_mutate_metric_with_offsets",
             metric=str(metric),
             asset_type=asset_type,
             offset_mode=offset_mode,

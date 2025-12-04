@@ -23,10 +23,20 @@ class ScenarioConfig(BaseModel):
     time_horizon: TimeHorizonConfig
 
 
+class AggregationConfig(BaseModel):
+    balance_sheet: list[str] | None = None
+    pnl: list[str] | None = None
+    cashflow: list[str] | None = None
+    oci: list[str] | None = None
+
+
+class OutputConfig(BaseModel):
+    output_folder: str
+    output_file: str
+    aggregation: AggregationConfig
+
+
 class Config:
-    CASHFLOW_AGGREGATION_LABELS = ["ItemType", "SubItemType"]
-    PNL_AGGREGATION_LABELS = ["ItemType", "SubItemType"]
-    OCI_AGGREGATION_LABELS = ["ItemType", "SubItemType"]
     BALANCE_SHEET_LABELS = [
         "ItemType",
         "SubItemType",
@@ -35,6 +45,10 @@ class Config:
         "ValuationCurve",
         "IsAccumulating",
     ]
+    CASHFLOW_LABELS = ["ItemType", "SubItemType", "module", "rule"]
+    PNL_LABELS = ["ItemType", "SubItemType", "module", "rule"]
+    OCI_LABELS = ["ItemType", "SubItemType", "module", "rule"]
+
     DATE_COLUMNS = ["OriginationDate", "MaturityDate", "PreviousCouponDate", "NextCouponDate"]
 
     CLASSIFICATIONS: dict[str, type[BaseRegistry[Any]]] = {
@@ -48,8 +62,6 @@ class Config:
         "HQLAClass": HQLARegistry,
         "Book": BookRegistry,
     }
-
-    BALANCE_SHEET_AGGREGATION_LABELS = ["ItemType", "SubItemType"] + list(CLASSIFICATIONS.keys())
 
     PROFITABILITY_OUTLOOKS: list[str] = ["Monthly", "Quarterly", "Annual"]
 

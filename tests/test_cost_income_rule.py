@@ -26,7 +26,6 @@ class TestCostIncomeRuleInit:
 
         assert rule.cashflow_date == datetime.date(2025, 1, 15)
         assert rule.amount == 1000.0
-        assert rule.rule == "test"
         assert rule.pnl_start is None
         assert rule.pnl_end is None
 

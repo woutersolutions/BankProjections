@@ -5,6 +5,7 @@ import datetime
 import polars as pl
 import pytest
 
+from bank_projections.config import AggregationConfig
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
@@ -50,19 +51,41 @@ class TestBalanceSheetCoverage:
         assert bs.get_amount(item, metric) == original_quantity
 
     def test_aggregate_method(self, minimal_scenario):
-        """Test the aggregate method."""
+        """Test the aggregate method with aggregation config."""
         bs = create_synthetic_balance_sheet(datetime.date(2024, 12, 31), scenario=minimal_scenario)
 
-        aggregated_data, aggregated_metadata, pnls, cashflows = bs.aggregate()
+        aggregation_config = AggregationConfig(
+            balance_sheet=["ItemType", "SubItemType"],
+            pnl=["ItemType", "SubItemType"],
+            cashflow=["ItemType", "SubItemType"],
+            oci=["ItemType", "SubItemType"],
+        )
+        aggregated_data, pnls, cashflows, ocis = bs.aggregate(aggregation_config)
 
         # Should return four DataFrames
         assert isinstance(aggregated_data, pl.DataFrame)
-        assert isinstance(aggregated_metadata, pl.DataFrame)
         assert isinstance(pnls, pl.DataFrame)
         assert isinstance(cashflows, pl.DataFrame)
+        assert isinstance(ocis, pl.DataFrame)
 
         # Aggregated data should have fewer rows than original (aggregation)
         assert len(aggregated_data) <= len(bs._data)
+
+    def test_aggregate_method_no_aggregation(self, minimal_scenario):
+        """Test the aggregate method without aggregation (None values)."""
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 12, 31), scenario=minimal_scenario)
+
+        aggregation_config = AggregationConfig()  # All None - no aggregation
+        aggregated_data, pnls, cashflows, ocis = bs.aggregate(aggregation_config)
+
+        # Should return four DataFrames
+        assert isinstance(aggregated_data, pl.DataFrame)
+        assert isinstance(pnls, pl.DataFrame)
+        assert isinstance(cashflows, pl.DataFrame)
+        assert isinstance(ocis, pl.DataFrame)
+
+        # Without aggregation, data should have same rows as original
+        assert len(aggregated_data) == len(bs._data)
 
     def test_get_differences_method(self, minimal_scenario):
         """Test the get_differences class method."""

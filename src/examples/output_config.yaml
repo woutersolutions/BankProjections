@@ -1,0 +1,8 @@
+output_folder: "output"
+output_file: "main example_%Y%m%d_%H%M%S.xlsx"
+
+aggregation:
+  balance_sheet: [ "ItemType", "SubItemType" ]
+  pnl: [ "ItemType", "SubItemType", "module", "rule" ]
+  cashflow: [ "ItemType", "SubItemType", "module", "rule" ]
+  oci: [ "ItemType", "SubItemType", "module", "rule" ]

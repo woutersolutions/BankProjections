@@ -462,3 +462,88 @@ class TestScenarioConfig:
         assert config.rule_paths == ["src/examples/scenarios"]
         assert config.time_horizon.start_date == datetime.date(2024, 12, 31)
         assert config.time_horizon.number_of_months == 12
+
+
+class TestAggregationConfig:
+    """Test AggregationConfig Pydantic model."""
+
+    def test_aggregation_config_defaults(self):
+        """Test AggregationConfig with default values (all None)."""
+        from bank_projections.config import AggregationConfig
+
+        config = AggregationConfig()
+
+        assert config.balance_sheet is None
+        assert config.pnl is None
+        assert config.cashflow is None
+        assert config.oci is None
+
+    def test_aggregation_config_with_values(self):
+        """Test AggregationConfig with explicit values."""
+        from bank_projections.config import AggregationConfig
+
+        config = AggregationConfig(
+            balance_sheet=["ItemType", "SubItemType"],
+            pnl=["ItemType", "SubItemType", "rule"],
+            cashflow=["ItemType"],
+            oci=["ItemType", "SubItemType"],
+        )
+
+        assert config.balance_sheet == ["ItemType", "SubItemType"]
+        assert config.pnl == ["ItemType", "SubItemType", "rule"]
+        assert config.cashflow == ["ItemType"]
+        assert config.oci == ["ItemType", "SubItemType"]
+
+    def test_aggregation_config_partial(self):
+        """Test AggregationConfig with only some values set."""
+        from bank_projections.config import AggregationConfig
+
+        config = AggregationConfig(balance_sheet=["ItemType"])
+
+        assert config.balance_sheet == ["ItemType"]
+        assert config.pnl is None
+        assert config.cashflow is None
+        assert config.oci is None
+
+
+class TestOutputConfig:
+    """Test OutputConfig Pydantic model."""
+
+    def test_output_config_creation(self):
+        """Test creating OutputConfig."""
+        from bank_projections.config import AggregationConfig, OutputConfig
+
+        aggregation = AggregationConfig(
+            balance_sheet=["ItemType", "SubItemType"],
+            pnl=["ItemType", "SubItemType", "module", "rule"],
+        )
+        config = OutputConfig(
+            output_folder="output",
+            output_file="test_%Y%m%d.xlsx",
+            aggregation=aggregation,
+        )
+
+        assert config.output_folder == "output"
+        assert config.output_file == "test_%Y%m%d.xlsx"
+        assert config.aggregation.balance_sheet == ["ItemType", "SubItemType"]
+
+    def test_output_config_from_yaml_dict(self):
+        """Test creating OutputConfig from dict (as loaded from YAML)."""
+        from bank_projections.config import OutputConfig
+
+        yaml_dict = {
+            "output_folder": "output",
+            "output_file": "main example_%Y%m%d_%H%M%S.xlsx",
+            "aggregation": {
+                "balance_sheet": ["ItemType", "SubItemType"],
+                "pnl": ["ItemType", "SubItemType", "module", "rule"],
+                "cashflow": ["ItemType", "SubItemType", "module", "rule"],
+                "oci": ["ItemType", "SubItemType", "module", "rule"],
+            },
+        }
+        config = OutputConfig(**yaml_dict)
+
+        assert config.output_folder == "output"
+        assert config.output_file == "main example_%Y%m%d_%H%M%S.xlsx"
+        assert config.aggregation.balance_sheet == ["ItemType", "SubItemType"]
+        assert config.aggregation.pnl == ["ItemType", "SubItemType", "module", "rule"]

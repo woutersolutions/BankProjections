@@ -5,6 +5,7 @@ import plotly.express as px
 import polars as pl
 import streamlit as st
 
+from bank_projections.config import AggregationConfig
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.valuation import Valuation
@@ -129,7 +130,9 @@ def main() -> None:
             progress_bar.progress(progress, text=f"Running projection: {current}/{total} time steps")
             status_text.text(f"Progress: {current}/{total} ({progress * 100:.1f}%)")
 
-        result = projection.run(start_bs, progress_callback=update_progress, aggregate_positions=False)
+        # Use AggregationConfig with all None to disable aggregation (show individual positions)
+        no_aggregation = AggregationConfig()
+        result = projection.run(start_bs, no_aggregation, progress_callback=update_progress)
         st.session_state.single_asset_result = result
 
         # Clear progress indicators
