@@ -4,7 +4,7 @@ from typing import Any
 import pandas as pd
 import polars as pl
 
-from bank_projections.config import Config
+from bank_projections.app_config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics

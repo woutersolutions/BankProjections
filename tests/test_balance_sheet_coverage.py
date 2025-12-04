@@ -5,10 +5,10 @@ import datetime
 import polars as pl
 import pytest
 
-from bank_projections.config import AggregationConfig
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
+from bank_projections.output_config import AggregationConfig
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 

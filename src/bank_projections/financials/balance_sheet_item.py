@@ -4,7 +4,7 @@ from typing import Any
 import pandas as pd
 import polars as pl
 
-from bank_projections.config import Config
+from bank_projections.app_config import Config
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.utils.base_registry import BaseRegistry
 from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_date, strip_identifier
@@ -25,13 +25,13 @@ class BalanceSheetItem:
     def _add_identifier(identifiers: dict[str, Any], key: str, value: Any) -> None:
         if pd.isna(value) or value == "":
             raise ValueError(f"BalanceSheetItem {key} cannot be '{value}'")
-        elif is_in_identifiers(key, Config.BALANCE_SHEET_LABELS):
-            key = get_identifier(key, Config.BALANCE_SHEET_LABELS)
-        elif is_in_identifiers(key, Config.DATE_COLUMNS):
-            key = get_identifier(key, Config.DATE_COLUMNS)
+        elif is_in_identifiers(key, Config.balance_sheet_labels()):
+            key = get_identifier(key, Config.balance_sheet_labels())
+        elif is_in_identifiers(key, Config.date_columns()):
+            key = get_identifier(key, Config.date_columns())
             value = read_date(value)
-        elif is_in_identifiers(key, Config.CLASSIFICATIONS):
-            key = get_identifier(key, Config.CLASSIFICATIONS)
+        elif is_in_identifiers(key, Config.get_classifications()):
+            key = get_identifier(key, Config.get_classifications())
             value = strip_identifier(value)
         else:
             raise ValueError(

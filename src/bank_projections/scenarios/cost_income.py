@@ -3,7 +3,7 @@ from typing import Any
 
 import pandas as pd
 
-from bank_projections.config import Config
+from bank_projections.app_config import Config
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.market_data import MarketRates
@@ -24,8 +24,8 @@ class CostIncomeRule(AmountRuleBase):
             match strip_identifier(key):
                 case _ if pd.isna(value) or value == "":
                     pass
-                case _ if is_in_identifiers(key, Config.CASHFLOW_LABELS + Config.PNL_LABELS):
-                    label = get_identifier(key, Config.CASHFLOW_LABELS + Config.PNL_LABELS)
+                case _ if is_in_identifiers(key, Config.cashflow_labels() + Config.pnl_labels()):
+                    label = get_identifier(key, Config.cashflow_labels() + Config.pnl_labels())
                     self.reason = self.reason.add_identifier(label, value)
                 case "date":
                     self.cashflow_date = read_date(value)

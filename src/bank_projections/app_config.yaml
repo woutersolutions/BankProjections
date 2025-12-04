@@ -1,0 +1,48 @@
+labels:
+  balance_sheet:
+    - ItemType
+    - SubItemType
+    - Currency
+    - ReferenceRate
+    - ValuationCurve
+    - IsAccumulating
+
+  cashflow:
+    - ItemType
+    - SubItemType
+    - module
+    - rule
+
+  pnl:
+    - ItemType
+    - SubItemType
+    - module
+    - rule
+
+  oci:
+    - ItemType
+    - SubItemType
+    - module
+    - rule
+
+  date_columns:
+    - OriginationDate
+    - MaturityDate
+    - PreviousCouponDate
+    - NextCouponDate
+
+classifications:
+  BalanceSheetCategory: bank_projections.financials.balance_sheet_category.BalanceSheetCategoryRegistry
+  AccountingMethod: bank_projections.financials.accounting_method.AccountingMethodRegistry
+  ValuationMethod: bank_projections.projections.valuation_method.ValuationMethodRegistry
+  CouponFrequency: bank_projections.projections.frequency.FrequencyRegistry
+  RedemptionType: bank_projections.projections.redemption.RedemptionRegistry
+  CouponType: bank_projections.projections.coupon_type.CouponTypeRegistry
+  IFRS9Stage: bank_projections.financials.stage.IFRS9StageRegistry
+  HQLAClass: bank_projections.financials.hqla_class.HQLARegistry
+  Book: bank_projections.projections.book.BookRegistry
+
+profitability_outlooks:
+  - Monthly
+  - Quarterly
+  - Annual

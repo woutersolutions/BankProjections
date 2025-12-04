@@ -2,7 +2,7 @@ from typing import Any
 
 import polars as pl
 
-from bank_projections.config import Config
+from bank_projections.app_config import Config
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.utils.date import add_months, is_end_of_month
 from bank_projections.utils.time import TimeHorizon
@@ -16,8 +16,8 @@ def calculate_profitability(
     if not is_end_of_month(current_date):
         return []
 
-    for outlook in Config.PROFITABILITY_OUTLOOKS:
-        # Config.PROFITABILITY_OUTLOOKS only contains monthly-based frequencies (Monthly, Quarterly, Annual)
+    for outlook in Config.profitability_outlooks:
+        # Config.PROFITABILITY_OUTLOOKS() only contains monthly-based frequencies (Monthly, Quarterly, Annual)
         number_of_months = FrequencyRegistry.get(outlook).number_of_months  # type: ignore[attr-defined]
         horizon_start_date = add_months(current_date, -number_of_months, make_end_of_month=True)
         find_index = [i for i, date in enumerate(horizon.dates) if date == horizon_start_date]

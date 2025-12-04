@@ -1,9 +1,11 @@
+from pydantic import BaseModel
+
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.market_data import MarketData, MarketRates
 from bank_projections.projections.rule import Rule
 from bank_projections.utils.combine import Combinable
 from bank_projections.utils.logging import log_iterator
-from bank_projections.utils.time import TimeIncrement
+from bank_projections.utils.time import TimeHorizonConfig, TimeIncrement
 
 
 class Scenario(Rule, Combinable):
@@ -22,3 +24,8 @@ class Scenario(Rule, Combinable):
         combined_rules = {**self.rules, **other.rules}
         combined_market_data = self.market_data.combine(other.market_data)
         return Scenario(combined_rules, combined_market_data)
+
+
+class ScenarioConfig(BaseModel):
+    rule_paths: list[str]
+    time_horizon: TimeHorizonConfig

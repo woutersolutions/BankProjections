@@ -9,10 +9,10 @@ import polars as pl
 import xlsxwriter
 from loguru import logger
 
-from bank_projections.config import AggregationConfig
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.metrics.metrics import calculate_metrics
 from bank_projections.metrics.profitability import calculate_profitability
+from bank_projections.output_config import AggregationConfig
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.logging import log_iterator
 from bank_projections.utils.time import TimeHorizon

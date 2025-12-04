@@ -5,7 +5,7 @@ import plotly.express as px
 import polars as pl
 import streamlit as st
 
-from bank_projections.config import AggregationConfig
+from bank_projections.output_config import AggregationConfig
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.valuation import Valuation

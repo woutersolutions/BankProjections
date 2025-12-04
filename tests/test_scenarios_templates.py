@@ -427,7 +427,7 @@ class TestScenarioConfig:
 
     def test_scenario_config_creation(self):
         """Test creating ScenarioConfig."""
-        from bank_projections.config import ScenarioConfig
+        from bank_projections.scenarios.scenario import ScenarioConfig
         from bank_projections.utils.time import TimeHorizonConfig
 
         time_horizon = TimeHorizonConfig(
@@ -447,7 +447,7 @@ class TestScenarioConfig:
 
     def test_scenario_config_from_yaml_dict(self):
         """Test creating ScenarioConfig from dict (as loaded from YAML)."""
-        from bank_projections.config import ScenarioConfig
+        from bank_projections.scenarios.scenario import ScenarioConfig
 
         yaml_dict = {
             "rule_paths": ["src/examples/scenarios"],
@@ -469,7 +469,7 @@ class TestAggregationConfig:
 
     def test_aggregation_config_defaults(self):
         """Test AggregationConfig with default values (all None)."""
-        from bank_projections.config import AggregationConfig
+        from bank_projections.output_config import AggregationConfig
 
         config = AggregationConfig()
 
@@ -480,7 +480,7 @@ class TestAggregationConfig:
 
     def test_aggregation_config_with_values(self):
         """Test AggregationConfig with explicit values."""
-        from bank_projections.config import AggregationConfig
+        from bank_projections.output_config import AggregationConfig
 
         config = AggregationConfig(
             balance_sheet=["ItemType", "SubItemType"],
@@ -496,7 +496,7 @@ class TestAggregationConfig:
 
     def test_aggregation_config_partial(self):
         """Test AggregationConfig with only some values set."""
-        from bank_projections.config import AggregationConfig
+        from bank_projections.output_config import AggregationConfig
 
         config = AggregationConfig(balance_sheet=["ItemType"])
 
@@ -511,7 +511,7 @@ class TestOutputConfig:
 
     def test_output_config_creation(self):
         """Test creating OutputConfig."""
-        from bank_projections.config import AggregationConfig, OutputConfig
+        from bank_projections.output_config import AggregationConfig, OutputConfig
 
         aggregation = AggregationConfig(
             balance_sheet=["ItemType", "SubItemType"],
@@ -529,7 +529,7 @@ class TestOutputConfig:
 
     def test_output_config_from_yaml_dict(self):
         """Test creating OutputConfig from dict (as loaded from YAML)."""
-        from bank_projections.config import OutputConfig
+        from bank_projections.output_config import OutputConfig
 
         yaml_dict = {
             "output_folder": "output",

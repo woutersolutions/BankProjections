@@ -2,10 +2,11 @@ import os
 
 import yaml
 
-from bank_projections.config import OutputConfig, ScenarioConfig
+from bank_projections.output_config import OutputConfig
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.valuation import Valuation
+from bank_projections.scenarios.scenario import ScenarioConfig
 from bank_projections.scenarios.template_registry import TemplateRegistry
 from bank_projections.utils.logging import setup_logger_format_with_context
 from bank_projections.utils.time import TimeHorizon
