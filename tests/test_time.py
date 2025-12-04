@@ -2,7 +2,7 @@
 
 import datetime
 
-from bank_projections.utils.time import TimeHorizon, TimeIncrement, to_end_of_month
+from bank_projections.utils.time import TimeHorizon, TimeHorizonConfig, TimeIncrement, to_end_of_month
 
 
 class TestTimeIncrement:
@@ -287,3 +287,140 @@ class TestTimeHorizon:
 
         assert horizon.start_date == datetime.date(2024, 1, 1)
         assert horizon.end_date == datetime.date(2024, 3, 1)
+
+
+class TestTimeHorizonConfig:
+    """Test TimeHorizonConfig Pydantic model."""
+
+    def test_config_defaults(self) -> None:
+        """Test that TimeHorizonConfig has correct defaults."""
+        config = TimeHorizonConfig(start_date=datetime.date(2024, 1, 1))
+
+        assert config.start_date == datetime.date(2024, 1, 1)
+        assert config.number_of_days == 0
+        assert config.number_of_weeks == 0
+        assert config.number_of_months == 0
+        assert config.number_of_quarters == 0
+        assert config.number_of_years == 0
+        assert config.end_of_month is None
+
+    def test_config_with_all_fields(self) -> None:
+        """Test TimeHorizonConfig with all fields populated."""
+        config = TimeHorizonConfig(
+            start_date=datetime.date(2024, 12, 31),
+            number_of_days=3,
+            number_of_weeks=2,
+            number_of_months=12,
+            number_of_quarters=4,
+            number_of_years=2,
+            end_of_month=True,
+        )
+
+        assert config.start_date == datetime.date(2024, 12, 31)
+        assert config.number_of_days == 3
+        assert config.number_of_weeks == 2
+        assert config.number_of_months == 12
+        assert config.number_of_quarters == 4
+        assert config.number_of_years == 2
+        assert config.end_of_month is True
+
+    def test_config_from_dict(self) -> None:
+        """Test creating TimeHorizonConfig from dict (as from YAML)."""
+        config_dict = {
+            "start_date": "2024-12-31",
+            "number_of_months": 12,
+            "end_of_month": True,
+        }
+        config = TimeHorizonConfig(**config_dict)
+
+        assert config.start_date == datetime.date(2024, 12, 31)
+        assert config.number_of_months == 12
+        assert config.end_of_month is True
+
+
+class TestTimeHorizonFromConfig:
+    """Test TimeHorizon.from_config class method."""
+
+    def test_from_config_basic(self) -> None:
+        """Test from_config with basic configuration."""
+        config = TimeHorizonConfig(
+            start_date=datetime.date(2024, 1, 1),
+            number_of_months=2,
+        )
+        horizon = TimeHorizon.from_config(config)
+
+        expected_dates = [
+            datetime.date(2024, 1, 1),
+            datetime.date(2024, 2, 1),
+            datetime.date(2024, 3, 1),
+        ]
+        assert horizon.dates == expected_dates
+
+    def test_from_config_with_end_of_month(self) -> None:
+        """Test from_config with end_of_month=True."""
+        config = TimeHorizonConfig(
+            start_date=datetime.date(2024, 12, 31),
+            number_of_months=3,
+            end_of_month=True,
+        )
+        horizon = TimeHorizon.from_config(config)
+
+        expected_dates = [
+            datetime.date(2024, 12, 31),
+            datetime.date(2025, 1, 31),
+            datetime.date(2025, 2, 28),
+            datetime.date(2025, 3, 31),
+        ]
+        assert horizon.dates == expected_dates
+
+    def test_from_config_auto_detect_end_of_month(self) -> None:
+        """Test from_config auto-detects end_of_month from start date."""
+        config = TimeHorizonConfig(
+            start_date=datetime.date(2024, 1, 31),  # End of month
+            number_of_months=2,
+        )
+        horizon = TimeHorizon.from_config(config)
+
+        expected_dates = [
+            datetime.date(2024, 1, 31),
+            datetime.date(2024, 2, 29),  # Leap year
+            datetime.date(2024, 3, 31),
+        ]
+        assert horizon.dates == expected_dates
+
+    def test_from_config_matches_from_numbers(self) -> None:
+        """Test that from_config produces same results as from_numbers."""
+        config = TimeHorizonConfig(
+            start_date=datetime.date(2024, 1, 1),
+            number_of_days=3,
+            number_of_weeks=2,
+            number_of_months=6,
+            number_of_years=1,
+            end_of_month=False,
+        )
+        horizon_from_config = TimeHorizon.from_config(config)
+        horizon_from_numbers = TimeHorizon.from_numbers(
+            start_date=datetime.date(2024, 1, 1),
+            number_of_days=3,
+            number_of_weeks=2,
+            number_of_months=6,
+            number_of_years=1,
+            end_of_month=False,
+        )
+
+        assert horizon_from_config.dates == horizon_from_numbers.dates
+
+    def test_from_config_with_quarters(self) -> None:
+        """Test from_config with quarters."""
+        config = TimeHorizonConfig(
+            start_date=datetime.date(2024, 1, 1),
+            number_of_quarters=2,
+        )
+        horizon = TimeHorizon.from_config(config)
+
+        expected_dates = [
+            datetime.date(2024, 1, 1),
+            datetime.date(2024, 2, 1),  # 3 months = 1 quarter (uses months * (i + 1) where i starts at 0)
+            datetime.date(2024, 5, 1),  # 6 months = 2 quarters
+        ]
+        assert horizon.dates == expected_dates

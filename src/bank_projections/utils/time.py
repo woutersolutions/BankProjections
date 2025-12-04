@@ -3,6 +3,17 @@ import datetime
 from collections.abc import Iterator
 
 from dateutil.relativedelta import relativedelta
+from pydantic import BaseModel
+
+
+class TimeHorizonConfig(BaseModel):
+    start_date: datetime.date
+    number_of_days: int = 0
+    number_of_weeks: int = 0
+    number_of_months: int = 0
+    number_of_quarters: int = 0
+    number_of_years: int = 0
+    end_of_month: bool | None = None
 
 
 class TimeHorizon:
@@ -19,6 +30,41 @@ class TimeHorizon:
 
     def __len__(self) -> int:
         return len(self.dates)
+
+    @classmethod
+    def from_config(cls, cfg: TimeHorizonConfig) -> "TimeHorizon":
+        start_date = cfg.start_date
+        end_of_month = cfg.end_of_month
+        if end_of_month is None:
+            end_of_month = start_date.day == calendar.monthrange(start_date.year, start_date.month)[1]
+
+        dates: list[datetime.date] = [start_date]
+
+        for i in range(cfg.number_of_days):
+            dates.append(start_date + relativedelta(days=i + 1))
+
+        for i in range(cfg.number_of_weeks):
+            dates.append(start_date + relativedelta(weeks=i + 1))
+
+        for i in range(cfg.number_of_months):
+            projection_date = start_date + relativedelta(months=i + 1)
+            if end_of_month:
+                projection_date = to_end_of_month(projection_date)
+            dates.append(projection_date)
+
+        for i in range(cfg.number_of_quarters):
+            projection_date = start_date + relativedelta(months=3 * i + 1)
+            if end_of_month:
+                projection_date = to_end_of_month(projection_date)
+            dates.append(projection_date)
+
+        for i in range(cfg.number_of_years):
+            projection_date = start_date + relativedelta(years=i + 1)
+            if end_of_month:
+                projection_date = to_end_of_month(projection_date)
+            dates.append(projection_date)
+
+        return cls(dates)
 
     @staticmethod
     def from_numbers(

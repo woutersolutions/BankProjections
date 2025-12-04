@@ -2,6 +2,7 @@
 from typing import Any
 
 import polars as pl
+from pydantic import BaseModel
 
 from bank_projections.financials.accounting_method import AccountingMethodRegistry
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
@@ -14,6 +15,12 @@ from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
 from bank_projections.utils.base_registry import BaseRegistry
+from bank_projections.utils.time import TimeHorizonConfig
+
+
+class ScenarioConfig(BaseModel):
+    rule_paths: list[str]
+    time_horizon: TimeHorizonConfig
 
 
 class Config:

@@ -20,6 +20,32 @@ from bank_projections.utils.parsing import is_in_identifiers, strip_identifier
 
 
 class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
+
+    @classmethod
+    def load_paths(cls, paths: list[str]) -> Scenario:
+        scenario_list = []
+        for path in paths:
+            scenario = cls.load_path(path)
+            scenario_list.append(scenario)
+        return Scenario.combine_list(scenario_list)
+
+    @classmethod
+    def load_path(cls, path: str) -> Scenario:
+
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Path does not exist: {path}")
+
+        if os.path.isdir(path):
+            return cls.load_folder(path)
+
+        name, extension = os.path.splitext(path)
+
+        match extension:
+            case ".xlsx" | ".xls":
+                return cls.load_excel(path)
+            case _:
+                raise ValueError(f"Unsupported file type: {extension}")
+
     @classmethod
     def load_folder(cls, folder_path: str) -> Scenario:
         # Iterate over files in folder and load all Excel files
@@ -29,19 +55,9 @@ class TemplateRegistry(BaseRegistry[ScenarioTemplate]):
             if file_name.startswith("~$"):
                 continue
 
-            scenario = cls.load_file(os.path.join(folder_path, file_name))
+            scenario = cls.load_path(os.path.join(folder_path, file_name))
             scenario_list.append(scenario)
         return Scenario.combine_list(scenario_list)
-
-    @classmethod
-    def load_file(cls, file_path: str) -> Scenario:
-        name, extension = os.path.splitext(file_path)
-
-        match extension:
-            case ".xlsx" | ".xls":
-                return cls.load_excel(file_path)
-            case _:
-                raise ValueError(f"Unsupported file type: {extension}")
 
     @classmethod
     def load_excel(cls, file_path: str) -> Scenario:

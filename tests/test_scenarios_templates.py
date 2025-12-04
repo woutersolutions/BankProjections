@@ -19,6 +19,7 @@ from bank_projections.scenarios.template import (
 from bank_projections.scenarios.template_registry import TemplateRegistry
 from bank_projections.utils.parsing import read_bool, read_date
 from bank_projections.utils.time import TimeIncrement
+from examples import EXAMPLE_FOLDER
 
 
 class TestReadBool:
@@ -395,3 +396,69 @@ class TestKeyValueTemplate:
 
         template = KeyValueTemplate(KeyValueRuleBase)
         assert template.rule_type == KeyValueRuleBase
+
+
+class TestTemplateRegistryLoadPaths:
+    """Test TemplateRegistry.load_paths method."""
+
+    def test_load_paths_with_folder(self):
+        """Test load_paths with a folder path."""
+        scenario = TemplateRegistry.load_paths([os.path.join(EXAMPLE_FOLDER, "scenarios")])
+        assert scenario is not None
+        assert len(scenario.rules) > 0
+
+    def test_load_paths_with_multiple_paths(self):
+        """Test load_paths combines multiple paths."""
+        paths = [os.path.join(EXAMPLE_FOLDER, "scenarios")]
+        scenario = TemplateRegistry.load_paths(paths)
+        assert scenario is not None
+
+    def test_load_paths_matches_load_folder(self):
+        """Test that load_paths with single folder matches load_folder."""
+        folder_path = os.path.join(EXAMPLE_FOLDER, "scenarios")
+        scenario_from_paths = TemplateRegistry.load_paths([folder_path])
+        scenario_from_folder = TemplateRegistry.load_folder(folder_path)
+
+        assert set(scenario_from_paths.rules.keys()) == set(scenario_from_folder.rules.keys())
+
+
+class TestScenarioConfig:
+    """Test ScenarioConfig Pydantic model."""
+
+    def test_scenario_config_creation(self):
+        """Test creating ScenarioConfig."""
+        from bank_projections.config import ScenarioConfig
+        from bank_projections.utils.time import TimeHorizonConfig
+
+        time_horizon = TimeHorizonConfig(
+            start_date=datetime.date(2024, 12, 31),
+            number_of_months=12,
+            end_of_month=True,
+        )
+        config = ScenarioConfig(
+            rule_paths=["src/examples/scenarios"],
+            time_horizon=time_horizon,
+        )
+
+        assert config.rule_paths == ["src/examples/scenarios"]
+        assert config.time_horizon.start_date == datetime.date(2024, 12, 31)
+        assert config.time_horizon.number_of_months == 12
+        assert config.time_horizon.end_of_month is True
+
+    def test_scenario_config_from_yaml_dict(self):
+        """Test creating ScenarioConfig from dict (as loaded from YAML)."""
+        from bank_projections.config import ScenarioConfig
+
+        yaml_dict = {
+            "rule_paths": ["src/examples/scenarios"],
+            "time_horizon": {
+                "start_date": "2024-12-31",
+                "number_of_months": 12,
+                "end_of_month": True,
+            },
+        }
+        config = ScenarioConfig(**yaml_dict)
+
+        assert config.rule_paths == ["src/examples/scenarios"]
+        assert config.time_horizon.start_date == datetime.date(2024, 12, 31)
+        assert config.time_horizon.number_of_months == 12

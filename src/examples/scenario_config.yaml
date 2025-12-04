@@ -1,0 +1,12 @@
+# Scenario Configuration
+# Settings that vary between different scenario runs.
+
+# Excel files or folders
+rule_paths:
+  - "src/examples/scenarios"
+
+# Time horizon for projections
+time_horizon:
+  start_date: "2024-12-31"
+  number_of_months: 12
+  end_of_month: true
