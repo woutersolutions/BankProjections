@@ -189,12 +189,14 @@ def generate_synthetic_positions(
         df_dict["Notional"] = notionals
     else:
         df_dict["BookValue"] = book_values
+        df_dict["Notional"] = 0.0
 
     df = (
         pl.DataFrame(
             df_dict,
             schema_overrides={
                 "MaturityDate": pl.Date,
+                "Notional": pl.Float64,
             },
         )
         .with_columns(
@@ -242,8 +244,9 @@ def generate_synthetic_positions(
         # where scale_factor ensures: sum(Notional * scale_factor * (CleanPrice + AccruedInterestWeight)) = book_value
         denominator = (pl.col("Notional") * (pl.col("CleanPrice") + pl.col("AccruedInterestWeight"))).sum()
         df = df.with_columns(
-            Quantity=pl.when(denominator != 0.0).then(book_value / denominator * pl.col("Notional")).otherwise(0.0)
-        ).drop("Notional")
+            Quantity=pl.lit(0.0),
+            Notional=pl.when(denominator != 0.0).then(book_value / denominator * pl.col("Notional")).otherwise(0.0),
+        )
     else:
         # For book_value instruments, derive Quantity from BookValue
         # For amortized cost: BookValue = Quantity + Agio + AccruedInterest + Impairment
@@ -278,7 +281,7 @@ def generate_synthetic_positions(
             pl.when(pl.col("AccountingMethod") == "amortizedcost")
             .then(0.0)
             .otherwise(
-                pl.col("CleanPrice") * pl.col("Quantity")
+                pl.col("CleanPrice") * (pl.col("Quantity") + pl.col("Notional"))
                 - pl.col("Quantity")
                 - pl.col("Impairment")
                 - pl.col("AccruedInterest")
@@ -292,7 +295,9 @@ def generate_synthetic_positions(
 
     # Always validate book_value matches target (works for both notional and non-notional instruments)
     generated_bv = positions.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book_value"))
-    assert abs(generated_bv - book_value) < 1e-2, f"Generated book value not equal to target {book_value}"
+    assert abs(generated_bv - book_value) < 1e-2, (
+        f"Generated book value {generated_bv} not equal to target {book_value}"
+    )
 
     return positions
 

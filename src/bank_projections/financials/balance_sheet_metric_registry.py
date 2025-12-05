@@ -37,6 +37,7 @@ BalanceSheetMetrics.register("Undrawn", StoredAmount("Undrawn"))
 BalanceSheetMetrics.register("Agio", StoredAmount("Agio"))
 BalanceSheetMetrics.register("CleanPrice", StoredWeight("CleanPrice"))
 BalanceSheetMetrics.register("OtherOffBalanceWeight", StoredWeight("OtherOffBalanceWeight"))
+BalanceSheetMetrics.register("Notional", StoredAmount("Notional"))
 
 BalanceSheetMetrics.register("DirtyPrice", DirtyPrice())
 BalanceSheetMetrics.register("ValuationError", StoredWeight("ValuationError"))

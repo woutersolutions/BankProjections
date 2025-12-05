@@ -20,10 +20,12 @@ class Valuation(Rule):
         bs._data = ValuationMethodRegistry.corrected_dirty_price(
             bs._data, increment.to_date, zero_rates, "NewDirtyPrice"
         )
-        new_clean_prices = pl.col("NewDirtyPrice") - pl.col("AccruedInterest") / (pl.col("Quantity") + SMALL_NUMBER)
+        new_clean_prices = pl.col("NewDirtyPrice") - pl.col("AccruedInterest") / (
+            pl.col("Quantity") + pl.col("Notional") + SMALL_NUMBER
+        )
 
         new_fair_value_adjustment = (
-            pl.col("NewDirtyPrice") * pl.col("Quantity")
+            pl.col("NewDirtyPrice") * (pl.col("Quantity") + pl.col("Notional"))
             - pl.col("AccruedInterest")
             - pl.col("Quantity")
             - pl.col("Impairment")
