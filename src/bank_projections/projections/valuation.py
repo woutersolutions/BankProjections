@@ -22,27 +22,35 @@ class Valuation(Rule):
         )
         new_clean_prices = pl.col("NewDirtyPrice") - pl.col("AccruedInterest") / (pl.col("Quantity") + SMALL_NUMBER)
 
-        signs = BalanceSheetCategoryRegistry.book_value_sign()
+        new_fair_value_adjustment = (
+            pl.col("NewDirtyPrice") * pl.col("Quantity")
+            - pl.col("AccruedInterest")
+            - pl.col("Quantity")
+            - pl.col("Impairment")
+        )
+        income = BalanceSheetCategoryRegistry.book_value_sign() * (
+            new_fair_value_adjustment - pl.col("FairValueAdjustment")
+        )
 
         bs.mutate(
-            BalanceSheetItem(),
+            BalanceSheetItem(AccountingMethod="fairvaluethroughpnl")
+            | BalanceSheetItem(AccountingMethod="fairvaluethroughoci"),
             pnls={
-                MutationReason(module="Valuation", rule="Net gains fair value through P&L"): signs
-                * pl.when(pl.col("AccountingMethod") == "fairvaluethroughpnl")
-                .then((new_clean_prices - pl.col("CleanPrice")) * pl.col("Quantity"))
+                MutationReason(module="Valuation", rule="Net gains fair value through P&L"): pl.when(
+                    pl.col("AccountingMethod") == "fairvaluethroughpnl"
+                )
+                .then(income)
                 .otherwise(0.0),
             },
             ocis={
-                MutationReason(module="Valuation", rule="Net gains fair value through OCI"): signs
-                * pl.when(pl.col("AccountingMethod") == "fairvaluethroughoci")
-                .then((new_clean_prices - pl.col("CleanPrice")) * pl.col("Quantity"))
+                MutationReason(module="Valuation", rule="Net gains fair value through OCI"): pl.when(
+                    pl.col("AccountingMethod") == "fairvaluethroughoci"
+                )
+                .then(income)
                 .otherwise(0.0),
             },
             CleanPrice=new_clean_prices,
-            FairValueAdjustment=pl.col("NewDirtyPrice")
-            - pl.col("AccruedInterest")
-            - pl.col("Quantity")
-            - pl.col("Impairment"),
+            FairValueAdjustment=new_fair_value_adjustment,
         )
 
         bs._data = bs._data.drop("NewDirtyPrice")

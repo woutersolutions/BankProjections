@@ -53,11 +53,7 @@ BalanceSheetMetrics.register("BookValue", BookValue())
 class BookValueSigned(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return BalanceSheetCategoryRegistry.book_value_sign() * (
-            pl.when(pl.col("AccountingMethod") == "amortizedcost")
-            .then(pl.col("Quantity") + pl.col("Agio") + pl.col("AccruedInterest") + pl.col("Impairment"))
-            .otherwise(pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest") + pl.col("Agio"))
-        )
+        return BalanceSheetCategoryRegistry.book_value_sign() * BookValue().get_expression
 
     @property
     def aggregation_expression(self) -> pl.Expr:

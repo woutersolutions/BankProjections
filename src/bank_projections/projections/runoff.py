@@ -105,18 +105,6 @@ class Runoff(Rule):
                 .then(pl.col("Quantity") * (1 - repayment_factors) * prepayment_factors)
                 .otherwise(0.0),
             },
-            ocis={
-                MutationReason(module="Runoff", rule="Net gains fair value through OCI"): signs
-                * pl.when(
-                    (pl.col("AccountingMethod") == "fairvaluethroughoci") & RedemptionRegistry.has_principal_exchange()
-                )
-                .then(-(new_quantity - pl.col("Quantity")) * (1 - pl.col("CleanPrice")))
-                .when(
-                    (pl.col("AccountingMethod") == "fairvaluethroughoci") & ~RedemptionRegistry.has_principal_exchange()
-                )
-                .then((new_quantity - pl.col("Quantity")) * pl.col("CleanPrice"))
-                .otherwise(0.0)
-            },
             Quantity=new_quantity,
             AccruedInterest=new_accrual,
             Agio=new_agio,

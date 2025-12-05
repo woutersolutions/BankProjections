@@ -275,10 +275,14 @@ def generate_synthetic_positions(
             pl.col("CalculatedPrice"), pl.col("CleanPrice") + pl.col("AccruedInterestWeight")
         ).alias("ValuationError"),
         (
-            pl.col("CleanPrice") * pl.col("Quantity")
-            - pl.col("Quantity")
-            - pl.col("Impairment")
-            - pl.col("AccruedInterest")
+            pl.when(pl.col("AccountingMethod") == "amortizedcost")
+            .then(0.0)
+            .otherwise(
+                pl.col("CleanPrice") * pl.col("Quantity")
+                - pl.col("Quantity")
+                - pl.col("Impairment")
+                - pl.col("AccruedInterest")
+            )
         ).alias("FairValueAdjustment"),
     ).drop(["AgioWeight", "AccruedInterestWeight", "UndrawnPortion", "CoverageRate", "CalculatedPrice"])
 

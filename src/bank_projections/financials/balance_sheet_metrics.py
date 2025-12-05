@@ -160,11 +160,7 @@ class OnBalanceExposure(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
         # BookValue without (AC) impairments
-        return (
-            pl.when(pl.col("AccountingMethod") == "amortizedcost")
-            .then(pl.col("Quantity") + pl.col("Agio") + pl.col("AccruedInterest"))
-            .otherwise(pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest") + pl.col("Agio"))
-        )
+        return pl.col("Quantity") + pl.col("Agio") + pl.col("AccruedInterest") + pl.col("FairValueAdjustment")
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -205,9 +201,11 @@ class BookValue(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
         return (
-            pl.when(pl.col("AccountingMethod") == "amortizedcost")
-            .then(pl.col("Quantity") + pl.col("Agio") + pl.col("AccruedInterest") + pl.col("Impairment"))
-            .otherwise(pl.col("Quantity") * pl.col("CleanPrice") + pl.col("AccruedInterest") + pl.col("Agio"))
+            pl.col("Quantity")
+            + pl.col("Agio")
+            + pl.col("AccruedInterest")
+            + pl.col("Impairment")
+            + pl.col("FairValueAdjustment")
         )
 
     @property
