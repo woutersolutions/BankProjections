@@ -70,7 +70,7 @@ class TestBalanceSheetMethods:
             (BalanceSheetMetrics.get("impairment"), "Mortgages"),
             (BalanceSheetMetrics.get("accrued_interest"), "Fixed Debt securities"),
             (BalanceSheetMetrics.get("agio"), "Fixed Debt securities"),
-            (BalanceSheetMetrics.get("clean_price"), "Fixed Debt securities"),
+            (BalanceSheetMetrics.get("dirty_price"), "Fixed Debt securities"),
             # Include derived, but updatable metrics (weights)
             (BalanceSheetMetrics.get("coverage_rate"), "Mortgages"),
             (BalanceSheetMetrics.get("accrued_interest_weight"), "Fixed Debt securities"),
@@ -84,12 +84,12 @@ class TestBalanceSheetMethods:
         initial_value = bs.get_amount(item, metric)
 
         # Choose a sensible mutation target per metric type and relative mode
-        if metric == BalanceSheetMetrics.get("clean_price"):
+        if metric == BalanceSheetMetrics.get("dirty_price"):
             if relative:
-                mutation_amount = 5.0  # add 5 to current clean price (weighted)
+                mutation_amount = 0.05  # add 5% to current dirty price (weighted)
                 expected_value = initial_value + mutation_amount
             else:
-                mutation_amount = 105.0  # set clean price to a fixed realistic value
+                mutation_amount = 1.05  # set dirty price to a fixed realistic value
                 expected_value = mutation_amount
         elif metric in {
             BalanceSheetMetrics.get("coverage_rate"),
@@ -154,7 +154,17 @@ class TestBalanceSheetMethods:
         )
 
         # If offsetting, check that cashflows or pnls were recorded appropriately
-        if offset_item:
+        # Note: Weight-only metrics (dirty_price, coverage_rate, etc.) don't affect book value
+        # and therefore don't produce offsets
+        weight_only_metrics = {
+            BalanceSheetMetrics.get("dirty_price"),
+            BalanceSheetMetrics.get("coverage_rate"),
+            BalanceSheetMetrics.get("accrued_interest_weight"),
+            BalanceSheetMetrics.get("agio_weight"),
+        }
+        is_weight_only = metric in weight_only_metrics
+
+        if offset_item and not is_weight_only:
             if offset_mode == "cash":
                 assert len(bs.cashflows) > 0, "Cashflows should be recorded for liquidity offset"
                 # Verify some cashflow was recorded (amount can vary based on complex book value calculations)

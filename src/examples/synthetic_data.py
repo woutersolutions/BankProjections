@@ -103,6 +103,7 @@ def generate_synthetic_positions(
     trea_weights = generate_values_from_input(number, trea_weight)
     stable_funding_weights = generate_values_from_input(number, stable_funding_weight)
     encumbrance_weights = generate_values_from_input(number, encumbrance_weight)
+    accrual_error_weights = generate_random_numbers(number, -0.01, 0.01, 0.0)
 
     coupon_type_stripped = strip_identifier(coupon_type)
     if coupon_type_stripped is None:
@@ -182,6 +183,7 @@ def generate_synthetic_positions(
         "StableFundingWeight": stable_funding_weights,
         "StressedOutflowWeight": stressed_outflow_weights,
         "OtherOffBalanceWeight": other_off_balance_weights,
+        "AccruedInterestErrorWeight": accrual_error_weights,
     }
 
     # Add either book_values or notionals depending on instrument type
@@ -260,6 +262,7 @@ def generate_synthetic_positions(
     df = df.with_columns(
         Impairment=-pl.col("Nominal") * pl.col("CoverageRate"),
         AccruedInterest=pl.col("Nominal") * pl.col("AccruedInterestWeight"),
+        AccruedInterestError=pl.col("Nominal") * pl.col("AccruedInterestWeight") * pl.col("AccruedInterestErrorWeight"),
         Agio=pl.col("Nominal") * pl.col("AgioWeight"),
         Undrawn=pl.col("Nominal") * pl.col("UndrawnPortion"),
         ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
@@ -290,7 +293,17 @@ def generate_synthetic_positions(
                 - pl.col("AccruedInterest")
             )
         ).alias("FairValueAdjustment"),
-    ).drop(["AgioWeight", "AccruedInterestWeight", "UndrawnPortion", "CoverageRate", "CalculatedPrice", "CleanPrice"])
+    ).drop(
+        [
+            "AgioWeight",
+            "AccruedInterestWeight",
+            "AccruedInterestErrorWeight",
+            "UndrawnPortion",
+            "CoverageRate",
+            "CalculatedPrice",
+            "CleanPrice",
+        ]
+    )
 
     positions = Positions(df)
 

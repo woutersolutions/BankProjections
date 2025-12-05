@@ -6,7 +6,7 @@ from bank_projections.financials.balance_sheet_metrics import (
     BaselExposure,
     BookValue,
     DerivedMetric,
-    DirtyPrice,
+    MarketValue,
     StoredAmount,
     StoredColumn,
     StoredWeight,
@@ -104,7 +104,7 @@ class TestDerivedMetric:
 
     def test_derived_metric_mutation_expression_raises_error(self):
         """Test that mutation_expression raises NotImplementedError"""
-        metric = DirtyPrice()
+        metric = MarketValue()
         filter_expr = pl.col("AssetType") == "Mortgages"
 
         with pytest.raises(NotImplementedError, match="Derived metric cannot be modified"):
@@ -112,23 +112,23 @@ class TestDerivedMetric:
 
     def test_derived_metric_mutation_column_raises_error(self):
         """Test that mutation_column raises NotImplementedError"""
-        metric = DirtyPrice()
+        metric = MarketValue()
 
         with pytest.raises(NotImplementedError, match="Derived metric cannot be modified"):
             _ = metric.mutation_column
 
 
-class TestDirtyPrice:
-    def test_dirty_price_initialization(self):
-        metric = DirtyPrice()
+class TestMarketValue:
+    def test_market_value_initialization(self):
+        metric = MarketValue()
 
     def test_get_expression(self):
-        metric = DirtyPrice()
+        metric = MarketValue()
         expr = metric.get_expression
         assert isinstance(expr, pl.Expr)
 
     def test_aggregation_expression(self):
-        metric = DirtyPrice()
+        metric = MarketValue()
         expr = metric.aggregation_expression
         assert isinstance(expr, pl.Expr)
 
@@ -180,26 +180,27 @@ class TestMetricIntegration:
         result = df.select(metric.aggregation_expression.alias("total"))
         assert result["total"].item() == 4500.0
 
-    def test_dirty_price_with_real_data(self):
+    def test_market_value_with_real_data(self):
         # Create test data
-        df = pl.DataFrame({"Nominal": [1000.0, 2000.0], "CleanPrice": [100.0, 95.0], "AccruedInterest": [5.0, 10.0]})
+        df = pl.DataFrame({"Nominal": [1000.0, 2000.0], "DirtyPrice": [1.005, 0.955], "Notional": [0.0, 0.0]})
 
-        metric = DirtyPrice()
+        metric = MarketValue()
 
-        # Test get_expression (clean_price + accrued_interest/nominal = price per unit)
-        result = df.select(metric.get_expression.alias("dirty_price"))
-        expected = [100.005, 95.005]  # (100 + 5/1000), (95 + 10/2000)
-        assert result["dirty_price"].to_list() == expected
+        # Test get_expression (dirty_price * (nominal + notional) = market value)
+        result = df.select(metric.get_expression.alias("market_value"))
+        expected = [1005.0, 1910.0]  # 1.005 * 1000, 0.955 * 2000
+        actual = result["market_value"].to_list()
+        for a, e in zip(actual, expected):
+            assert abs(a - e) < 1e-6, f"Expected {e}, got {a}"
 
     def test_exposure_with_real_data(self):
         # Create test data with all required columns for BaselExposure
         df = pl.DataFrame(
             {
                 "Nominal": [1000.0, 2000.0],
-                "AccountingMethod": ["amortizedcost", "amortizedcost"],
                 "Agio": [10.0, 20.0],
                 "AccruedInterest": [5.0, 10.0],
-                "CleanPrice": [1.0, 1.0],  # Not used for AC but required
+                "FairValueAdjustment": [0.0, 0.0],
                 "CCF": [0.5, 0.5],
                 "Undrawn": [100.0, 200.0],
                 "OtherOffBalanceWeight": [0.0, 0.0],
@@ -209,7 +210,7 @@ class TestMetricIntegration:
         metric = BaselExposure()
 
         # Test get_expression
-        # OnBalanceExposure (AC) = Nominal + Agio + AccruedInterest = 1000+10+5=1015, 2000+20+10=2030
+        # OnBalanceExposure = Nominal + Agio + AccruedInterest + FairValueAdjustment = 1000+10+5+0=1015, 2000+20+10+0=2030
         # OffBalanceExposure = CCF * Undrawn + OtherOffBalanceWeight * Nominal = 0.5*100+0=50, 0.5*200+0=100
         # Total = 1015+50=1065, 2030+100=2130
         result = df.select(metric.get_expression.alias("exposure"))

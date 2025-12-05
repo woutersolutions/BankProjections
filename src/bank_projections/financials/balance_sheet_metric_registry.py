@@ -37,6 +37,7 @@ BalanceSheetMetrics.register("Agio", StoredAmount("Agio"))
 BalanceSheetMetrics.register("DirtyPrice", StoredWeight("DirtyPrice"))
 BalanceSheetMetrics.register("OtherOffBalanceWeight", StoredWeight("OtherOffBalanceWeight"))
 BalanceSheetMetrics.register("Notional", StoredAmount("Notional"))
+BalanceSheetMetrics.register("AccruedInterestError", StoredAmount("AccruedInterestError"))
 
 BalanceSheetMetrics.register("ValuationError", StoredWeight("ValuationError"))
 BalanceSheetMetrics.register("MarketValue", MarketValue())

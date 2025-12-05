@@ -55,7 +55,7 @@ class Runoff(Rule):
             previous_coupon_date,
             new_coupon_date,
             increment.to_date,
-        )
+        ) + pl.col("AccruedInterestError")
 
         # For now, assume agio decreases linear
         new_agio = (
