@@ -32,6 +32,7 @@ class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
 BalanceSheetMetrics.register("Quantity", StoredAmount("Quantity"))
 BalanceSheetMetrics.register("Impairment", StoredAmount("Impairment"))
 BalanceSheetMetrics.register("AccruedInterest", StoredAmount("AccruedInterest"))
+BalanceSheetMetrics.register("FairValueAdjustment", StoredAmount("FairValueAdjustment"))
 BalanceSheetMetrics.register("Undrawn", StoredAmount("Undrawn"))
 BalanceSheetMetrics.register("Agio", StoredAmount("Agio"))
 BalanceSheetMetrics.register("CleanPrice", StoredWeight("CleanPrice"))

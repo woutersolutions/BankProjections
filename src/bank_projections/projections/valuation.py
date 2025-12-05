@@ -39,6 +39,10 @@ class Valuation(Rule):
                 .otherwise(0.0),
             },
             CleanPrice=new_clean_prices,
+            FairValueAdjustment=pl.col("NewDirtyPrice")
+            - pl.col("AccruedInterest")
+            - pl.col("Quantity")
+            - pl.col("Impairment"),
         )
 
         bs._data = bs._data.drop("NewDirtyPrice")

@@ -273,7 +273,13 @@ def generate_synthetic_positions(
     df = df.with_columns(
         valuation_method_object.valuation_error(
             pl.col("CalculatedPrice"), pl.col("CleanPrice") + pl.col("AccruedInterestWeight")
-        ).alias("ValuationError")
+        ).alias("ValuationError"),
+        (
+            pl.col("CleanPrice") * pl.col("Quantity")
+            - pl.col("Quantity")
+            - pl.col("Impairment")
+            - pl.col("AccruedInterest")
+        ).alias("FairValueAdjustment"),
     ).drop(["AgioWeight", "AccruedInterestWeight", "UndrawnPortion", "CoverageRate", "CalculatedPrice"])
 
     positions = Positions(df)
