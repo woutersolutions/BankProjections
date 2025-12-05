@@ -23,7 +23,7 @@ class Runoff(Rule):
         )
         previous_coupon_date = FrequencyRegistry.previous_coupon_date(increment.to_date)
         new_coupon_date = pl.when(matured).then(None).otherwise(FrequencyRegistry.next_coupon_date(increment.to_date))
-        coupon_payments = coupon_payment(pl.col("Quantity"), pl.col("InterestRate")) * number_of_payments
+        coupon_payments = coupon_payment(pl.col("Nominal"), pl.col("InterestRate")) * number_of_payments
         floating_rates = market_rates.curves.floating_rate_expr()
         new_interest_rates = (
             pl.when(number_of_payments > 0)
@@ -43,14 +43,14 @@ class Runoff(Rule):
         prepayment_factors = pl.col("PrepaymentRate").fill_null(0.0) * increment.portion_year
         redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
 
-        new_quantity = pl.col("Quantity") * (1 - redemption_factors) + pl.when(pl.col("IsAccumulating")).then(
+        new_nominal = pl.col("Nominal") * (1 - redemption_factors) + pl.when(pl.col("IsAccumulating")).then(
             coupon_payments
         ).otherwise(0.0)
 
         new_impairment = pl.when(matured).then(0.0).otherwise(pl.col("Impairment") * (1 - redemption_factors))
 
         new_accrual = interest_accrual(
-            new_quantity,
+            new_nominal,
             new_interest_rates,
             previous_coupon_date,
             new_coupon_date,
@@ -98,14 +98,14 @@ class Runoff(Rule):
                 * pl.when(pl.col("IsAccumulating")).then(0.0).otherwise(coupon_payments),
                 MutationReason(module="Runoff", rule="Principal Repayment"): signs
                 * pl.when(RedemptionRegistry.has_principal_exchange())
-                .then(pl.col("Quantity") * repayment_factors)
+                .then(pl.col("Nominal") * repayment_factors)
                 .otherwise(0.0),
                 MutationReason(module="Runoff", rule="Principal Prepayment"): signs
                 * pl.when(RedemptionRegistry.has_principal_exchange())
-                .then(pl.col("Quantity") * (1 - repayment_factors) * prepayment_factors)
+                .then(pl.col("Nominal") * (1 - repayment_factors) * prepayment_factors)
                 .otherwise(0.0),
             },
-            Quantity=new_quantity,
+            Nominal=new_nominal,
             AccruedInterest=new_accrual,
             Agio=new_agio,
             Impairment=new_impairment,

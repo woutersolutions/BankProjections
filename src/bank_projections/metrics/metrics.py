@@ -120,7 +120,7 @@ class ContractualInflowPrincipal(Metric):
         )
 
         inflow = (
-            bs._data.filter(self.item.filter_expression).select((repayment_factors * pl.col("Quantity")).sum()).item()
+            bs._data.filter(self.item.filter_expression).select((repayment_factors * pl.col("Nominal")).sum()).item()
         )
 
         return float(inflow)
@@ -136,7 +136,7 @@ class ContractualInflowCoupon(Metric):
         number_of_payments = FrequencyRegistry.number_due(
             pl.col("NextCouponDate"), pl.min_horizontal(pl.col("MaturityDate"), pl.lit(to_date))
         )
-        coupon_payments = coupon_payment(pl.col("Quantity"), pl.col("InterestRate")) * number_of_payments
+        coupon_payments = coupon_payment(pl.col("Nominal"), pl.col("InterestRate")) * number_of_payments
 
         inflow = bs._data.filter(self.item.filter_expression).select(coupon_payments.sum()).item()
 

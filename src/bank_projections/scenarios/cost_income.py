@@ -73,7 +73,7 @@ class CostIncomeRule(AmountRuleBase):
                 bs.add_item(
                     based_on_item=bs_item,
                     labels={},
-                    metrics={"Quantity": abs(self.amount)},
+                    metrics={"Nominal": abs(self.amount)},
                     origination_date=self.cashflow_date,
                     offset_liquidity=self.reason,
                 )
@@ -83,7 +83,7 @@ class CostIncomeRule(AmountRuleBase):
                     abs(self.amount) * increment.days_overlap(self.pnl_start, self.pnl_end) / days_in_period
                 )
                 bs.mutate_metric(
-                    bs_item, "Quantity", -amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
+                    bs_item, "Nominal", -amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
                 )
 
         elif self.pnl_end is not None and self.cashflow_date >= self.pnl_end:
@@ -102,18 +102,18 @@ class CostIncomeRule(AmountRuleBase):
                     bs.add_item(
                         based_on_item=bs_item,
                         labels={},
-                        metrics={"Quantity": amount_to_recognize},
+                        metrics={"Nominal": amount_to_recognize},
                         origination_date=self.cashflow_date,
                         offset_pnl=self.reason,
                     )
                 else:
                     bs.mutate_metric(
-                        bs_item, "Quantity", amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
+                        bs_item, "Nominal", amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
                     )
 
             if increment.contains(self.cashflow_date):
                 bs.mutate_metric(
-                    bs_item, "Quantity", -abs(self.amount), offset_liquidity=True, reason=self.reason, relative=True
+                    bs_item, "Nominal", -abs(self.amount), offset_liquidity=True, reason=self.reason, relative=True
                 )
 
         else:
@@ -140,23 +140,23 @@ class CostIncomeRule(AmountRuleBase):
                     bs.add_item(
                         based_on_item=bs_item,
                         labels={},
-                        metrics={"Quantity": amount_to_recognize},
+                        metrics={"Nominal": amount_to_recognize},
                         origination_date=self.cashflow_date,
                         offset_pnl=self.reason,
                     )
                 else:
                     bs.mutate_metric(
-                        bs_item, "Quantity", amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
+                        bs_item, "Nominal", amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
                     )
 
             # On cashflow date: settle the accrued amount with cash
             if increment.contains(self.cashflow_date):
                 # First, recognize revenue/expense for the cashflow day itself
                 daily_amount = abs(self.amount) / days_in_period
-                bs.mutate_metric(bs_item, "Quantity", daily_amount, offset_pnl=True, reason=self.reason, relative=True)
+                bs.mutate_metric(bs_item, "Nominal", daily_amount, offset_pnl=True, reason=self.reason, relative=True)
                 # Then settle the full accrued amount with cash
                 bs.mutate_metric(
-                    bs_item, "Quantity", -abs(self.amount), offset_liquidity=True, reason=self.reason, relative=True
+                    bs_item, "Nominal", -abs(self.amount), offset_liquidity=True, reason=self.reason, relative=True
                 )
 
             # After cashflow but still within P&L period: recognize remaining revenue/expense
@@ -176,14 +176,14 @@ class CostIncomeRule(AmountRuleBase):
                     bs.add_item(
                         based_on_item=post_item,
                         labels={},
-                        metrics={"Quantity": amount_to_recognize},
+                        metrics={"Nominal": amount_to_recognize},
                         origination_date=self.cashflow_date,
                         offset_liquidity=self.reason,
                     )
                 else:
                     # Amortize the prepaid item
                     bs.mutate_metric(
-                        post_item, "Quantity", -amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
+                        post_item, "Nominal", -amount_to_recognize, offset_pnl=True, reason=self.reason, relative=True
                     )
 
         bs.validate()

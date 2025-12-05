@@ -86,7 +86,7 @@ class ProductionRule(AmountRuleBase):
                     origination_date=self.date,
                     maturity_date=maturity_date,
                     pnls={reason: sign * pl.col("Impairment")},
-                    cashflows={reason: -sign * (pl.col("Quantity") + pl.col("AccruedInterest") + pl.col("Agio"))},
+                    cashflows={reason: -sign * (pl.col("Nominal") + pl.col("AccruedInterest") + pl.col("Agio"))},
                 )
 
         return bs

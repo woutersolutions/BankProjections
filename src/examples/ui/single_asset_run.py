@@ -146,10 +146,10 @@ def main() -> None:
         st.divider()
         st.header("3. Results")
 
-        tab1, tab2, tab3 = st.tabs(["Asset Quantity", "P&L by Rule", "Cashflows by Rule"])
+        tab1, tab2, tab3 = st.tabs(["Asset Nominal", "P&L by Rule", "Cashflows by Rule"])
 
         with tab1:
-            st.subheader("Asset Quantity Over Time")
+            st.subheader("Asset Nominal Over Time")
 
             bs_df = pl.concat(result.balance_sheets, how="diagonal")
             bs_pandas = bs_df.to_pandas()
@@ -162,16 +162,16 @@ def main() -> None:
                     fig = px.line(
                         bs_filtered,
                         x="ProjectionDate",
-                        y="Quantity",
-                        title="Asset Quantity Over Time",
-                        labels={"ProjectionDate": "Date", "Quantity": "Quantity"},
+                        y="Nominal",
+                        title="Asset Nominal Over Time",
+                        labels={"ProjectionDate": "Date", "Nominal": "Nominal"},
                         color_discrete_sequence=get_chart_colors(),
                     )
 
                     fig.update_layout(
                         hovermode="x unified",
                         xaxis_title="Date",
-                        yaxis_title="Quantity",
+                        yaxis_title="Nominal",
                     )
 
                     st.plotly_chart(fig, config=PLOTLY_CONFIG)

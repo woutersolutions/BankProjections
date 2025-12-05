@@ -154,7 +154,7 @@ def generate_synthetic_positions(
         clean_prices = [None] * number
     elif valuation_method == "swap" and notionals is not None:
         # For swaps with notionals, derive CleanPrice from target book_value
-        # book_value ≈ sum(Quantity * CleanPrice) = sum(notional * CleanPrice)
+        # book_value ≈ sum(Nominal * CleanPrice) = sum(notional * CleanPrice)
         # Assume equal CleanPrice across all swaps for simplicity
         total_notional = sum(notionals)
         avg_clean_price = book_value / total_notional if total_notional != 0 else 0.0
@@ -235,33 +235,33 @@ def generate_synthetic_positions(
         )
     )
 
-    # Handle quantity calculation differently for notional vs book_value instruments
+    # Handle nominal calculation differently for notional vs book_value instruments
     if notionals is not None:
         # For notional instruments (e.g., swaps), scale notionals to match target book value
-        # Book value formula: sum(Quantity * CleanPrice + Quantity * AccruedInterestWeight)
-        # Therefore: sum(Quantity * (CleanPrice + AccruedInterestWeight)) = book_value
-        # Scale Notional proportionally: Quantity = Notional * scale_factor
+        # Book value formula: sum(Nominal * CleanPrice + Nominal * AccruedInterestWeight)
+        # Therefore: sum(Nominal * (CleanPrice + AccruedInterestWeight)) = book_value
+        # Scale Notional proportionally: Nominal = Notional * scale_factor
         # where scale_factor ensures: sum(Notional * scale_factor * (CleanPrice + AccruedInterestWeight)) = book_value
         denominator = (pl.col("Notional") * (pl.col("CleanPrice") + pl.col("AccruedInterestWeight"))).sum()
         df = df.with_columns(
-            Quantity=pl.lit(0.0),
+            Nominal=pl.lit(0.0),
             Notional=pl.when(denominator != 0.0).then(book_value / denominator * pl.col("Notional")).otherwise(0.0),
         )
     else:
-        # For book_value instruments, derive Quantity from BookValue
-        # For amortized cost: BookValue = Quantity + Agio + AccruedInterest + Impairment
-        # For fair value: BookValue = Quantity * CleanPrice + AccruedInterest + Agio
-        # Both can be expressed as: BookValue = Quantity * (1 + AgioWeight + AccruedInterestWeight - CoverageRate)
+        # For book_value instruments, derive Nominal from BookValue
+        # For amortized cost: BookValue = Nominal + Agio + AccruedInterest + Impairment
+        # For fair value: BookValue = Nominal * CleanPrice + AccruedInterest + Agio
+        # Both can be expressed as: BookValue = Nominal * (1 + AgioWeight + AccruedInterestWeight - CoverageRate)
         df = df.with_columns(
-            Quantity=pl.col("BookValue")
+            Nominal=pl.col("BookValue")
             / (1 + pl.col("AgioWeight") + pl.col("AccruedInterestWeight") - pl.col("CoverageRate"))
         ).drop("BookValue")
 
     df = df.with_columns(
-        Impairment=-pl.col("Quantity") * pl.col("CoverageRate"),
-        AccruedInterest=pl.col("Quantity") * pl.col("AccruedInterestWeight"),
-        Agio=pl.col("Quantity") * pl.col("AgioWeight"),
-        Undrawn=pl.col("Quantity") * pl.col("UndrawnPortion"),
+        Impairment=-pl.col("Nominal") * pl.col("CoverageRate"),
+        AccruedInterest=pl.col("Nominal") * pl.col("AccruedInterestWeight"),
+        Agio=pl.col("Nominal") * pl.col("AgioWeight"),
+        Undrawn=pl.col("Nominal") * pl.col("UndrawnPortion"),
         ReferenceRate=pl.col("ReferenceRate").cast(pl.String),
         ValuationCurve=pl.col("ValuationCurve").cast(pl.String),
         CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
@@ -281,8 +281,8 @@ def generate_synthetic_positions(
             pl.when(pl.col("AccountingMethod") == "amortizedcost")
             .then(0.0)
             .otherwise(
-                pl.col("CleanPrice") * (pl.col("Quantity") + pl.col("Notional"))
-                - pl.col("Quantity")
+                pl.col("CleanPrice") * (pl.col("Nominal") + pl.col("Notional"))
+                - pl.col("Nominal")
                 - pl.col("Impairment")
                 - pl.col("AccruedInterest")
             )
@@ -605,7 +605,7 @@ def create_single_asset_balance_sheet(
     # 2. Keep Cash with book value to match the asset (required for BalanceSheet initialization)
     # 3. Zero out book_value for all other items (number stays > 0 to maintain schema compatibility)
     # 4. Set Retained earnings to balance the sheet
-    # Note: Items with book_value=0 but number>0 create zero-quantity positions (minimal impact)
+    # Note: Items with book_value=0 but number>0 create zero-nominal positions (minimal impact)
     modified_config = modified_config.with_columns(
         pl.when(
             # Keep the new asset with its book_value
@@ -668,10 +668,10 @@ def create_single_asset_balance_sheet(
     # Generate the balance sheet using the standard function
     bs = create_synthetic_balance_sheet(current_date, scenario, config_table=modified_config)
 
-    # Filter out zero-quantity positions from Assets and Liabilities
+    # Filter out zero-nominal positions from Assets and Liabilities
     # (keep all Equity positions for balance sheet integrity)
     bs._data = bs._data.filter(
-        (pl.col("Quantity").abs() > 0.00001) | ~pl.col("BalanceSheetCategory").is_in(["assets", "liabilities"])
+        (pl.col("Nominal").abs() > 0.00001) | ~pl.col("BalanceSheetCategory").is_in(["assets", "liabilities"])
     )
 
     return bs

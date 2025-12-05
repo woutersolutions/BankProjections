@@ -29,7 +29,7 @@ class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
         return [metric.column for metric in cls.values() if isinstance(metric, StoredColumn)]
 
 
-BalanceSheetMetrics.register("Quantity", StoredAmount("Quantity"))
+BalanceSheetMetrics.register("Nominal", StoredAmount("Nominal"))
 BalanceSheetMetrics.register("Impairment", StoredAmount("Impairment"))
 BalanceSheetMetrics.register("AccruedInterest", StoredAmount("AccruedInterest"))
 BalanceSheetMetrics.register("FairValueAdjustment", StoredAmount("FairValueAdjustment"))

@@ -48,17 +48,18 @@ class SideDependsOnMarketValue(BalanceSheetCategory):
         return MarketValue().get_expression >= 0
 
 
-class SideDependsOnQuantity(BalanceSheetCategory):
+class SideDependsOnNominal(BalanceSheetCategory):
     @property
     def book_value_reversed(self) -> bool:
         return False
 
     @property
     def is_asset_side(self) -> pl.Expr:
-        return pl.col("Quantity") >= 0
+        return pl.col("Nominal") >= 0
 
 
 class BalanceSheetCategoryRegistry(BaseRegistry[BalanceSheetCategory]):
+    # TODO: Consider having book value sign as a metric, simplifying this registry
     @classmethod
     def book_value_sign(cls) -> pl.Expr:
         expr = pl.lit(1)
@@ -79,4 +80,4 @@ BalanceSheetCategoryRegistry.register("Assets", AssetSide())
 BalanceSheetCategoryRegistry.register("Liabilities", FundingSide())
 BalanceSheetCategoryRegistry.register("Equity", FundingSide())
 BalanceSheetCategoryRegistry.register("Derivatives", SideDependsOnMarketValue())
-BalanceSheetCategoryRegistry.register("Collateral", SideDependsOnQuantity())
+BalanceSheetCategoryRegistry.register("Collateral", SideDependsOnNominal())

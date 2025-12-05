@@ -227,7 +227,7 @@ class TestConfigCompatibility:
         # Should include balance sheet labels, classifications, metrics, and date columns
         assert "ItemType" in required
         assert "Book" in required
-        assert "Quantity" in required  # From metrics
+        assert "Nominal" in required  # From metrics
 
     def test_config_non_null_columns(self) -> None:
         """Test Config.non_null_columns() method."""
@@ -235,4 +235,4 @@ class TestConfigCompatibility:
 
         assert isinstance(non_null, list)
         assert "Book" in non_null
-        assert "Quantity" in non_null
+        assert "Nominal" in non_null

@@ -34,15 +34,15 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2024, 12, 31), to_date=datetime.date(2025, 1, 15))
 
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
-        initial_quantity = bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
+        initial_nominal = bs.get_amount(loans_item, BalanceSheetMetrics.get("nominal"))
 
         rule = Runoff()
         result_bs = rule.apply(bs, increment, market_rates)
 
-        # Quantity should decrease slightly due to prepayments only
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-        assert new_quantity < initial_quantity  # Some prepayment occurred
-        assert new_quantity > initial_quantity * 0.94  # But not much (small prepayment rate, allowing for ~6% max)
+        # Nominal should decrease slightly due to prepayments only
+        new_nominal = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("nominal"))
+        assert new_nominal < initial_nominal  # Some prepayment occurred
+        assert new_nominal > initial_nominal * 0.94  # But not much (small prepayment rate, allowing for ~6% max)
 
         # Should have principal repayment cashflow of zero (no scheduled repayment)
         principal_cashflows = result_bs.cashflows.filter(
@@ -51,7 +51,7 @@ class TestRunoff:
             & (pl.col("SubItemType") == "Mortgages")
         )
         total_repayment = abs(principal_cashflows.filter(SubItemType="Mortgages")["Amount"].sum())
-        assert abs(total_repayment - (initial_quantity - new_quantity)) < 0.01
+        assert abs(total_repayment - (initial_nominal - new_nominal)) < 0.01
 
         # Should have principal prepayment cashflow greater than zero
         prepayment_cashflows = result_bs.cashflows.filter(
@@ -252,14 +252,14 @@ class TestRunoff:
         increment = TimeIncrement(from_date=datetime.date(2024, 12, 31), to_date=datetime.date(2025, 2, 15))
 
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
-        initial_quantity = bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
+        initial_nominal = bs.get_amount(loans_item, BalanceSheetMetrics.get("nominal"))
 
         rule = Runoff()
         result_bs = rule.apply(bs, increment, market_rates)
 
-        # Quantity should decrease due to prepayments only
-        new_quantity = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
-        assert new_quantity < initial_quantity
+        # Nominal should decrease due to prepayments only
+        new_nominal = result_bs.get_amount(loans_item, BalanceSheetMetrics.get("nominal"))
+        assert new_nominal < initial_nominal
 
         # Should have no principal repayment cashflow (perpetual)
         principal_cashflows = result_bs.cashflows.filter(

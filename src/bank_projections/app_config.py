@@ -108,7 +108,7 @@ class AppConfig(BaseModel):
 
     def non_null_columns(self) -> list[str]:
         """Get columns that should not contain null values."""
-        return list(self.get_classifications().keys()) + ["Quantity", "Impairment", "AccruedInterest", "Agio"]
+        return list(self.get_classifications().keys()) + ["Nominal", "Impairment", "AccruedInterest", "Agio"]
 
     def cast_columns(self, df: pl.DataFrame) -> pl.DataFrame:
         """Cast classification columns to their enum types."""

@@ -21,7 +21,7 @@ class TestBalanceSheetCoverage:
 
         # Create an item that won't match any positions
         item = BalanceSheetItem(ItemType="NonExistentItemType")
-        metric = BalanceSheetMetrics.get("quantity")
+        metric = BalanceSheetMetrics.get("nominal")
         reason = MutationReason(test="empty_filter")
 
         with pytest.raises(ValueError):
@@ -41,14 +41,14 @@ class TestBalanceSheetCoverage:
 
         # Modifying copy shouldn't affect original
         item = BalanceSheetItem(SubItemType="Mortgages")
-        metric = BalanceSheetMetrics.get("quantity")
+        metric = BalanceSheetMetrics.get("nominal")
         reason = MutationReason(test="copy_test")
 
-        original_quantity = bs.get_amount(item, metric)
+        original_nominal = bs.get_amount(item, metric)
         bs_copy.mutate_metric(item, metric, 1000.0, reason)
 
         # Original should be unchanged
-        assert bs.get_amount(item, metric) == original_quantity
+        assert bs.get_amount(item, metric) == original_nominal
 
     def test_aggregate_method(self, minimal_scenario):
         """Test the aggregate method with aggregation config."""
@@ -94,7 +94,7 @@ class TestBalanceSheetCoverage:
 
         # Modify bs2
         item = BalanceSheetItem(SubItemType="Mortgages")
-        metric = BalanceSheetMetrics.get("quantity")
+        metric = BalanceSheetMetrics.get("nominal")
         reason = MutationReason(test="differences")
         bs2.mutate_metric(item, metric, 1000.0, reason)
 
@@ -115,7 +115,7 @@ class TestBalanceSheetCoverage:
 
         # Modify bs2 slightly
         item = BalanceSheetItem(SubItemType="Mortgages")
-        metric = BalanceSheetMetrics.get("quantity")
+        metric = BalanceSheetMetrics.get("nominal")
         reason = MutationReason(test="debug")
         bs2.mutate_metric(item, metric, 500.0, reason)
 

@@ -77,8 +77,7 @@ class AmortizedCostValuationMethod(ValuationMethod):
     ) -> pl.DataFrame:
         return data.with_columns(
             (
-                1.0
-                + pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity"))
+                1.0 + pl.when(pl.col("Nominal") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Nominal"))
             ).alias(output_column)
         )
 
@@ -355,7 +354,7 @@ def _price_spread_instrument(
     data = data.join(result, on="_inst_idx", how="left").with_columns(pl.col(output_column).fill_null(0.0))
 
     # Add starting value (principal + accrued interest)
-    accrued = pl.when(pl.col("Quantity") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Quantity"))
+    accrued = pl.when(pl.col("Nominal") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Nominal"))
     start_val = accrued
     if include_par:
         # Add principal at maturity for floating rate bonds

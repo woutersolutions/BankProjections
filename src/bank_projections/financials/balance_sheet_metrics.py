@@ -49,7 +49,7 @@ class StoredColumn(BalanceSheetMetric, ABC):
 
 
 class StoredAmount(StoredColumn):
-    def __init__(self, column: str, allocation_col: str = "Quantity"):
+    def __init__(self, column: str, allocation_col: str = "Nominal"):
         super().__init__(column)
         self.allocation_expr = pl.col(allocation_col) + pl.lit(SMALL_NUMBER)  # Prevent division by zero
 
@@ -62,7 +62,7 @@ class StoredAmount(StoredColumn):
 
 
 class StoredWeight(StoredColumn):
-    def __init__(self, column: str, weight_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, column: str, weight_expr: pl.Expr = pl.col("Nominal")):
         super().__init__(column)
         self.weight_expr = weight_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
 
@@ -89,19 +89,19 @@ class DerivedMetric(BalanceSheetMetric, ABC):
 class DirtyPrice(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("CleanPrice") + pl.col("AccruedInterest") / (pl.col("Quantity") + pl.lit(SMALL_NUMBER))
+        return pl.col("CleanPrice") + pl.col("AccruedInterest") / (pl.col("Nominal") + pl.lit(SMALL_NUMBER))
 
     @property
     def aggregation_expression(self) -> pl.Expr:
-        return (pl.col("CleanPrice") * pl.col("Quantity") + pl.col("AccruedInterest")).sum() / (
-            pl.col("Quantity").sum() + pl.lit(SMALL_NUMBER)
+        return (pl.col("CleanPrice") * pl.col("Nominal") + pl.col("AccruedInterest")).sum() / (
+            pl.col("Nominal").sum() + pl.lit(SMALL_NUMBER)
         )
 
 
 class MarketValue(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("CleanPrice") * pl.col("Quantity") + pl.col("AccruedInterest")
+        return pl.col("CleanPrice") * pl.col("Nominal") + pl.col("AccruedInterest")
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -109,7 +109,7 @@ class MarketValue(DerivedMetric):
 
 
 class DerivedAmount(DerivedMetric):
-    def __init__(self, weight_column: str, allocation_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, weight_column: str, allocation_expr: pl.Expr = pl.col("Nominal")):
         self.weight_column = weight_column
         self.allocation_expr = allocation_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
 
@@ -133,7 +133,7 @@ class DerivedAmount(DerivedMetric):
 
 
 class DerivedWeight(DerivedMetric):
-    def __init__(self, amount_column: str, weight_expr: pl.Expr = pl.col("Quantity")):
+    def __init__(self, amount_column: str, weight_expr: pl.Expr = pl.col("Nominal")):
         self.amount_column = amount_column
         self.weight_expr = weight_expr + pl.lit(SMALL_NUMBER)  # Prevent division by zero
 
@@ -160,7 +160,7 @@ class OnBalanceExposure(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
         # BookValue without (AC) impairments
-        return pl.col("Quantity") + pl.col("Agio") + pl.col("AccruedInterest") + pl.col("FairValueAdjustment")
+        return pl.col("Nominal") + pl.col("Agio") + pl.col("AccruedInterest") + pl.col("FairValueAdjustment")
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -170,7 +170,7 @@ class OnBalanceExposure(DerivedMetric):
 class OffBalanceExposure(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("CCF") * pl.col("Undrawn") + pl.col("OtherOffBalanceWeight") * pl.col("Quantity")
+        return pl.col("CCF") * pl.col("Undrawn") + pl.col("OtherOffBalanceWeight") * pl.col("Nominal")
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -201,7 +201,7 @@ class BookValue(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
         return (
-            pl.col("Quantity")
+            pl.col("Nominal")
             + pl.col("Agio")
             + pl.col("AccruedInterest")
             + pl.col("Impairment")

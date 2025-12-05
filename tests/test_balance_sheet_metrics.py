@@ -17,14 +17,14 @@ def bs(test_balance_sheet):
 class TestBalanceSheetMethods:
     """Test the core methods of BalanceSheet class."""
 
-    # Test whether the quantity can be changed and offset with cash
-    def test_mutate_quantity_with_cash_offset(self, bs) -> None:
-        """Test mutating quantity with cash offset."""
-        # Get initial loan quantity
+    # Test whether the nominal can be changed and offset with cash
+    def test_mutate_nominal_with_cash_offset(self, bs) -> None:
+        """Test mutating nominal with cash offset."""
+        # Get initial loan nominal
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
-        initial_loan_qty = bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
+        initial_loan_qty = bs.get_amount(loans_item, BalanceSheetMetrics.get("nominal"))
 
-        # Mutate loan quantity to 100,000 with cash offset
+        # Mutate loan nominal to 100,000 with cash offset
         mutation_amount = 100_000
         expected_mutation = mutation_amount - initial_loan_qty
 
@@ -32,18 +32,18 @@ class TestBalanceSheetMethods:
         bs.cashflows = pl.DataFrame()
         bs.pnls = pl.DataFrame()
 
-        reason = MutationReason(module="Test", rule="test_mutate_quantity_with_cash_offset", action="test_mutation")
+        reason = MutationReason(module="Test", rule="test_mutate_nominal_with_cash_offset", action="test_mutation")
         bs.mutate_metric(
             loans_item,
-            BalanceSheetMetrics.get("quantity"),
+            BalanceSheetMetrics.get("nominal"),
             mutation_amount,
             reason,
             relative=False,
             offset_liquidity=True,
         )
 
-        # Verify the loan quantity is now 100,000 (absolute mutation)
-        new_loan_qty = bs.get_amount(loans_item, BalanceSheetMetrics.get("quantity"))
+        # Verify the loan nominal is now 100,000 (absolute mutation)
+        new_loan_qty = bs.get_amount(loans_item, BalanceSheetMetrics.get("nominal"))
         assert abs(new_loan_qty - 100_000) < 1, f"Expected final amount ~100,000, got {new_loan_qty}"
 
         # Verify that the cash is mutated correctly
@@ -54,7 +54,7 @@ class TestBalanceSheetMethods:
 
         # Verify the cashflow amount matches the loan change (with opposite sign)
         total_cashflow = bs.cashflows["Amount"].sum()
-        assert abs(total_cashflow + expected_mutation) < 1, "Cashflow should offset loan quantity change"
+        assert abs(total_cashflow + expected_mutation) < 1, "Cashflow should offset loan nominal change"
 
         # Verify no PnL changes were recorded since we used liquidity offset
         assert len(bs.pnls) == 0, "No PnL changes should be recorded for liquidity offset"
@@ -66,7 +66,7 @@ class TestBalanceSheetMethods:
     @pytest.mark.parametrize(
         "metric, asset_type",
         [
-            (BalanceSheetMetrics.get("quantity"), "Mortgages"),
+            (BalanceSheetMetrics.get("nominal"), "Mortgages"),
             (BalanceSheetMetrics.get("impairment"), "Mortgages"),
             (BalanceSheetMetrics.get("accrued_interest"), "Fixed Debt securities"),
             (BalanceSheetMetrics.get("agio"), "Fixed Debt securities"),
@@ -116,11 +116,11 @@ class TestBalanceSheetMethods:
         offset_args = {}
         if offset_mode == "cash":
             offset_args["offset_liquidity"] = True
-            # offset_column = BalanceSheetMetrics.get('quantity')
+            # offset_column = BalanceSheetMetrics.get('nominal')
             offset_item = BalanceSheetItem(ItemType="Cash")
         elif offset_mode == "pnl":
             offset_args["offset_pnl"] = True
-            # offset_column = BalanceSheetMetrics.get('quantity')
+            # offset_column = BalanceSheetMetrics.get('nominal')
             offset_item = BalanceSheetItem(BalanceSheetCategory="Equity")
         else:
             # offset_column = None

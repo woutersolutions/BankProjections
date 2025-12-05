@@ -101,12 +101,12 @@ class BalanceSheet(Positions):
         super().__init__(data)
         self.date = date
         self.add_item(
-            BalanceSheetItemRegistry.get("cash account"), labels={}, metrics={"Quantity": 0.0}, origination_date=date
+            BalanceSheetItemRegistry.get("cash account"), labels={}, metrics={"Nominal": 0.0}, origination_date=date
         )
         self.add_item(
-            BalanceSheetItemRegistry.get("pnl account"), labels={}, metrics={"Quantity": 0.0}, origination_date=date
+            BalanceSheetItemRegistry.get("pnl account"), labels={}, metrics={"Nominal": 0.0}, origination_date=date
         )
-        self.add_item(BalanceSheetItemRegistry.get("oci"), labels={}, metrics={"Quantity": 0.0}, origination_date=date)
+        self.add_item(BalanceSheetItemRegistry.get("oci"), labels={}, metrics={"Nominal": 0.0}, origination_date=date)
 
         cf_schema = {**dict.fromkeys(Config.cashflow_labels(), pl.String), "Amount": pl.Float64}
         pnl_schema = {**dict.fromkeys(Config.pnl_labels(), pl.String), "Amount": pl.Float64}
@@ -132,8 +132,8 @@ class BalanceSheet(Positions):
                 f"expected 0.00 (assets should equal funding within 0.01 tolerance)"
             )
 
-        if self._data["Quantity"].is_null().any():
-            raise ValueError("Quantity column contains null values after adding new item.")
+        if self._data["Nominal"].is_null().any():
+            raise ValueError("Nominal column contains null values after adding new item.")
 
         # Check total pnl in balance sheet and pnl table are the same
         total_pnl_bs = self.get_amount(
@@ -191,18 +191,18 @@ class BalanceSheet(Positions):
         if origination_date is None:
             origination_date = self.date
 
-        # Find the number of rows and total quantity of the based_on_item
-        based_on_quantity, based_on_count = (
+        # Find the number of rows and total nominal of the based_on_item
+        based_on_nominal, based_on_count = (
             self._data.filter(based_on_item.filter_expression).select(
-                [pl.col("Quantity").sum().alias("total"), pl.col("Quantity").count().alias("count")]
+                [pl.col("Nominal").sum().alias("total"), pl.col("Nominal").count().alias("count")]
             )
         ).row(0)
         if based_on_count == 0:
             raise ValueError(f"No item found on balance sheet matching: {based_on_item}")
-        if based_on_quantity == 0:
+        if based_on_nominal == 0:
             # Add a small number to avoid division by zero
             # TODO: Check if this is really needed, but not already covered by the metrics module
-            self._data = self._data.with_columns(Quantity=pl.col("Quantity") + SMALL_NUMBER)
+            self._data = self._data.with_columns(Nominal=pl.col("Nominal") + SMALL_NUMBER)
 
         # Find unique labels for non-numeric columns
         non_numeric_cols = self._data.select([pl.col(pl.Utf8), pl.col(pl.Boolean)]).columns
@@ -241,7 +241,7 @@ class BalanceSheet(Positions):
             )
             .with_columns(
                 AccruedInterest=interest_accrual(
-                    pl.col("Quantity"),
+                    pl.col("Nominal"),
                     pl.col("InterestRate"),
                     pl.col("PreviousCouponDate"),
                     pl.col("NextCouponDate"),
@@ -252,10 +252,10 @@ class BalanceSheet(Positions):
         )
 
         # process the metrics
-        if "quantity" in metrics:
-            new_data = self._process_metric(new_data, metrics, "quantity")
+        if "nominal" in metrics:
+            new_data = self._process_metric(new_data, metrics, "nominal")
         else:
-            raise ValueError("Must specify quantity when adding new item to balance sheet")
+            raise ValueError("Must specify nominal when adding new item to balance sheet")
 
         # Assume zero undrawn if not specified
         if "undrawn" in metrics and "undrawnportion" in metrics:
@@ -456,7 +456,7 @@ class BalanceSheet(Positions):
             sign = -self.get_item_book_value_sign(counter_item)
 
             self.mutate_metric(
-                counter_item, BalanceSheetMetrics.get("quantity"), sign * book_value_change, relative=True
+                counter_item, BalanceSheetMetrics.get("nominal"), sign * book_value_change, relative=True
             )
 
         if number_of_offsets > 0:
@@ -484,7 +484,7 @@ class BalanceSheet(Positions):
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
         self.mutate_metric(
             BalanceSheetItemRegistry.get("pnl account").add_identifier("OriginationDate", self.date),
-            BalanceSheetMetrics.get("quantity"),
+            BalanceSheetMetrics.get("nominal"),
             pnls["Amount"].sum(),
             reason,
             relative=True,
@@ -499,7 +499,7 @@ class BalanceSheet(Positions):
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
         self.mutate_metric(
             BalanceSheetItemRegistry.get("pnl account").add_identifier("OriginationDate", self.date),
-            BalanceSheetMetrics.get("quantity"),
+            BalanceSheetMetrics.get("nominal"),
             amount,
             reason,
             relative=True,
@@ -515,7 +515,7 @@ class BalanceSheet(Positions):
         self.ocis = pl.concat([self.ocis, ocis], how="diagonal")
         self.mutate_metric(
             BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
-            BalanceSheetMetrics.get("quantity"),
+            BalanceSheetMetrics.get("nominal"),
             ocis["Amount"].sum(),
             reason,
             relative=True,
@@ -530,7 +530,7 @@ class BalanceSheet(Positions):
         self.ocis = pl.concat([self.ocis, ocis], how="diagonal")
         self.mutate_metric(
             BalanceSheetItemRegistry.get("oci").add_identifier("OriginationDate", self.date),
-            BalanceSheetMetrics.get("quantity"),
+            BalanceSheetMetrics.get("nominal"),
             amount,
             reason,
             relative=True,
@@ -543,7 +543,7 @@ class BalanceSheet(Positions):
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
             BalanceSheetItemRegistry.get("cash account").add_identifier("OriginationDate", self.date),
-            BalanceSheetMetrics.get("quantity"),
+            BalanceSheetMetrics.get("nominal"),
             cashflows["Amount"].sum(),
             reason,
             relative=True,
@@ -558,7 +558,7 @@ class BalanceSheet(Positions):
         self.cashflows = pl.concat([self.cashflows, cashflows], how="diagonal")
         self.mutate_metric(
             BalanceSheetItemRegistry.get("cash account").add_identifier("OriginationDate", self.date),
-            BalanceSheetMetrics.get("quantity"),
+            BalanceSheetMetrics.get("nominal"),
             amount,
             reason,
             relative=True,

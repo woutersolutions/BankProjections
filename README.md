@@ -47,7 +47,7 @@ A few examples:
 
 1. **BalanceSheetItemRegistry**: Define important balance sheet items that should be used in calculations
 2. **BalanceSheetMetrics**: Configure which metrics are calculated and how
-    - Standard metrics: quantity, book value, interest rates, impairments
+    - Standard metrics: nominal, book value, interest rates, impairments
     - Add custom metrics specific to your institution
     - Control metric calculation order and dependencies
 3. **AccountingMethodRegistry**: Define how book value is determined and income is accounted:

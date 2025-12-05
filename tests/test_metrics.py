@@ -168,9 +168,9 @@ class TestMetricIntegration:
 
     def test_stored_amount_with_real_data(self):
         # Create test data
-        df = pl.DataFrame({"Quantity": [1000.0, 2000.0, 1500.0], "AssetType": ["Mortgages", "Securities", "Mortgages"]})
+        df = pl.DataFrame({"Nominal": [1000.0, 2000.0, 1500.0], "AssetType": ["Mortgages", "Securities", "Mortgages"]})
 
-        metric = StoredAmount("Quantity")
+        metric = StoredAmount("Nominal")
 
         # Test get_expression
         result = df.select(metric.get_expression.alias("result"))
@@ -182,33 +182,35 @@ class TestMetricIntegration:
 
     def test_dirty_price_with_real_data(self):
         # Create test data
-        df = pl.DataFrame({"Quantity": [1000.0, 2000.0], "CleanPrice": [100.0, 95.0], "AccruedInterest": [5.0, 10.0]})
+        df = pl.DataFrame({"Nominal": [1000.0, 2000.0], "CleanPrice": [100.0, 95.0], "AccruedInterest": [5.0, 10.0]})
 
         metric = DirtyPrice()
 
-        # Test get_expression (clean_price + accrued_interest/quantity = price per unit)
+        # Test get_expression (clean_price + accrued_interest/nominal = price per unit)
         result = df.select(metric.get_expression.alias("dirty_price"))
         expected = [100.005, 95.005]  # (100 + 5/1000), (95 + 10/2000)
         assert result["dirty_price"].to_list() == expected
 
     def test_exposure_with_real_data(self):
         # Create test data with all required columns for BaselExposure
-        df = pl.DataFrame({
-            "Quantity": [1000.0, 2000.0],
-            "AccountingMethod": ["amortizedcost", "amortizedcost"],
-            "Agio": [10.0, 20.0],
-            "AccruedInterest": [5.0, 10.0],
-            "CleanPrice": [1.0, 1.0],  # Not used for AC but required
-            "CCF": [0.5, 0.5],
-            "Undrawn": [100.0, 200.0],
-            "OtherOffBalanceWeight": [0.0, 0.0],
-        })
+        df = pl.DataFrame(
+            {
+                "Nominal": [1000.0, 2000.0],
+                "AccountingMethod": ["amortizedcost", "amortizedcost"],
+                "Agio": [10.0, 20.0],
+                "AccruedInterest": [5.0, 10.0],
+                "CleanPrice": [1.0, 1.0],  # Not used for AC but required
+                "CCF": [0.5, 0.5],
+                "Undrawn": [100.0, 200.0],
+                "OtherOffBalanceWeight": [0.0, 0.0],
+            }
+        )
 
         metric = BaselExposure()
 
         # Test get_expression
-        # OnBalanceExposure (AC) = Quantity + Agio + AccruedInterest = 1000+10+5=1015, 2000+20+10=2030
-        # OffBalanceExposure = CCF * Undrawn + OtherOffBalanceWeight * Quantity = 0.5*100+0=50, 0.5*200+0=100
+        # OnBalanceExposure (AC) = Nominal + Agio + AccruedInterest = 1000+10+5=1015, 2000+20+10=2030
+        # OffBalanceExposure = CCF * Undrawn + OtherOffBalanceWeight * Nominal = 0.5*100+0=50, 0.5*200+0=100
         # Total = 1015+50=1065, 2030+100=2130
         result = df.select(metric.get_expression.alias("exposure"))
         expected = [1065.0, 2130.0]

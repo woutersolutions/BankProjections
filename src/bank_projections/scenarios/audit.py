@@ -49,8 +49,6 @@ class AuditRule(KeyValueRuleBase):
         )
         counter_item = BalanceSheetItemRegistry.get("Retained earnings")
         reason = MutationReason(module="Audit", rule=f"Audit as of {audit_date}", date=audit_date)
-        bs.mutate_metric(
-            item, BalanceSheetMetrics.get("quantity"), 0, reason, relative=False, counter_item=counter_item
-        )
+        bs.mutate_metric(item, BalanceSheetMetrics.get("nominal"), 0, reason, relative=False, counter_item=counter_item)
 
         return bs

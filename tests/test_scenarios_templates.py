@@ -95,7 +95,7 @@ class TestBalanceSheetMutationRule:
         self.mock_increment = Mock(spec=TimeIncrement)
 
     def test_init_minimal_rule_input(self):
-        rule_input = {"metric": "quantity"}
+        rule_input = {"metric": "nominal"}
         amount = 1000.0
 
         rule = BalanceSheetMutationRule(rule_input, amount)
@@ -111,7 +111,7 @@ class TestBalanceSheetMutationRule:
 
     def test_init_with_boolean_flags(self):
         rule_input = {
-            "metric": "quantity",
+            "metric": "nominal",
             "relative": "false",
             "multiplicative": "true",
             "offsetliquidity": "yes",
@@ -127,7 +127,7 @@ class TestBalanceSheetMutationRule:
         assert rule.offset_pnl is False
 
     def test_init_with_date(self):
-        rule_input = {"metric": "quantity", "date": "2023-01-15"}
+        rule_input = {"metric": "nominal", "date": "2023-01-15"}
         amount = 1000.0
 
         rule = BalanceSheetMutationRule(rule_input, amount)
@@ -135,14 +135,14 @@ class TestBalanceSheetMutationRule:
         assert rule.date == datetime.date(2023, 1, 15)
 
     def test_init_with_unrecognized_key(self):
-        rule_input = {"metric": "quantity", "unknown_key": "some_value"}
+        rule_input = {"metric": "nominal", "unknown_key": "some_value"}
         amount = 1000.0
 
         with pytest.raises(KeyError, match="unknown_key not recognized in BalanceSheetMutationRule"):
             BalanceSheetMutationRule(rule_input, amount)
 
     def test_apply_without_date_constraint(self):
-        rule_input = {"metric": "quantity"}
+        rule_input = {"metric": "nominal"}
         amount = 1000.0
         rule = BalanceSheetMutationRule(rule_input, amount)
 
@@ -156,7 +156,7 @@ class TestBalanceSheetMutationRule:
         assert result == self.mock_bs
 
     def test_apply_with_date_constraint_matching(self):
-        rule_input = {"metric": "quantity", "date": "2023-01-15"}
+        rule_input = {"metric": "nominal", "date": "2023-01-15"}
         amount = 1000.0
         rule = BalanceSheetMutationRule(rule_input, amount)
 
@@ -170,7 +170,7 @@ class TestBalanceSheetMutationRule:
         assert result == self.mock_bs
 
     def test_apply_with_date_constraint_not_matching(self):
-        rule_input = {"metric": "quantity", "date": "2023-01-15"}
+        rule_input = {"metric": "nominal", "date": "2023-01-15"}
         amount = 1000.0
         rule = BalanceSheetMutationRule(rule_input, amount)
 
@@ -193,7 +193,7 @@ class TestMultiHeaderRule:
         self.content = pd.DataFrame({0: [100.0, 200.0], 1: [150.0, 250.0]})
 
         # Create col_headers to match the template format (string column names)
-        self.col_headers = pd.DataFrame({"metric": ["quantity", "book_value"]})
+        self.col_headers = pd.DataFrame({"metric": ["nominal", "book_value"]})
 
         self.row_headers = pd.DataFrame({"ItemType": ["Mortgages", "Securities"], "relative": ["true", "false"]})
 
@@ -341,7 +341,7 @@ class TestOneHeaderTemplate:
         mock_bs = Mock(spec=BalanceSheet)
         mock_increment = Mock(spec=TimeIncrement)
 
-        content = pd.DataFrame({"metric": ["quantity", "book_value"], "date": ["2024-01-15", "2024-02-15"]})
+        content = pd.DataFrame({"metric": ["nominal", "book_value"], "date": ["2024-01-15", "2024-02-15"]})
         general_tags = {"offset_pnl": "false"}
 
         mock_rule_class = Mock()
