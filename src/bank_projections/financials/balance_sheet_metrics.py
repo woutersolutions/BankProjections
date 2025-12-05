@@ -86,22 +86,10 @@ class DerivedMetric(BalanceSheetMetric, ABC):
         raise NotImplementedError("Derived metric cannot be modified")
 
 
-class DirtyPrice(DerivedMetric):
-    @property
-    def get_expression(self) -> pl.Expr:
-        return pl.col("CleanPrice") + pl.col("AccruedInterest") / (pl.col("Nominal") + pl.lit(SMALL_NUMBER))
-
-    @property
-    def aggregation_expression(self) -> pl.Expr:
-        return (pl.col("CleanPrice") * pl.col("Nominal") + pl.col("AccruedInterest")).sum() / (
-            pl.col("Nominal").sum() + pl.lit(SMALL_NUMBER)
-        )
-
-
 class MarketValue(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("CleanPrice") * pl.col("Nominal") + pl.col("AccruedInterest")
+        return pl.col("DirtyPrice") * (pl.col("Nominal") + pl.col("Notional"))
 
     @property
     def aggregation_expression(self) -> pl.Expr:

@@ -277,6 +277,9 @@ def generate_synthetic_positions(
         valuation_method_object.valuation_error(
             pl.col("CalculatedPrice"), pl.col("CleanPrice") + pl.col("AccruedInterestWeight")
         ).alias("ValuationError"),
+        (pl.col("CleanPrice") + pl.col("AccruedInterestWeight") / (pl.col("Nominal") + pl.col("Notional"))).alias(
+            "DirtyPrice"
+        ),
         (
             pl.when(pl.col("AccountingMethod") == "amortizedcost")
             .then(0.0)
@@ -287,7 +290,7 @@ def generate_synthetic_positions(
                 - pl.col("AccruedInterest")
             )
         ).alias("FairValueAdjustment"),
-    ).drop(["AgioWeight", "AccruedInterestWeight", "UndrawnPortion", "CoverageRate", "CalculatedPrice"])
+    ).drop(["AgioWeight", "AccruedInterestWeight", "UndrawnPortion", "CoverageRate", "CalculatedPrice", "CleanPrice"])
 
     positions = Positions(df)
 

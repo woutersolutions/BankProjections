@@ -9,7 +9,6 @@ from bank_projections.financials.balance_sheet_metrics import (
     DerivedAmount,
     DerivedMetric,
     DerivedWeight,
-    DirtyPrice,
     EncumberedHQLA,
     LeverageExposure,
     MarketValue,
@@ -35,11 +34,10 @@ BalanceSheetMetrics.register("AccruedInterest", StoredAmount("AccruedInterest"))
 BalanceSheetMetrics.register("FairValueAdjustment", StoredAmount("FairValueAdjustment"))
 BalanceSheetMetrics.register("Undrawn", StoredAmount("Undrawn"))
 BalanceSheetMetrics.register("Agio", StoredAmount("Agio"))
-BalanceSheetMetrics.register("CleanPrice", StoredWeight("CleanPrice"))
+BalanceSheetMetrics.register("DirtyPrice", StoredWeight("DirtyPrice"))
 BalanceSheetMetrics.register("OtherOffBalanceWeight", StoredWeight("OtherOffBalanceWeight"))
 BalanceSheetMetrics.register("Notional", StoredAmount("Notional"))
 
-BalanceSheetMetrics.register("DirtyPrice", DirtyPrice())
 BalanceSheetMetrics.register("ValuationError", StoredWeight("ValuationError"))
 BalanceSheetMetrics.register("MarketValue", MarketValue())
 

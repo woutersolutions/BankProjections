@@ -3,7 +3,6 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.balance_sheet_metrics import SMALL_NUMBER
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.rule import Rule
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
@@ -20,10 +19,6 @@ class Valuation(Rule):
         bs._data = ValuationMethodRegistry.corrected_dirty_price(
             bs._data, increment.to_date, zero_rates, "NewDirtyPrice"
         )
-        new_clean_prices = pl.col("NewDirtyPrice") - pl.col("AccruedInterest") / (
-            pl.col("Nominal") + pl.col("Notional") + SMALL_NUMBER
-        )
-
         new_fair_value_adjustment = (
             pl.col("NewDirtyPrice") * (pl.col("Nominal") + pl.col("Notional"))
             - pl.col("AccruedInterest")
@@ -51,8 +46,8 @@ class Valuation(Rule):
                 .then(income)
                 .otherwise(0.0),
             },
-            CleanPrice=new_clean_prices,
             FairValueAdjustment=new_fair_value_adjustment,
+            DirtyPrice=pl.col("NewDirtyPrice"),
         )
 
         bs._data = bs._data.drop("NewDirtyPrice")
