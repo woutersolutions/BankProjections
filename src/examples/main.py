@@ -3,6 +3,7 @@ import os
 import yaml
 
 from bank_projections.output_config import OutputConfig
+from bank_projections.projections.agioredemption import AgioRedemption
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.runoff import Runoff
 from bank_projections.projections.valuation import Valuation
@@ -20,7 +21,7 @@ if __name__ == "__main__":
         scenario_config = ScenarioConfig(**yaml.safe_load(f))
 
     scenario = TemplateRegistry.load_paths(scenario_config.rule_paths)
-    scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
+    scenario.rules = {"Runoff": Runoff(), "Agio": AgioRedemption(), "Valuation": Valuation(), **scenario.rules}
 
     horizon = TimeHorizon.from_config(scenario_config.time_horizon)
 

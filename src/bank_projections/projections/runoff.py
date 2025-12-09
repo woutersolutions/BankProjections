@@ -57,19 +57,6 @@ class Runoff(Rule):
             increment.to_date,
         ) + pl.col("AccruedInterestError")
 
-        # For now, assume agio decreases linear
-        new_agio = (
-            pl.when(pl.col("MaturityDate").is_null())
-            .then(pl.col("Agio"))
-            .when(matured)
-            .then(0.0)
-            .otherwise(
-                pl.col("Agio")
-                * (pl.col("MaturityDate") - increment.to_date).dt.total_days()
-                / (pl.col("MaturityDate") - increment.from_date).dt.total_days()
-            )
-        )
-
         # Also, assume the valuation error decreases linear
         new_valuation_error = (
             pl.when(pl.col("MaturityDate").is_null())
@@ -91,7 +78,6 @@ class Runoff(Rule):
                 MutationReason(module="Runoff", rule="Accrual"): signs
                 * (coupon_payments + (new_accrual - pl.col("AccruedInterest"))),
                 MutationReason(module="Runoff", rule="Impairment"): signs * (new_impairment - pl.col("Impairment")),
-                MutationReason(module="Runoff", rule="Agio"): signs * (new_agio - pl.col("Agio")),
             },
             cashflows={
                 MutationReason(module="Runoff", rule="Coupon payment"): signs
@@ -107,7 +93,6 @@ class Runoff(Rule):
             },
             Nominal=new_nominal,
             AccruedInterest=new_accrual,
-            Agio=new_agio,
             Impairment=new_impairment,
             PreviousCouponDate=previous_coupon_date,
             NextCouponDate=new_coupon_date,
