@@ -8,7 +8,7 @@ from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.rule import Rule
-from bank_projections.utils.coupons import coupon_payment, interest_accrual
+from bank_projections.utils.coupons import coupon_payment
 from bank_projections.utils.time import TimeIncrement
 
 
@@ -18,10 +18,21 @@ class Runoff(Rule):
             return bs
 
         matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
-        number_of_payments = FrequencyRegistry.number_due(
-            pl.col("NextCouponDate"), pl.min_horizontal(pl.col("MaturityDate"), pl.lit(increment.to_date))
+        number_of_payments = (
+            pl.when(pl.col("NextCouponDate").is_null())
+            .then(0)
+            .otherwise(
+                FrequencyRegistry.number_due(
+                    pl.col("NextCouponDate"), pl.min_horizontal(pl.col("MaturityDate"), pl.lit(increment.to_date))
+                )
+            )
         )
-        previous_coupon_date = FrequencyRegistry.previous_coupon_date(increment.to_date)
+
+        previous_coupon_date = (
+            pl.when(matured)
+            .then(pl.col("MaturityDate"))
+            .otherwise(FrequencyRegistry.previous_coupon_date(increment.to_date))
+        )
         new_coupon_date = pl.when(matured).then(None).otherwise(FrequencyRegistry.next_coupon_date(increment.to_date))
         coupon_payments = coupon_payment(pl.col("Nominal"), pl.col("InterestRate")) * number_of_payments
         floating_rates = market_rates.curves.floating_rate_expr()
@@ -49,14 +60,6 @@ class Runoff(Rule):
 
         new_impairment = pl.when(matured).then(0.0).otherwise(pl.col("Impairment") * (1 - redemption_factors))
 
-        new_accrual = interest_accrual(
-            new_nominal,
-            new_interest_rates,
-            previous_coupon_date,
-            new_coupon_date,
-            increment.to_date,
-        ) + pl.col("AccruedInterestError")
-
         # Also, assume the valuation error decreases linear
         new_valuation_error = (
             pl.when(pl.col("MaturityDate").is_null())
@@ -75,24 +78,21 @@ class Runoff(Rule):
         bs.mutate(
             BalanceSheetItem(),
             pnls={
-                MutationReason(module="Runoff", rule="Accrual"): signs
-                * (coupon_payments + (new_accrual - pl.col("AccruedInterest"))),
                 MutationReason(module="Runoff", rule="Impairment"): signs * (new_impairment - pl.col("Impairment")),
             },
             cashflows={
                 MutationReason(module="Runoff", rule="Coupon payment"): signs
                 * pl.when(pl.col("IsAccumulating")).then(0.0).otherwise(coupon_payments),
                 MutationReason(module="Runoff", rule="Principal Repayment"): signs
-                * pl.when(RedemptionRegistry.has_principal_exchange())
-                .then(pl.col("Nominal") * repayment_factors)
-                .otherwise(0.0),
+                * pl.col("Nominal")
+                * repayment_factors,
                 MutationReason(module="Runoff", rule="Principal Prepayment"): signs
-                * pl.when(RedemptionRegistry.has_principal_exchange())
-                .then(pl.col("Nominal") * (1 - repayment_factors) * prepayment_factors)
-                .otherwise(0.0),
+                * pl.col("Nominal")
+                * (1 - repayment_factors)
+                * prepayment_factors,
             },
             Nominal=new_nominal,
-            AccruedInterest=new_accrual,
+            AccruedInterest=pl.col("AccruedInterest") - coupon_payments,
             Impairment=new_impairment,
             PreviousCouponDate=previous_coupon_date,
             NextCouponDate=new_coupon_date,

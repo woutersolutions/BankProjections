@@ -142,9 +142,7 @@ class FixedRateBondValuationMethod(ValuationMethod):
         result = all_cashflows.group_by("_bond_idx").agg(pl.col("_pv").sum().alias(output_column))
 
         # Join back to original data (fill missing with 0.0 for bonds with no remaining coupons)
-        data = data.join(result, on="_bond_idx", how="left").with_columns(
-            pl.col(output_column).fill_null(0.0)
-        )
+        data = data.join(result, on="_bond_idx", how="left").with_columns(pl.col(output_column).fill_null(0.0))
 
         # Add principal repayment at maturity (1.0 * discount factor at maturity)
         # For instruments at or past maturity, price is exactly 1.0
@@ -354,7 +352,9 @@ def _price_spread_instrument(
     data = data.join(result, on="_inst_idx", how="left").with_columns(pl.col(output_column).fill_null(0.0))
 
     # Add starting value (principal + accrued interest)
-    accrued = pl.when(pl.col("Nominal") == 0).then(0.0).otherwise(pl.col("AccruedInterest") / pl.col("Nominal"))
+    # TODO: Review why quantity and accrued interest is relevant in this pricing method
+    quantity = pl.col("Nominal") + pl.col("Notional")
+    accrued = pl.when(quantity == 0).then(0.0).otherwise(pl.col("AccruedInterest") / quantity)
     start_val = accrued
     if include_par:
         # Add principal at maturity for floating rate bonds

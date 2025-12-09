@@ -99,6 +99,7 @@ class Projection:
         for scenario_name, scenario in log_iterator(self.scenarios.items(), prefix="Scenario "):
             bs = start_bs.copy()
 
+            # TODO: Make increment with number and description, simplifying iteration
             for _i, increment in log_iterator(
                 enumerate(self.horizon, 1), prefix="Time step ", suffix=f"/{total_increments}", timed=True
             ):
