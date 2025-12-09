@@ -9,7 +9,7 @@ from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import MarketRates
-from bank_projections.projections.runoff import Runoff
+from bank_projections.projections.redemption import Redemption
 from bank_projections.utils.time import TimeIncrement
 from examples.synthetic_data import generate_synthetic_curves
 
@@ -36,7 +36,7 @@ class TestRunoff:
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
         initial_nominal = bs.get_amount(loans_item, BalanceSheetMetrics.get("nominal"))
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Nominal should decrease slightly due to prepayments only
@@ -66,7 +66,7 @@ class TestRunoff:
 
         initial_cashflows_len = len(bs.cashflows)
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Should generate coupon payment cashflows
@@ -84,7 +84,7 @@ class TestRunoff:
 
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Accrued interest should be updated
@@ -118,7 +118,7 @@ class TestRunoff:
 
         initial_impairment = bs.get_amount(loans_item, BalanceSheetMetrics.get("impairment"))
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Impairment should decrease proportionally to principal repayments
@@ -142,7 +142,7 @@ class TestRunoff:
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
         initial_agio = bs.get_amount(loans_item, BalanceSheetMetrics.get("agio"))
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Agio should decrease (linear amortization)
@@ -155,7 +155,7 @@ class TestRunoff:
 
         initial_pnl_len = len(bs.pnls)
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Should generate PnL for interest income and impairment
@@ -188,7 +188,7 @@ class TestRunoff:
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 4, 15))
 
-        rule = Runoff()
+        rule = Redemption()
         initial_pnl_len = len(bs.pnls)
 
         result_bs = rule.apply(bs, increment, market_rates)
@@ -203,7 +203,7 @@ class TestRunoff:
         initial_columns = set(bs._data.columns)
         initial_rows = len(bs._data)
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Should preserve row count and basic columns
@@ -220,7 +220,7 @@ class TestRunoff:
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Should handle zero interest rates without error
@@ -254,7 +254,7 @@ class TestRunoff:
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
         initial_nominal = bs.get_amount(loans_item, BalanceSheetMetrics.get("nominal"))
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Nominal should decrease due to prepayments only
@@ -285,7 +285,7 @@ class TestRunoff:
 
         increment = TimeIncrement(from_date=datetime.date(2025, 1, 15), to_date=datetime.date(2025, 2, 15))
 
-        rule = Runoff()
+        rule = Redemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Should have zero prepayment cashflow

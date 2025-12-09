@@ -3,11 +3,11 @@ import datetime
 import polars as pl
 
 from bank_projections.projections.frequency import Annual, FrequencyRegistry
-from bank_projections.projections.redemption import (
-    BulletRedemption,
-    LinearRedemption,
-    PerpetualRedemption,
-    RedemptionRegistry,
+from bank_projections.projections.redemption_type import (
+    BulletRedemptionType,
+    LinearRedemptionType,
+    PerpetualRedemptionType,
+    RedemptionTypeRegistry,
 )
 
 
@@ -18,7 +18,7 @@ class TestBulletRedemption:
         coupon_date = pl.lit(datetime.date(2024, 12, 31))
         projection = datetime.date(2025, 6, 30)
 
-        factor = BulletRedemption.redemption_factor(maturity, rate, coupon_date, projection)
+        factor = BulletRedemptionType.redemption_factor(maturity, rate, coupon_date, projection)
         df = pl.DataFrame({"dummy": [1]}).with_columns(factor.alias("factor"))
 
         assert df["factor"][0] == 0.0
@@ -29,7 +29,7 @@ class TestBulletRedemption:
         coupon_date = pl.lit(datetime.date(2024, 6, 30))
         projection = datetime.date(2025, 6, 30)
 
-        factor = BulletRedemption.redemption_factor(maturity, rate, coupon_date, projection)
+        factor = BulletRedemptionType.redemption_factor(maturity, rate, coupon_date, projection)
         df = pl.DataFrame({"dummy": [1]}).with_columns(factor.alias("factor"))
 
         assert df["factor"][0] == 1.0
@@ -40,7 +40,7 @@ class TestBulletRedemption:
         coupon_date = pl.lit(datetime.date(2024, 6, 30))
         projection = datetime.date(2025, 12, 31)
 
-        factor = BulletRedemption.redemption_factor(maturity, rate, coupon_date, projection)
+        factor = BulletRedemptionType.redemption_factor(maturity, rate, coupon_date, projection)
         df = pl.DataFrame({"dummy": [1]}).with_columns(factor.alias("factor"))
 
         assert df["factor"][0] == 1.0
@@ -53,7 +53,7 @@ class TestPerpetualRedemption:
         coupon_date = pl.lit(datetime.date(2024, 12, 31))
         projection = datetime.date(2025, 6, 30)
 
-        factor = PerpetualRedemption.redemption_factor(maturity, rate, coupon_date, projection)
+        factor = PerpetualRedemptionType.redemption_factor(maturity, rate, coupon_date, projection)
         df = pl.DataFrame({"dummy": [1]}).with_columns(factor.alias("factor"))
 
         assert df["factor"][0] == 0.0
@@ -69,7 +69,7 @@ class TestLinearRedemption:
         # Create test dataframe with required columns
         df = pl.DataFrame({"CouponFrequency": ["annual"], "dummy": [1]}).with_columns(
             [
-                LinearRedemption.redemption_factor(maturity, rate, coupon_date, projection).alias("factor"),
+                LinearRedemptionType.redemption_factor(maturity, rate, coupon_date, projection).alias("factor"),
                 FrequencyRegistry.number_due(coupon_date, pl.lit(projection)).alias("payments_left"),
             ]
         )
@@ -93,7 +93,9 @@ class TestRedemptionRegistry:
         df_bullet = pl.DataFrame(
             {"MaturityDate": datetime.date(2025, 12, 31), "RedemptionType": ["bullet"], "CouponFrequency": ["annual"]}
         ).with_columns(
-            RedemptionRegistry.redemption_factor(pl.col("MaturityDate"), rate, coupon_date, projection).alias("factor")
+            RedemptionTypeRegistry.redemption_factor(pl.col("MaturityDate"), rate, coupon_date, projection).alias(
+                "factor"
+            )
         )
 
         # Test perpetual routing
@@ -104,7 +106,9 @@ class TestRedemptionRegistry:
                 "CouponFrequency": ["annual"],
             }
         ).with_columns(
-            RedemptionRegistry.redemption_factor(pl.col("MaturityDate"), rate, coupon_date, projection).alias("factor")
+            RedemptionTypeRegistry.redemption_factor(pl.col("MaturityDate"), rate, coupon_date, projection).alias(
+                "factor"
+            )
         )
 
         assert df_bullet["factor"][0] == 0.0  # Before maturity

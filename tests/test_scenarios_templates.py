@@ -315,12 +315,12 @@ class TestRuleSetIntegration:
 
     def test_scenario_ruleset_composition(self):
         """Test that scenarios can be composed from multiple rules"""
-        from bank_projections.projections.runoff import Runoff
+        from bank_projections.projections.redemption import Redemption
         from bank_projections.scenarios.scenario import Scenario
 
         # Create a scenario with multiple rules
         rule1 = Mock(spec=BalanceSheetMutationRule)
-        rule2 = Mock(spec=Runoff)
+        rule2 = Mock(spec=Redemption)
 
         scenario = Scenario(rules={"rule1": rule1, "rule2": rule2})
         assert len(scenario.rules) == 2

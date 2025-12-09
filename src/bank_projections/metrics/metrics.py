@@ -8,7 +8,7 @@ from bank_projections.financials.balance_sheet_item import BalanceSheetItem, Bal
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.stage import IFRS9StageRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
-from bank_projections.projections.redemption import RedemptionRegistry
+from bank_projections.projections.redemption_type import RedemptionTypeRegistry
 from bank_projections.utils.base_registry import BaseRegistry
 from bank_projections.utils.coupons import coupon_payment
 
@@ -111,7 +111,7 @@ class ContractualInflowPrincipal(Metric):
             pl.when(matured)
             .then(1.0)
             .otherwise(
-                RedemptionRegistry.redemption_factor(
+                RedemptionTypeRegistry.redemption_factor(
                     pl.col("MaturityDate"), pl.col("InterestRate"), pl.col("NextCouponDate"), to_date
                 )
             )

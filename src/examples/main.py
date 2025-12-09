@@ -4,9 +4,10 @@ import yaml
 
 from bank_projections.output_config import OutputConfig
 from bank_projections.projections.accrual import Accrual
-from bank_projections.projections.agioredemption import AgioRedemption
+from bank_projections.projections.agio_redemption import AgioRedemption
+from bank_projections.projections.coupon_payment import CouponPayment
 from bank_projections.projections.projection import Projection
-from bank_projections.projections.runoff import Runoff
+from bank_projections.projections.redemption import Redemption
 from bank_projections.projections.valuation import Valuation
 from bank_projections.scenarios.scenario import ScenarioConfig
 from bank_projections.scenarios.template_registry import TemplateRegistry
@@ -23,7 +24,8 @@ if __name__ == "__main__":
 
     scenario = TemplateRegistry.load_paths(scenario_config.rule_paths)
     scenario.rules = {
-        "Runoff": Runoff(),
+        "Coupons": CouponPayment(),
+        "Redemption": Redemption(),
         "Accrual": Accrual(),
         "Agio": AgioRedemption(),
         "Valuation": Valuation(),

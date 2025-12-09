@@ -36,7 +36,7 @@ classifications:
   AccountingMethod: bank_projections.financials.accounting_method.AccountingMethodRegistry
   ValuationMethod: bank_projections.projections.valuation_method.ValuationMethodRegistry
   CouponFrequency: bank_projections.projections.frequency.FrequencyRegistry
-  RedemptionType: bank_projections.projections.redemption.RedemptionRegistry
+  RedemptionType: bank_projections.projections.redemption_type.RedemptionTypeRegistry
   CouponType: bank_projections.projections.coupon_type.CouponTypeRegistry
   IFRS9Stage: bank_projections.financials.stage.IFRS9StageRegistry
   HQLAClass: bank_projections.financials.hqla_class.HQLARegistry

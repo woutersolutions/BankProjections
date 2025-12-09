@@ -17,7 +17,7 @@ from bank_projections.financials.balance_sheet_metrics import (
 )
 from bank_projections.output_config import AggregationConfig
 from bank_projections.projections.frequency import FrequencyRegistry
-from bank_projections.projections.redemption import RedemptionRegistry
+from bank_projections.projections.redemption_type import RedemptionTypeRegistry
 from bank_projections.utils.coupons import interest_accrual
 from bank_projections.utils.parsing import correct_identifier_keys, strip_identifier_keys
 
@@ -123,7 +123,7 @@ class BalanceSheet(Positions):
     def validate(self) -> None:
         super().validate()
 
-        RedemptionRegistry.validate_df(self._data, self.date)
+        RedemptionTypeRegistry.validate_df(self._data, self.date)
 
         total_book_value = self.get_amount(BalanceSheetItem(), BalanceSheetMetrics.get("book value signed"))
         if abs(total_book_value) > 0.01:
@@ -478,7 +478,6 @@ class BalanceSheet(Positions):
         return int(signs[0])
 
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
-
         # Assert all not null
         if data.filter(expr.is_null()).height > 0:
             raise ValueError("PnL expression contains null values")
@@ -517,7 +516,6 @@ class BalanceSheet(Positions):
             self.add_single_liquidity(amount, reason)
 
     def add_oci(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
-
         # Assert all not null
         if data.filter(expr.is_null()).height > 0:
             raise ValueError("OCI expression contains null values")
@@ -553,7 +551,6 @@ class BalanceSheet(Positions):
         )
 
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
-
         # Assert all not null
         if data.filter(expr.is_null()).height > 0:
             raise ValueError("Liquidity expression contains null values")

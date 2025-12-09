@@ -18,7 +18,7 @@ import polars as pl
 from loguru import logger
 
 from bank_projections.projections.projection import Projection
-from bank_projections.projections.runoff import Runoff
+from bank_projections.projections.redemption import Redemption
 from bank_projections.projections.valuation import Valuation
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.scenarios.template_registry import TemplateRegistry
@@ -53,7 +53,7 @@ class EfficiencyAssessment:
         self.number_of_projections = number_of_projections
 
         scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-        scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
+        scenario.rules = {"Runoff": Redemption(), "Valuation": Valuation(), **scenario.rules}
         self.scenario = scenario
 
     def measure_time_horizon_performance(self) -> list[dict]:
@@ -123,7 +123,7 @@ class EfficiencyAssessment:
         )
 
         scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-        scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
+        scenario.rules = {"Runoff": Redemption(), "Valuation": Valuation(), **scenario.rules}
 
         for multiplier in log_iterator(self.size_multipliers, prefix="Multiplier "):
             logger.info(f"Testing balance sheet size multiplier: {multiplier}")

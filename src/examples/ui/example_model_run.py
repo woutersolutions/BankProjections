@@ -7,7 +7,7 @@ import polars as pl
 import streamlit as st
 
 from bank_projections.projections.projection import Projection
-from bank_projections.projections.runoff import Runoff
+from bank_projections.projections.redemption import Redemption
 from bank_projections.projections.valuation import Valuation
 from bank_projections.scenarios.template_registry import TemplateRegistry
 from bank_projections.utils.time import TimeHorizon
@@ -72,7 +72,7 @@ def main() -> None:
 
     if st.button("Run Projection", type="primary", width="stretch"):
         scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-        scenario.rules = {"Runoff": Runoff(), "Valuation": Valuation(), **scenario.rules}
+        scenario.rules = {"Runoff": Redemption(), "Valuation": Valuation(), **scenario.rules}
         horizon = TimeHorizon.from_numbers(
             start_date=start_date,
             number_of_days=int(number_of_days),

@@ -6,13 +6,12 @@ from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
-from bank_projections.projections.redemption import RedemptionRegistry
 from bank_projections.projections.rule import Rule
 from bank_projections.utils.coupons import coupon_payment
 from bank_projections.utils.time import TimeIncrement
 
 
-class Runoff(Rule):
+class CouponPayment(Rule):
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
         if increment.from_date == increment.to_date:  # No time passed
             return bs
@@ -42,63 +41,22 @@ class Runoff(Rule):
             .otherwise(pl.col("InterestRate"))
         )
 
-        repayment_factors = (
-            pl.when(matured)
-            .then(1.0)
-            .otherwise(
-                RedemptionRegistry.redemption_factor(
-                    pl.col("MaturityDate"), pl.col("InterestRate"), pl.col("NextCouponDate"), increment.to_date
-                )
-            )
-        )
-        prepayment_factors = pl.col("PrepaymentRate").fill_null(0.0) * increment.portion_year
-        redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
-
-        new_nominal = pl.col("Nominal") * (1 - redemption_factors) + pl.when(pl.col("IsAccumulating")).then(
-            coupon_payments
-        ).otherwise(0.0)
-
-        new_impairment = pl.when(matured).then(0.0).otherwise(pl.col("Impairment") * (1 - redemption_factors))
-
-        # Also, assume the valuation error decreases linear
-        new_valuation_error = (
-            pl.when(pl.col("MaturityDate").is_null())
-            .then(pl.col("ValuationError"))
-            .when(matured)
-            .then(0.0)
-            .otherwise(
-                pl.col("ValuationError")
-                * (pl.col("MaturityDate") - increment.to_date).dt.total_days()
-                / (pl.col("MaturityDate") - increment.from_date).dt.total_days()
-            )
-        )
+        new_nominal = pl.col("Nominal") + pl.when(pl.col("IsAccumulating")).then(coupon_payments).otherwise(0.0)
 
         signs = BalanceSheetCategoryRegistry.book_value_sign()
 
         bs.mutate(
             BalanceSheetItem(),
-            pnls={
-                MutationReason(module="Runoff", rule="Impairment"): signs * (new_impairment - pl.col("Impairment")),
-            },
             cashflows={
                 MutationReason(module="Runoff", rule="Coupon payment"): signs
                 * pl.when(pl.col("IsAccumulating")).then(0.0).otherwise(coupon_payments),
-                MutationReason(module="Runoff", rule="Principal Repayment"): signs
-                * pl.col("Nominal")
-                * repayment_factors,
-                MutationReason(module="Runoff", rule="Principal Prepayment"): signs
-                * pl.col("Nominal")
-                * (1 - repayment_factors)
-                * prepayment_factors,
             },
             Nominal=new_nominal,
             AccruedInterest=pl.col("AccruedInterest") - coupon_payments,
-            Impairment=new_impairment,
             PreviousCouponDate=previous_coupon_date,
             NextCouponDate=new_coupon_date,
             FloatingRate=floating_rates,
             InterestRate=new_interest_rates,
-            ValuationError=new_valuation_error,
         )
 
         return bs

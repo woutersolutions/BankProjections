@@ -1,219 +1,69 @@
-import datetime
-from abc import ABC, abstractmethod
-from collections.abc import Sequence
-
 import polars as pl
 
-from bank_projections.projections.frequency import FrequencyRegistry
-from bank_projections.utils.base_registry import BaseRegistry
+from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
+from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
+from bank_projections.financials.balance_sheet_item import BalanceSheetItem
+from bank_projections.financials.market_data import MarketRates
+from bank_projections.projections.redemption_type import RedemptionTypeRegistry
+from bank_projections.projections.rule import Rule
+from bank_projections.utils.time import TimeIncrement
 
 
-class Redemption(ABC):
-    @classmethod
-    @abstractmethod
-    def redemption_factor(
-        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
-    ) -> pl.Expr:
-        pass
+class Redemption(Rule):
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
+        if increment.from_date == increment.to_date:  # No time passed
+            return bs
 
-    @classmethod
-    @abstractmethod
-    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
-        """Returns an expression that validates all required columns are available and have valid values.
-        :param date:
-        """
-        pass
+        matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
 
-
-class RedemptionRegistry(BaseRegistry[Redemption], Redemption):
-    @classmethod
-    def redemption_factor(
-        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
-    ) -> pl.Expr:
-        expr = pl.lit(0.0)
-        for name, redemption_cls in cls.stripped_items.items():
-            expr = (
-                pl.when(pl.col("RedemptionType") == name)
-                .then(redemption_cls.redemption_factor(maturity_date, interest_rate, coupon_date, projection_date))
-                .otherwise(expr)
+        repayment_factors = (
+            pl.when(matured)
+            .then(1.0)
+            .otherwise(
+                RedemptionTypeRegistry.redemption_factor(
+                    pl.col("MaturityDate"), pl.col("InterestRate"), pl.col("NextCouponDate"), increment.to_date
+                )
             )
-        return expr
+        )
+        prepayment_factors = pl.col("PrepaymentRate").fill_null(0.0) * increment.portion_year
+        redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
 
-    @classmethod
-    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
-        """Returns an expression that validates all required columns for all registered redemption types.
-        :param date:
-        """
-        # Base requirement: RedemptionType column must exist and be non-null
-        result = [pl.col("RedemptionType").is_in(RedemptionRegistry.stripped_names())]
-        for name, redemption_cls in cls.stripped_items.items():
-            for expr in redemption_cls.required_columns_validation(date):
-                result.append(pl.when(pl.col("RedemptionType") == name).then(expr).otherwise(True))
+        new_nominal = pl.col("Nominal") * (1 - redemption_factors)
 
-        return result
+        new_impairment = pl.when(matured).then(0.0).otherwise(pl.col("Impairment") * (1 - redemption_factors))
 
-    @classmethod
-    def validate_df(
-        cls,
-        df: pl.DataFrame | pl.LazyFrame,
-        date: datetime.date,
-        sample_rows: int = 10,
-        id_cols: list[str] | None = None,
-    ) -> None:
-        """Validates that the DataFrame has all required columns for the registered redemption types."""
-        rules = cls.required_columns_validation(date)
-        validate_df(df, rules, sample_rows=sample_rows, id_cols=id_cols)
-
-
-class BulletRedemption(Redemption):
-    @classmethod
-    def redemption_factor(
-        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
-    ) -> pl.Expr:
-        return pl.when(maturity_date <= pl.lit(projection_date)).then(pl.lit(1.0)).otherwise(pl.lit(0.0))
-
-    @classmethod
-    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
-        """Validates that bullet redemption only needs maturity date.
-        :param date:
-        """
-        return [pl.col("MaturityDate").is_not_null()]
-
-
-class AnnuityRedemption(Redemption):
-    @classmethod
-    def redemption_factor(
-        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
-    ) -> pl.Expr:
-        payments_done = FrequencyRegistry.number_due(coupon_date, pl.lit(projection_date))
-        total_payments = FrequencyRegistry.number_due(coupon_date, pl.col("MaturityDate"))
-        period_rate = interest_rate * FrequencyRegistry.portion_year()
-
-        return (
-            pl.when(maturity_date <= pl.lit(projection_date))
-            .then(pl.lit(1.0))
-            .when(payments_done <= 0)
-            .then(pl.lit(0.0))
-            .when(interest_rate == 0)
-            .then(payments_done / total_payments)
-            .otherwise(((1 + period_rate).pow(payments_done) - 1) / ((1 + period_rate).pow(total_payments) - 1))
+        # Also, assume the valuation error decreases linear
+        new_valuation_error = (
+            pl.when(pl.col("MaturityDate").is_null())
+            .then(pl.col("ValuationError"))
+            .when(matured)
+            .then(0.0)
+            .otherwise(
+                pl.col("ValuationError")
+                * (pl.col("MaturityDate") - increment.to_date).dt.total_days()
+                / (pl.col("MaturityDate") - increment.from_date).dt.total_days()
+            )
         )
 
-    @classmethod
-    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
-        """Validates that CouponFrequency column exists and has valid values for annuity redemption.
-        :param date:
-        """
-        # Check if CouponFrequency column exists and has valid values
-        return [
-            pl.col("MaturityDate").is_not_null(),
-            pl.col("CouponFrequency").is_not_null(),
-            pl.col("CouponFrequency").is_in(list(FrequencyRegistry.stripped_names())),
-            pl.col("NextCouponDate").is_not_null() | (pl.col("MaturityDate") <= pl.lit(date)),
-            pl.col("InterestRate").is_not_null(),
-        ]
+        signs = BalanceSheetCategoryRegistry.book_value_sign()
 
-
-class PerpetualRedemption(Redemption):
-    @classmethod
-    def redemption_factor(
-        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
-    ) -> pl.Expr:
-        return pl.lit(0.0)
-
-    @classmethod
-    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
-        """Validates that perpetual redemption needs no additional columns.
-        :param date:
-        """
-        return [pl.col("MaturityDate").is_null()]
-
-
-class LinearRedemption(Redemption):
-    @classmethod
-    def redemption_factor(
-        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
-    ) -> pl.Expr:
-        payments_left = FrequencyRegistry.number_due(coupon_date, pl.lit(projection_date))
-
-        return (
-            pl.when(maturity_date <= pl.lit(projection_date))
-            .then(pl.lit(1.0))
-            .when(payments_left <= 0)
-            .then(pl.lit(0.0))
-            .otherwise(pl.lit(1.0) / payments_left)
+        bs.mutate(
+            BalanceSheetItem(),
+            pnls={
+                MutationReason(module="Runoff", rule="Impairment"): signs * (new_impairment - pl.col("Impairment")),
+            },
+            cashflows={
+                MutationReason(module="Runoff", rule="Principal Repayment"): signs
+                * pl.col("Nominal")
+                * repayment_factors,
+                MutationReason(module="Runoff", rule="Principal Prepayment"): signs
+                * pl.col("Nominal")
+                * (1 - repayment_factors)
+                * prepayment_factors,
+            },
+            Nominal=new_nominal,
+            Impairment=new_impairment,
+            ValuationError=new_valuation_error,
         )
 
-    @classmethod
-    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
-        """Validates that CouponFrequency column exists and has valid values for linear redemption.
-        :param date:
-        """
-        return [pl.col("MaturityDate").is_not_null()]
-
-
-class NotionalOnlyRedemption(Redemption):
-    @classmethod
-    def redemption_factor(
-        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
-    ) -> pl.Expr:
-        return pl.when(maturity_date <= pl.lit(projection_date)).then(pl.lit(1.0)).otherwise(pl.lit(0.0))
-
-    @classmethod
-    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
-        """Validates that notional redemption only needs maturity date.
-        :param date:
-        """
-        return [pl.col("MaturityDate").is_not_null()]
-
-
-# Register all redemption types
-RedemptionRegistry.register("bullet", BulletRedemption())
-RedemptionRegistry.register("annuity", AnnuityRedemption())
-RedemptionRegistry.register("perpetual", PerpetualRedemption())
-RedemptionRegistry.register("linear", LinearRedemption())
-RedemptionRegistry.register("notional", NotionalOnlyRedemption())
-
-
-def validate_df(
-    df: pl.DataFrame | pl.LazyFrame,
-    rules: Sequence[pl.Expr],
-    sample_rows: int = 10,
-    id_cols: list[str] | None = None,
-) -> None:
-    """
-    rules: list of boolean pl.Expr objects (True = passes).
-    Raises ValueError if any rule has at least one failing row.
-    """
-
-    # Generate names from expression strings
-    names = [str(expr) for expr in rules]
-
-    # Count failures in one select
-    fail_exprs = [
-        (~expr.fill_null(False)).cast(pl.UInt32).sum().alias(name) for expr, name in zip(rules, names, strict=False)
-    ]
-    counts_df = df.select(fail_exprs) if isinstance(df, pl.DataFrame) else df.select(fail_exprs).collect()
-    counts = counts_df.row(0, named=True)
-
-    failing = {k: v for k, v in counts.items() if v > 0}
-    if not failing:
-        return  # all good
-
-    # Optional: include a few failing rows per rule
-    samples_txt = ""
-    if sample_rows and isinstance(df, pl.DataFrame):
-        show_cols = id_cols or df.columns
-        for expr, name in zip(rules, names, strict=False):
-            if counts[name] > 0:
-                sample = df.filter(~expr.fill_null(False)).select(show_cols).head(sample_rows)
-                samples_txt += f"\n\n{name} — first {min(sample_rows, counts[name])} failing rows:\n{sample}"
-
-    msg_lines = [
-        "Validation failed:",
-        *[f"- {k}: {v} failures" for k, v in sorted(failing.items(), key=lambda x: (-x[1], x[0]))],
-    ]
-    if samples_txt:
-        msg_lines.append(samples_txt)
-
-    raise ValueError("\n".join(msg_lines))
+        return bs
