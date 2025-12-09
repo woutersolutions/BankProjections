@@ -478,6 +478,11 @@ class BalanceSheet(Positions):
         return int(signs[0])
 
     def add_pnl(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
+
+        # Assert all not null
+        if data.filter(expr.is_null()).height > 0:
+            raise ValueError("PnL expression contains null values")
+
         pnls = data.pipe(reason.add_to_df).group_by(Config.pnl_labels()).agg(Amount=expr.sum())
         pnls = pnls.filter(pl.col("Amount") != 0.0)
 
@@ -494,6 +499,9 @@ class BalanceSheet(Positions):
         if amount == 0.0:
             return
 
+        if amount is None or pd.isna(amount):
+            raise ValueError("Amount must be a numeric value and cannot be NaN")
+
         pnls = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
 
         self.pnls = pl.concat([self.pnls, pnls], how="diagonal")
@@ -509,6 +517,11 @@ class BalanceSheet(Positions):
             self.add_single_liquidity(amount, reason)
 
     def add_oci(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
+
+        # Assert all not null
+        if data.filter(expr.is_null()).height > 0:
+            raise ValueError("OCI expression contains null values")
+
         ocis = data.pipe(reason.add_to_df).group_by(Config.oci_labels()).agg(Amount=expr.sum())
         ocis = ocis.filter(pl.col("Amount") != 0.0)
 
@@ -525,6 +538,9 @@ class BalanceSheet(Positions):
         if amount == 0.0:
             return
 
+        if amount is None or pd.isna(amount):
+            raise ValueError("Amount must be a numeric value and cannot be NaN")
+
         ocis = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
 
         self.ocis = pl.concat([self.ocis, ocis], how="diagonal")
@@ -537,6 +553,11 @@ class BalanceSheet(Positions):
         )
 
     def add_liquidity(self, data: pl.DataFrame, expr: pl.Expr, reason: MutationReason) -> None:
+
+        # Assert all not null
+        if data.filter(expr.is_null()).height > 0:
+            raise ValueError("Liquidity expression contains null values")
+
         cashflows = data.pipe(reason.add_to_df).group_by(Config.cashflow_labels()).agg(Amount=expr.sum())
         cashflows = cashflows.filter(pl.col("Amount") != 0.0)
 
@@ -552,6 +573,9 @@ class BalanceSheet(Positions):
     def add_single_liquidity(self, amount: float, reason: MutationReason, offset_pnl: bool = False) -> None:
         if amount == 0.0:
             return
+
+        if amount is None or pd.isna(amount):
+            raise ValueError("Amount must be a numeric value and cannot be NaN")
 
         cashflows = pl.DataFrame({"Amount": [amount]}).pipe(reason.add_to_df)
 
