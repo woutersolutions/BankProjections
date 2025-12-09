@@ -108,9 +108,7 @@ class ContractualInflowPrincipal(Metric):
 
         matured = pl.col("MaturityDate") <= pl.lit(to_date)
         repayment_factors = (
-            pl.when(~RedemptionRegistry.has_principal_exchange())
-            .then(0.0)
-            .when(matured)
+            pl.when(matured)
             .then(1.0)
             .otherwise(
                 RedemptionRegistry.redemption_factor(
