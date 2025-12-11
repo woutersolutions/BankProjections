@@ -46,24 +46,25 @@ class Redemption(Rule):
         )
 
         signs = BalanceSheetCategoryRegistry.book_value_sign()
+        repayment = pl.col("Nominal") * repayment_factors
+        prepayment = pl.col("Nominal") * (1 - repayment_factors) * prepayment_factors
+        impairment_change = new_impairment - pl.col("Impairment")
 
         bs.mutate(
             BalanceSheetItem(),
             pnls={
-                MutationReason(module="Runoff", rule="Impairment"): signs * (new_impairment - pl.col("Impairment")),
+                MutationReason(module="Runoff", rule="Impairment"): signs * impairment_change,
             },
             cashflows={
-                MutationReason(module="Runoff", rule="Principal Repayment"): signs
-                * pl.col("Nominal")
-                * repayment_factors,
-                MutationReason(module="Runoff", rule="Principal Prepayment"): signs
-                * pl.col("Nominal")
-                * (1 - repayment_factors)
-                * prepayment_factors,
+                MutationReason(module="Runoff", rule="Principal Repayment"): signs * repayment,
+                MutationReason(module="Runoff", rule="Principal Prepayment"): signs * prepayment,
             },
             Nominal=new_nominal,
             Impairment=new_impairment,
             ValuationError=new_valuation_error,
+            Repayment=repayment,
+            Prepayment=prepayment,
+            ImpairmentChange=impairment_change,
         )
 
         return bs

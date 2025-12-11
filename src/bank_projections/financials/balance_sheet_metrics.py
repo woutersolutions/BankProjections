@@ -74,6 +74,29 @@ class StoredWeight(StoredColumn):
         return pl.lit(amount)
 
 
+class MutationAmount(StoredColumn):
+    def __init__(self, column: str):
+        super().__init__(column)
+
+    @property
+    def get_expression(self) -> pl.Expr:
+        return pl.col(self.column)
+
+    def set_expression(self, amounts: pl.Expr) -> pl.Expr:
+        return pl.lit(amounts)
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return self.get_expression.sum()
+
+    def mutation_expression(self, amount: float, filter_expression: pl.Expr) -> pl.Expr:
+        raise NotImplementedError("MutationAmount does not support mutating")
+
+    @property
+    def mutation_column(self) -> str:
+        return self.column
+
+
 class DerivedMetric(BalanceSheetMetric, ABC):
     def set_expression(self, amounts: pl.Expr) -> pl.Expr:
         raise NotImplementedError("Derived metric cannot be modified")

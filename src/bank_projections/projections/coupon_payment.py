@@ -54,6 +54,7 @@ class CouponPayment(Rule):
             NextCouponDate=new_coupon_date,
             FloatingRate=floating_rates,
             InterestRate=new_interest_rates,
+            CouponPayment=coupon_payments,
         )
 
         return bs

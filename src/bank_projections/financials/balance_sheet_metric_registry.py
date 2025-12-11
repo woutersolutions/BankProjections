@@ -12,6 +12,7 @@ from bank_projections.financials.balance_sheet_metrics import (
     EncumberedHQLA,
     LeverageExposure,
     MarketValue,
+    MutationAmount,
     OffBalanceExposure,
     OnBalanceExposure,
     StoredAmount,
@@ -26,6 +27,10 @@ class BalanceSheetMetrics(BaseRegistry[BalanceSheetMetric]):
     @classmethod
     def stored_columns(cls) -> list[str]:
         return [metric.column for metric in cls.values() if isinstance(metric, StoredColumn)]
+
+    @classmethod
+    def mutation_columns(cls) -> list[str]:
+        return [metric.column for metric in cls.values() if isinstance(metric, MutationAmount)]
 
 
 BalanceSheetMetrics.register("Nominal", StoredAmount("Nominal"))
@@ -90,3 +95,11 @@ BalanceSheetMetrics.register("StressedOutflow", DerivedAmount("StressedOutflowWe
 BalanceSheetMetrics.register("HQLA", HQLA())
 BalanceSheetMetrics.register("EncumberedHQLA", EncumberedHQLA())
 BalanceSheetMetrics.register("UnencumberedHQLA", UnencumberedHQLA())
+
+BalanceSheetMetrics.register("CouponPayment", MutationAmount("CouponPayment"))
+BalanceSheetMetrics.register("Repayment", MutationAmount("Repayment"))
+BalanceSheetMetrics.register("Prepayment", MutationAmount("Prepayment"))
+BalanceSheetMetrics.register("ImpairmentChange", MutationAmount("ImpairmentChange"))
+BalanceSheetMetrics.register("AgioRedemption", MutationAmount("AgioRedemption"))
+BalanceSheetMetrics.register("Accrual", MutationAmount("Accrual"))
+BalanceSheetMetrics.register("FairValueChange", MutationAmount("FairValueChange"))

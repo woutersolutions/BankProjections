@@ -25,9 +25,8 @@ class Valuation(Rule):
             - pl.col("Nominal")
             - pl.col("Impairment")
         )
-        income = BalanceSheetCategoryRegistry.book_value_sign() * (
-            new_fair_value_adjustment - pl.col("FairValueAdjustment")
-        )
+        signs = BalanceSheetCategoryRegistry.book_value_sign()
+        fair_value_change = new_fair_value_adjustment - pl.col("FairValueAdjustment")
 
         bs.mutate(
             BalanceSheetItem(AccountingMethod="fairvaluethroughpnl")
@@ -36,18 +35,19 @@ class Valuation(Rule):
                 MutationReason(module="Valuation", rule="Net gains fair value through P&L"): pl.when(
                     pl.col("AccountingMethod") == "fairvaluethroughpnl"
                 )
-                .then(income)
+                .then(signs * fair_value_change)
                 .otherwise(0.0),
             },
             ocis={
                 MutationReason(module="Valuation", rule="Net gains fair value through OCI"): pl.when(
                     pl.col("AccountingMethod") == "fairvaluethroughoci"
                 )
-                .then(income)
+                .then(signs * fair_value_change)
                 .otherwise(0.0),
             },
             FairValueAdjustment=new_fair_value_adjustment,
             DirtyPrice=pl.col("NewDirtyPrice"),
+            FairValueChange=fair_value_change,
         )
 
         bs._data = bs._data.drop("NewDirtyPrice")

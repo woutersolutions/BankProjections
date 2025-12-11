@@ -31,6 +31,7 @@ class Accrual(Rule):
             },
             Nominal=pl.col("Nominal") + pl.when(is_accumulating).then(accrual).otherwise(0.0),
             AccruedInterest=pl.col("AccruedInterest") + pl.when(is_accumulating).then(0.0).otherwise(accrual),
+            Accrual=accrual,
         )
 
         return bs

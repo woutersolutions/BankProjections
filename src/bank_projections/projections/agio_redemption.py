@@ -29,13 +29,15 @@ class AgioRedemption(Rule):
         )
 
         signs = BalanceSheetCategoryRegistry.book_value_sign()
+        agio_redemption = new_agio - pl.col("Agio")
 
         bs.mutate(
             BalanceSheetItem(),
             pnls={
-                MutationReason(module="Runoff", rule="Agio"): signs * (new_agio - pl.col("Agio")),
+                MutationReason(module="Runoff", rule="Agio"): signs * agio_redemption,
             },
             Agio=new_agio,
+            AgioRedemption=agio_redemption,
         )
 
         return bs

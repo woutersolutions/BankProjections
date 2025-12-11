@@ -247,7 +247,8 @@ class BalanceSheet(Positions):
                     pl.col("PreviousCouponDate"),
                     pl.col("NextCouponDate"),
                     self.date,
-                )
+                ),
+                *[pl.lit(0.0).alias(column) for column in BalanceSheetMetrics.mutation_columns()],
             )
             .pipe(Config.cast_columns)
         )

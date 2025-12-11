@@ -270,7 +270,9 @@ def generate_synthetic_positions(
         ValuationCurve=pl.col("ValuationCurve").cast(pl.String),
         CleanPrice=pl.col("CleanPrice").cast(pl.Float64),
     ).with_columns(
-        FloatingRate=curves.floating_rate_expr(), Spread=pl.col("InterestRate") - curves.floating_rate_expr()
+        FloatingRate=curves.floating_rate_expr(),
+        Spread=pl.col("InterestRate") - curves.floating_rate_expr(),
+        *[pl.lit(0.0).alias(column) for column in BalanceSheetMetrics.mutation_columns()],
     )
 
     # Perform valuation to initialize the t0 valuation error
