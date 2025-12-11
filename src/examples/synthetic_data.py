@@ -11,11 +11,11 @@ from bank_projections.financials.balance_sheet import BalanceSheet, Positions
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import Curves, MarketRates
+from bank_projections.projections.accrual_method import AccrualMethodRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
 from bank_projections.scenarios.scenario import Scenario
-from bank_projections.utils.coupons import interest_accrual
 from bank_projections.utils.parsing import strip_identifier
 from examples import EXAMPLE_FOLDER
 
@@ -39,6 +39,7 @@ def generate_synthetic_positions(
     item_type: str,
     sub_item_type: str,
     accounting_method: str,
+    accrual_method: str,
     redemption_type: str,
     coupon_frequency: str,
     current_date: datetime.date,
@@ -72,6 +73,7 @@ def generate_synthetic_positions(
     reference_rate = strip_identifier(reference_rate)
     valuation_curve = strip_identifier(valuation_curve)
     valuation_method = "none" if valuation_method is None else strip_identifier(valuation_method)
+    accrual_method = "none" if accrual_method is None else strip_identifier(accrual_method)
 
     # For notional-based instruments (like swaps), generate notionals separately
     if notional is not None:
@@ -209,6 +211,7 @@ def generate_synthetic_positions(
             IsAccumulating=pl.lit(accumulating),
             RedemptionType=pl.lit(redemption_type),
             BalanceSheetCategory=pl.lit(balance_sheet_category),
+            AccrualMethod=pl.lit(accrual_method),
             ValuationMethod=pl.lit(valuation_method),
             ValuationCurve=pl.lit(valuation_curve),
             ReferenceRate=pl.lit(reference_rate),
@@ -227,7 +230,7 @@ def generate_synthetic_positions(
             ),
         )
         .with_columns(
-            AccruedInterestWeight=interest_accrual(
+            AccruedInterestWeight=AccrualMethodRegistry.interest_accrual(
                 pl.lit(1.0),
                 pl.col("InterestRate"),
                 pl.col("PreviousCouponDate"),

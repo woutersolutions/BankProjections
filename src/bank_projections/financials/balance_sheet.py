@@ -16,9 +16,9 @@ from bank_projections.financials.balance_sheet_metrics import (
     StoredColumn,
 )
 from bank_projections.output_config import AggregationConfig
+from bank_projections.projections.accrual_method import AccrualMethodRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption_type import RedemptionTypeRegistry
-from bank_projections.utils.coupons import interest_accrual
 from bank_projections.utils.parsing import correct_identifier_keys, strip_identifier_keys
 
 
@@ -240,7 +240,8 @@ class BalanceSheet(Positions):
                 ),
             )
             .with_columns(
-                AccruedInterest=interest_accrual(
+                # TODO: Consider if accrual should always be zero when adding items
+                AccruedInterest=AccrualMethodRegistry.interest_accrual(
                     pl.col("Nominal"),
                     pl.col("InterestRate"),
                     pl.col("PreviousCouponDate"),

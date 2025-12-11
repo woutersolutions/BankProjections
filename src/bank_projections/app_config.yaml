@@ -34,6 +34,7 @@ labels:
 classifications:
   BalanceSheetCategory: bank_projections.financials.balance_sheet_category.BalanceSheetCategoryRegistry
   AccountingMethod: bank_projections.financials.accounting_method.AccountingMethodRegistry
+  AccrualMethod: bank_projections.projections.accrual_method.AccrualMethodRegistry
   ValuationMethod: bank_projections.projections.valuation_method.ValuationMethodRegistry
   CouponFrequency: bank_projections.projections.frequency.FrequencyRegistry
   RedemptionType: bank_projections.projections.redemption_type.RedemptionTypeRegistry

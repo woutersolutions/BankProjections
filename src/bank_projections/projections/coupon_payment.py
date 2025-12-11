@@ -7,7 +7,6 @@ from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.rule import Rule
-from bank_projections.utils.coupons import coupon_payment
 from bank_projections.utils.time import TimeIncrement
 
 
@@ -60,3 +59,10 @@ class CouponPayment(Rule):
         )
 
         return bs
+
+
+def coupon_payment(
+    nominal: pl.Expr,
+    coupon_rate: pl.Expr,
+) -> pl.Expr:
+    return nominal * coupon_rate * FrequencyRegistry.portion_year()
