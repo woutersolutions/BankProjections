@@ -9,7 +9,7 @@ from bank_projections.utils.base_registry import BaseRegistry
 from bank_projections.utils.daycounting import Actual36525, DaycountFraction
 from bank_projections.utils.scaling import AdditiveScaling, MultiplicativeScaling, NoScaling, ScalingMethod
 
-DAYCOUNT_VALUATION: DaycountFraction = Actual36525
+DAYCOUNT_VALUATION: type[DaycountFraction] = Actual36525
 
 
 class ValuationMethod(ABC):

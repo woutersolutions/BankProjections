@@ -120,7 +120,7 @@ class TestDerivedMetric:
 
 class TestMarketValue:
     def test_market_value_initialization(self):
-        metric = MarketValue()
+        _ = MarketValue()
 
     def test_get_expression(self):
         metric = MarketValue()
@@ -135,7 +135,7 @@ class TestMarketValue:
 
 class TestExposure:
     def test_exposure_initialization(self):
-        metric = BaselExposure()
+        _ = BaselExposure()
 
     def test_get_expression(self):
         metric = BaselExposure()
@@ -150,7 +150,7 @@ class TestExposure:
 
 class TestBookValue:
     def test_book_value_initialization(self):
-        metric = BookValue()
+        _ = BookValue()
 
     def test_get_expression(self):
         metric = BookValue()
@@ -190,7 +190,7 @@ class TestMetricIntegration:
         result = df.select(metric.get_expression.alias("market_value"))
         expected = [1005.0, 1910.0]  # 1.005 * 1000, 0.955 * 2000
         actual = result["market_value"].to_list()
-        for a, e in zip(actual, expected):
+        for a, e in zip(actual, expected, strict=True):
             assert abs(a - e) < 1e-6, f"Expected {e}, got {a}"
 
     def test_exposure_with_real_data(self):
@@ -210,8 +210,8 @@ class TestMetricIntegration:
         metric = BaselExposure()
 
         # Test get_expression
-        # OnBalanceExposure = Nominal + Agio + AccruedInterest + FairValueAdjustment = 1000+10+5+0=1015, 2000+20+10+0=2030
-        # OffBalanceExposure = CCF * Undrawn + OtherOffBalanceWeight * Nominal = 0.5*100+0=50, 0.5*200+0=100
+        # OnBalance = Nominal + Agio + AccruedInterest + FairValueAdj = 1000+10+5+0=1015, 2000+20+10+0=2030
+        # OffBalance = CCF * Undrawn + OtherOffBalanceWeight * Nominal = 0.5*100+0=50, 0.5*200+0=100
         # Total = 1015+50=1065, 2030+100=2130
         result = df.select(metric.get_expression.alias("exposure"))
         expected = [1065.0, 2130.0]

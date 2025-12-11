@@ -6,6 +6,9 @@ import polars as pl
 import streamlit as st
 
 from bank_projections.output_config import AggregationConfig
+from bank_projections.projections.accrual import Accrual
+from bank_projections.projections.agio_redemption import AgioRedemption
+from bank_projections.projections.coupon_payment import CouponPayment
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.redemption import Redemption
 from bank_projections.projections.valuation import Valuation
@@ -94,8 +97,14 @@ def main() -> None:
     if st.button("Run Projection", type="primary", width="stretch"):
         # Load scenario but strip down to only basic rules needed for single asset runoff
         scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-        # Keep only Runoff and Valuation - remove all other rules to avoid errors with missing items
-        scenario.rules = {"Runoff": Redemption(), "Valuation": Valuation()}
+        # Keep only runoff rules and Valuation - remove all other rules to avoid errors with missing items
+        scenario.rules = {
+            "Coupons": CouponPayment(),
+            "Redemption": Redemption(),
+            "Accrual": Accrual(),
+            "Agio": AgioRedemption(),
+            "Valuation": Valuation(),
+        }
         horizon = TimeHorizon.from_numbers(
             start_date=start_date,
             number_of_days=int(number_of_days),

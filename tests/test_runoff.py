@@ -9,6 +9,9 @@ from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import MarketRates
+from bank_projections.projections.accrual import Accrual
+from bank_projections.projections.agio_redemption import AgioRedemption
+from bank_projections.projections.coupon_payment import CouponPayment
 from bank_projections.projections.redemption import Redemption
 from bank_projections.utils.time import TimeIncrement
 from examples.synthetic_data import generate_synthetic_curves
@@ -66,7 +69,8 @@ class TestRunoff:
 
         initial_cashflows_len = len(bs.cashflows)
 
-        rule = Redemption()
+        # Apply coupon payment rule (split from Redemption)
+        rule = CouponPayment()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Should generate coupon payment cashflows
@@ -142,7 +146,8 @@ class TestRunoff:
         loans_item = BalanceSheetItem(SubItemType="Mortgages")
         initial_agio = bs.get_amount(loans_item, BalanceSheetMetrics.get("agio"))
 
-        rule = Redemption()
+        # Apply agio redemption rule (split from Redemption)
+        rule = AgioRedemption()
         result_bs = rule.apply(bs, increment, market_rates)
 
         # Agio should decrease (linear amortization)
@@ -155,19 +160,23 @@ class TestRunoff:
 
         initial_pnl_len = len(bs.pnls)
 
-        rule = Redemption()
-        result_bs = rule.apply(bs, increment, market_rates)
+        # Apply accrual rule (split from Redemption) to generate interest PnL
+        accrual_rule = Accrual()
+        result_bs = accrual_rule.apply(bs, increment, market_rates)
+
+        # Apply redemption rule for impairment PnL
+        redemption_rule = Redemption()
+        result_bs = redemption_rule.apply(result_bs, increment, market_rates)
 
         # Should generate PnL for interest income and impairment
         assert len(result_bs.pnls) > initial_pnl_len
 
-        # Check for specific PnL reasons (runoff generates Accrual, Coupons, and Impairment PnLs)
+        # Check for specific PnL reasons (Accrual generates Accrual PnL, Redemption generates Impairment PnL)
         accrual_pnl = result_bs.pnls.filter((pl.col("module") == "Runoff") & (pl.col("rule") == "Accrual"))
-        coupon_pnl = result_bs.pnls.filter((pl.col("module") == "Runoff") & (pl.col("rule") == "Coupons"))
         impairment_pnl = result_bs.pnls.filter((pl.col("module") == "Runoff") & (pl.col("rule") == "Impairment"))
 
-        # At least one of accrual or coupon PnL should be generated
-        assert len(accrual_pnl) > 0 or len(coupon_pnl) > 0
+        # Accrual PnL should be generated
+        assert len(accrual_pnl) > 0
         # Impairment PnL may or may not be generated depending on whether there is impairment
         assert isinstance(impairment_pnl, pl.DataFrame)
 

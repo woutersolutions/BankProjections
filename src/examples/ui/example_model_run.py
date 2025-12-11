@@ -6,6 +6,9 @@ import plotly.express as px
 import polars as pl
 import streamlit as st
 
+from bank_projections.projections.accrual import Accrual
+from bank_projections.projections.agio_redemption import AgioRedemption
+from bank_projections.projections.coupon_payment import CouponPayment
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.redemption import Redemption
 from bank_projections.projections.valuation import Valuation
@@ -72,7 +75,14 @@ def main() -> None:
 
     if st.button("Run Projection", type="primary", width="stretch"):
         scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-        scenario.rules = {"Runoff": Redemption(), "Valuation": Valuation(), **scenario.rules}
+        scenario.rules = {
+            "Accrual": Accrual(),
+            "CouponPayment": CouponPayment(),
+            "Redemption": Redemption(),
+            "AgioRedemption": AgioRedemption(),
+            "Valuation": Valuation(),
+            **scenario.rules,
+        }
         horizon = TimeHorizon.from_numbers(
             start_date=start_date,
             number_of_days=int(number_of_days),

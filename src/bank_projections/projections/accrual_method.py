@@ -176,7 +176,7 @@ class AccrualMethodRegistry(BaseRegistry[AccrualMethod]):
         return expr
 
     @classmethod
-    def is_accumulating(cls):
+    def is_accumulating(cls) -> pl.Expr:
         expr = pl.lit(False)
         for name, accrual_method in cls.stripped_items.items():
             expr = (

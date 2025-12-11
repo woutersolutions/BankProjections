@@ -241,6 +241,7 @@ class BalanceSheet(Positions):
             )
             .with_columns(
                 # TODO: Consider if accrual should always be zero when adding items
+                *[pl.lit(0.0).alias(column) for column in BalanceSheetMetrics.mutation_columns()],
                 AccruedInterest=AccrualMethodRegistry.current_accrued_interest(
                     pl.col("Nominal"),
                     pl.col("InterestRate"),
@@ -248,7 +249,6 @@ class BalanceSheet(Positions):
                     pl.col("NextCouponDate"),
                     self.date,
                 ),
-                *[pl.lit(0.0).alias(column) for column in BalanceSheetMetrics.mutation_columns()],
             )
             .pipe(Config.cast_columns)
         )
@@ -626,7 +626,9 @@ class BalanceSheet(Positions):
         numeric_cols = [c for c, dt in zip(bs1._data.columns, bs2._data.dtypes, strict=False) if dt.is_numeric()]
 
         # Compute differences only on numeric cols
-        diff_df = bs1._data.select([(pl.col(c) - bs2._data[c]).alias(f"Delta_{c}") for c in numeric_cols])
+        diff_df: pl.DataFrame = bs1._data.select(
+            [(pl.col(c) - bs2._data[c]).alias(f"Delta_{c}") for c in numeric_cols]
+        )
 
         return diff_df
 
