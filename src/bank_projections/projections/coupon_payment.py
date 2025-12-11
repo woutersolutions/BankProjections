@@ -4,6 +4,7 @@ from bank_projections.financials.balance_sheet import BalanceSheet, MutationReas
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.market_data import MarketRates
+from bank_projections.projections.accrual_method import AccrualMethodRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.rule import Rule
@@ -40,18 +41,15 @@ class CouponPayment(Rule):
             .otherwise(pl.col("InterestRate"))
         )
 
-        new_nominal = pl.col("Nominal") + pl.when(pl.col("IsAccumulating")).then(coupon_payments).otherwise(0.0)
-
+        cashflow = pl.when(AccrualMethodRegistry.is_accumulating()).then(0.0).otherwise(coupon_payments)
         signs = BalanceSheetCategoryRegistry.book_value_sign()
 
         bs.mutate(
             BalanceSheetItem(),
             cashflows={
-                MutationReason(module="Runoff", rule="Coupon payment"): signs
-                * pl.when(pl.col("IsAccumulating")).then(0.0).otherwise(coupon_payments),
+                MutationReason(module="Runoff", rule="Coupon payment"): signs * cashflow,
             },
-            Nominal=new_nominal,
-            AccruedInterest=pl.col("AccruedInterest") - coupon_payments,
+            AccruedInterest=pl.col("AccruedInterest") - cashflow,
             PreviousCouponDate=previous_coupon_date,
             NextCouponDate=new_coupon_date,
             FloatingRate=floating_rates,

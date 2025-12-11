@@ -59,7 +59,6 @@ def generate_synthetic_positions(
     ccf: float | tuple[float, float] | None = None,
     age: int | tuple[int, int] | None = None,
     maturity: int | tuple[int, int] | None = None,
-    accumulating: bool | None = False,
     other_off_balance_weight: float | tuple[float, float] = 0.0,
     trea_weight: float | tuple[float, float] = 0.0,
     stable_funding_weight: float | tuple[float, float] = 0.0,
@@ -208,7 +207,6 @@ def generate_synthetic_positions(
             SubItemType=pl.lit(sub_item_type),
             Currency=pl.lit(strip_identifier(currency)),
             HQLAClass=pl.lit(strip_identifier(hqla_class)),
-            IsAccumulating=pl.lit(accumulating),
             RedemptionType=pl.lit(redemption_type),
             BalanceSheetCategory=pl.lit(balance_sheet_category),
             AccrualMethod=pl.lit(accrual_method),
@@ -230,7 +228,7 @@ def generate_synthetic_positions(
             ),
         )
         .with_columns(
-            AccruedInterestWeight=AccrualMethodRegistry.interest_accrual(
+            AccruedInterestWeight=AccrualMethodRegistry.get(accrual_method).calculate_current_accrued_interest(
                 pl.lit(1.0),
                 pl.col("InterestRate"),
                 pl.col("PreviousCouponDate"),
@@ -482,7 +480,6 @@ def create_single_asset_balance_sheet(
     prepayment_rate: float | tuple[float, float] | None = None,
     age: int | tuple[int, int] | None = None,
     maturity: int | tuple[int, int] | None = None,
-    accumulating: bool = False,
     other_off_balance_weight: float | tuple[float, float] | None = None,
     trea_weight: float | tuple[float, float] | None = None,
     reference_rate: str | None = None,
@@ -603,7 +600,6 @@ def create_single_asset_balance_sheet(
             "prepayment_rate": pl.Series([format_float_value(prepayment_rate)], dtype=pl.Float64),
             "age": pl.Series([format_string_value(age)], dtype=pl.String),
             "maturity": pl.Series([format_string_value(maturity)], dtype=pl.String),
-            "accumulating": pl.Series([accumulating], dtype=pl.Boolean),
             "other_off_balance_weight": pl.Series([format_float_value(other_off_balance_weight)], dtype=pl.Float64),
             "trea_weight": pl.Series([format_float_value(trea_weight)], dtype=pl.Float64),
             "reference_rate": pl.Series([format_string_value(reference_rate)], dtype=pl.String),

@@ -14,25 +14,23 @@ class Accrual(Rule):
         if increment.from_date == increment.to_date:  # No time passed
             return bs
 
-        new_accrual = AccrualMethodRegistry.interest_accrual(
+        accrual = AccrualMethodRegistry.interest_accrual(
             pl.col("Nominal") + pl.col("Notional"),
             pl.col("InterestRate"),
             pl.col("PreviousCouponDate"),
             pl.col("NextCouponDate"),
             increment.to_date,
-        ) + pl.col("AccruedInterestError")
-
-        matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
-        new_accrual = pl.when(matured).then(0.0).otherwise(new_accrual)
-
+        )
+        is_accumulating = AccrualMethodRegistry.is_accumulating()
         signs = BalanceSheetCategoryRegistry.book_value_sign()
 
         bs.mutate(
             BalanceSheetItem(),
             pnls={
-                MutationReason(module="Runoff", rule="Accrual"): signs * (new_accrual - pl.col("AccruedInterest")),
+                MutationReason(module="Runoff", rule="Accrual"): signs * accrual,
             },
-            AccruedInterest=new_accrual,
+            Nominal=pl.col("Nominal") + pl.when(is_accumulating).then(accrual).otherwise(0.0),
+            AccruedInterest=pl.col("AccruedInterest") + pl.when(is_accumulating).then(0.0).otherwise(accrual),
         )
 
         return bs

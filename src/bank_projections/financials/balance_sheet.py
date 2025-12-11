@@ -241,7 +241,7 @@ class BalanceSheet(Positions):
             )
             .with_columns(
                 # TODO: Consider if accrual should always be zero when adding items
-                AccruedInterest=AccrualMethodRegistry.interest_accrual(
+                AccruedInterest=AccrualMethodRegistry.current_accrued_interest(
                     pl.col("Nominal"),
                     pl.col("InterestRate"),
                     pl.col("PreviousCouponDate"),

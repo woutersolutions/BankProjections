@@ -5,7 +5,6 @@ labels:
     - Currency
     - ReferenceRate
     - ValuationCurve
-    - IsAccumulating
 
   cashflow:
     - ItemType
