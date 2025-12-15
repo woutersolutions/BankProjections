@@ -13,6 +13,7 @@ from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.metrics.metrics import calculate_metrics
 from bank_projections.metrics.profitability import calculate_profitability
 from bank_projections.output_config import AggregationConfig
+from bank_projections.projections.projectionrule import ProjectionRule
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.logging import log_iterator
 from bank_projections.utils.time import TimeHorizon
@@ -54,9 +55,10 @@ class ProjectionResult:
 
 
 class Projection:
-    def __init__(self, scenarios: dict[str, Scenario], horizon: TimeHorizon):
+    def __init__(self, scenarios: dict[str, Scenario], horizon: TimeHorizon, rules: dict[str, ProjectionRule]):
         self.scenarios = scenarios
         self.horizon = horizon
+        self.rules = rules
 
     def run(
         self,
@@ -91,7 +93,7 @@ class Projection:
         oci_list = []
 
         total_increments = len(self.horizon)
-        total_steps = len(self.scenarios) * total_increments
+        total_steps = len(self.scenarios) * total_increments * len(self.rules)
         current_step = 0
 
         start_bs_size = len(start_bs)
@@ -104,13 +106,16 @@ class Projection:
                 enumerate(self.horizon, 1), prefix="Time step ", suffix=f"/{total_increments}", timed=True
             ):
                 bs = bs.initialize_new_date(increment.to_date)
-                market_rates = scenario.market_data.get_market_rates(increment.to_date)
-                bs = scenario.apply(bs, increment, market_rates)
 
-                # Update progress
-                current_step += 1
-                if progress_callback is not None:
-                    progress_callback(current_step, total_steps)
+                scenario_snapshot = scenario.snapshot_at(increment)
+
+                for rule_name, rule in self.rules.items():
+                    bs = rule.apply(bs, increment, scenario_snapshot)
+
+                    # Update progress
+                    current_step += 1
+                    if progress_callback is not None:
+                        progress_callback(current_step, total_steps)
 
                 metrics_dict = calculate_metrics(bs)
                 metrics_df = pl.DataFrame(metrics_dict)
@@ -140,7 +145,7 @@ class Projection:
             "StartDate": self.horizon.start_date,
             "EndDate": self.horizon.end_date,
             "NumberOfIncrements": total_increments,
-            "Starttime": datetime.datetime.fromtimestamp(start_time),
+            "StartTime": datetime.datetime.fromtimestamp(start_time),
             "Endtime": datetime.datetime.now(),
             "TotalRunTimeSeconds": time.time() - start_time,
             "StartBalanceSheetSize": start_bs_size,

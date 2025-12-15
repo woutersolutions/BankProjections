@@ -5,11 +5,11 @@ import datetime
 import pytest
 
 from bank_projections.financials.market_data import MarketRates
-from bank_projections.projections.rule import Rule
+from bank_projections.projections.projectionrule import ProjectionRule
 from bank_projections.utils.time import TimeIncrement
 
 
-class MockRule(Rule):
+class MockProjectionRule(ProjectionRule):
     """Mock implementation of Rule for testing."""
 
     def apply(self, bs, increment, market_rates):
@@ -66,11 +66,11 @@ class TestRule:
     def test_rule_is_abstract(self) -> None:
         """Test that Rule cannot be instantiated directly."""
         with pytest.raises(TypeError):
-            Rule()
+            ProjectionRule()
 
     def test_mock_rule_implementation(self) -> None:
         """Test that concrete implementations work."""
-        rule = MockRule()
+        rule = MockProjectionRule()
         increment = TimeIncrement(datetime.date(2025, 1, 1), datetime.date(2025, 1, 31))
 
         # Should not raise error

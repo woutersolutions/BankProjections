@@ -2,7 +2,7 @@
 # Settings that vary between different scenario runs.
 
 # Excel files or folders
-rule_paths:
+input_paths:
   - "src/examples/scenarios"
 
 # Time horizon for projections

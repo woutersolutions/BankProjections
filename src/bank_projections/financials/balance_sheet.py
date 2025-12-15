@@ -19,6 +19,7 @@ from bank_projections.output_config import AggregationConfig
 from bank_projections.projections.accrual_method import AccrualMethodRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.redemption_type import RedemptionTypeRegistry
+from bank_projections.utils.combine import Combinable
 from bank_projections.utils.parsing import correct_identifier_keys, strip_identifier_keys
 
 
@@ -41,7 +42,7 @@ class MutationReason:
         return hash(tuple(sorted(self.reasons.items())))
 
 
-class Positions:
+class Positions(Combinable):
     def __init__(self, data: pl.DataFrame):
         self._data = Config.cast_columns(data)
 
@@ -626,9 +627,7 @@ class BalanceSheet(Positions):
         numeric_cols = [c for c, dt in zip(bs1._data.columns, bs2._data.dtypes, strict=False) if dt.is_numeric()]
 
         # Compute differences only on numeric cols
-        diff_df: pl.DataFrame = bs1._data.select(
-            [(pl.col(c) - bs2._data[c]).alias(f"Delta_{c}") for c in numeric_cols]
-        )
+        diff_df: pl.DataFrame = bs1._data.select([(pl.col(c) - bs2._data[c]).alias(f"Delta_{c}") for c in numeric_cols])
 
         return diff_df
 

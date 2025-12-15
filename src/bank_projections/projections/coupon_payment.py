@@ -3,16 +3,16 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.market_data import MarketRates
 from bank_projections.projections.accrual_method import AccrualMethodRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
-from bank_projections.projections.rule import Rule
+from bank_projections.projections.projectionrule import ProjectionRule
+from bank_projections.scenarios.scenario import ScenarioSnapShot
 from bank_projections.utils.time import TimeIncrement
 
 
-class CouponPayment(Rule):
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
+class CouponPayment(ProjectionRule):
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, scenario: ScenarioSnapShot) -> BalanceSheet:
         if increment.from_date == increment.to_date:  # No time passed
             return bs
 
@@ -34,7 +34,7 @@ class CouponPayment(Rule):
         )
         new_coupon_date = pl.when(matured).then(None).otherwise(FrequencyRegistry.next_coupon_date(increment.to_date))
         coupon_payments = coupon_payment(pl.col("Nominal"), pl.col("InterestRate")) * number_of_payments
-        floating_rates = market_rates.curves.floating_rate_expr()
+        floating_rates = scenario.curves.floating_rate_expr()
         new_interest_rates = (
             pl.when(number_of_payments > 0)
             .then(CouponTypeRegistry.coupon_rate(floating_rates))

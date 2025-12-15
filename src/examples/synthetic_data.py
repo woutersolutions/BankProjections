@@ -3,20 +3,20 @@ import os
 import random
 
 import numpy as np
-import pandas as pd
 import polars as pl
 from dateutil.relativedelta import relativedelta
 
 from bank_projections.financials.balance_sheet import BalanceSheet, Positions
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
-from bank_projections.financials.market_data import Curves, MarketRates
+from bank_projections.financials.market_data import Curves
 from bank_projections.projections.accrual_method import AccrualMethodRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.parsing import strip_identifier
+from bank_projections.utils.time import TimeIncrement
 from examples import EXAMPLE_FOLDER
 
 SEED = 42
@@ -24,15 +24,7 @@ SEED = 42
 random.seed(SEED)
 
 
-# TODO: Generate synthetic market data from csvs
-def generate_synthetic_curves() -> Curves:
-    return Curves(
-        pd.DataFrame({"Name": "euribor", "Tenor": ["3m", "6m"], "Type": ["spot", "spot"], "Rate": [0.0285, 0.0305]})
-    )
-
-
 def generate_synthetic_positions(
-    market_rates: MarketRates,
     book_value: float,
     number: int,
     balance_sheet_category: str,
@@ -44,7 +36,7 @@ def generate_synthetic_positions(
     coupon_frequency: str,
     current_date: datetime.date,
     coupon_type: str,
-    curves: Curves = generate_synthetic_curves(),
+    curves: Curves,
     valuation_method: str | None = None,
     valuation_curve: str | None = None,
     currency: str = "EUR",
@@ -276,7 +268,7 @@ def generate_synthetic_positions(
     )
 
     # Perform valuation to initialize the t0 valuation error
-    zero_rates = market_rates.curves.get_zero_rates()
+    zero_rates = curves.get_zero_rates()
     valuation_method_object = ValuationMethodRegistry.get(valuation_method)
     df = valuation_method_object.calculated_dirty_price(df, current_date, zero_rates, "CalculatedPrice")
     df = df.with_columns(
@@ -386,9 +378,7 @@ def create_synthetic_balance_sheet(
             raise ValueError("Either config_table or config_path must be provided")
         config_table = pl.read_csv(config_path)
 
-    curves = generate_synthetic_curves()
-
-    market_rates = scenario.market_data.get_market_rates(current_date)
+    curves = scenario.snapshot_at(TimeIncrement(current_date, current_date)).curves
 
     # List of numeric columns that should be parsed with read_range
     numeric_columns = {
@@ -412,11 +402,7 @@ def create_synthetic_balance_sheet(
     for row in config_table.iter_rows(named=True):
         position_input = {name: read_range(value) if name in numeric_columns else value for name, value in row.items()}
         if row["number"] > 0:
-            positions.append(
-                generate_synthetic_positions(
-                    market_rates=market_rates, current_date=current_date, curves=curves, **position_input
-                )
-            )
+            positions.append(generate_synthetic_positions(current_date=current_date, curves=curves, **position_input))
 
     combined_positions = Positions.combine(*positions)
 

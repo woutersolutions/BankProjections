@@ -10,9 +10,9 @@ import pytest
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
 from bank_projections.financials.market_data import MarketRates
-from bank_projections.scenarios.mutation import AmountRuleBase, BalanceSheetMutationRule
+from bank_projections.scenarios.mutation import AmountProjectionRuleBase, BalanceSheetMutationRule
 from bank_projections.scenarios.template import (
-    MultiHeaderRule,
+    MultiHeaderProjectionInput,
     MultiHeaderTemplate,
     ScenarioTemplate,
 )
@@ -200,7 +200,7 @@ class TestMultiHeaderRule:
         self.general_tags = {"offset_pnl": "false"}
 
     def test_init(self):
-        rule_set = MultiHeaderRule(
+        rule_set = MultiHeaderProjectionInput(
             self.content, self.col_headers, self.row_headers, self.general_tags, BalanceSheetMutationRule
         )
 
@@ -217,7 +217,9 @@ class TestMultiHeaderRule:
         mock_rule_instance.apply.return_value = self.mock_bs
         mock_rule_class.return_value = mock_rule_instance
 
-        rule_set = MultiHeaderRule(self.content, self.col_headers, self.row_headers, self.general_tags, mock_rule_class)
+        rule_set = MultiHeaderProjectionInput(
+            self.content, self.col_headers, self.row_headers, self.general_tags, mock_rule_class
+        )
 
         result = rule_set.apply(self.mock_bs, self.mock_increment, MarketRates())
 
@@ -307,7 +309,7 @@ class TestAbstractClasses:
     def test_amount_rule_base_is_abstract(self):
         """Test that AmountRuleBase cannot be instantiated"""
         with pytest.raises(TypeError):
-            AmountRuleBase({}, 100.0)
+            AmountProjectionRuleBase({}, 100.0)
 
 
 class TestRuleSetIntegration:
@@ -336,7 +338,7 @@ class TestOneHeaderTemplate:
         assert template.rule_type == BalanceSheetMutationRule
 
     def test_one_header_rule_apply(self):
-        from bank_projections.scenarios.template import OneHeaderRule
+        from bank_projections.scenarios.template import OneHeaderProjectionInput
 
         mock_bs = Mock(spec=BalanceSheet)
         mock_increment = Mock(spec=TimeIncrement)
@@ -349,7 +351,7 @@ class TestOneHeaderTemplate:
         mock_rule_instance.apply.return_value = mock_bs
         mock_rule_class.return_value = mock_rule_instance
 
-        rule = OneHeaderRule(content, general_tags, mock_rule_class)
+        rule = OneHeaderProjectionInput(content, general_tags, mock_rule_class)
         result = rule.apply(mock_bs, mock_increment, MarketRates())
 
         assert mock_rule_class.call_count == 2
@@ -365,9 +367,9 @@ class TestTaxTemplate:
         assert isinstance(template, TaxTemplate)
 
     def test_tax_rule_initialization(self):
-        from bank_projections.scenarios.tax import TaxRule
+        from bank_projections.scenarios.tax import TaxProjectionRule
 
-        rule = TaxRule(tax_rate=0.25)
+        rule = TaxProjectionRule(tax_rate=0.25)
         assert rule.tax_rate == 0.25
 
     def test_tax_rule_apply(self, minimal_scenario):
@@ -375,7 +377,7 @@ class TestTaxTemplate:
 
         import polars as pl
 
-        from bank_projections.scenarios.tax import TaxRule
+        from bank_projections.scenarios.tax import TaxProjectionRule
         from examples.synthetic_data import create_synthetic_balance_sheet
 
         bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
@@ -384,7 +386,7 @@ class TestTaxTemplate:
         increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
         market_rates = MarketRates()
 
-        rule = TaxRule(tax_rate=0.25)
+        rule = TaxProjectionRule(tax_rate=0.25)
         result = rule.apply(bs, increment, market_rates)
 
         assert result is not None
@@ -392,10 +394,10 @@ class TestTaxTemplate:
 
 class TestKeyValueTemplate:
     def test_key_value_template_initialization(self):
-        from bank_projections.scenarios.template import KeyValueRuleBase, KeyValueTemplate
+        from bank_projections.scenarios.template import KeyValueProjectionRuleBase, KeyValueTemplate
 
-        template = KeyValueTemplate(KeyValueRuleBase)
-        assert template.rule_type == KeyValueRuleBase
+        template = KeyValueTemplate(KeyValueProjectionRuleBase)
+        assert template.rule_type == KeyValueProjectionRuleBase
 
 
 class TestTemplateRegistryLoadPaths:
@@ -436,11 +438,11 @@ class TestScenarioConfig:
             end_of_month=True,
         )
         config = ScenarioConfig(
-            rule_paths=["src/examples/scenarios"],
+            input_paths=["src/examples/scenarios"],
             time_horizon=time_horizon,
         )
 
-        assert config.rule_paths == ["src/examples/scenarios"]
+        assert config.input_paths == ["src/examples/scenarios"]
         assert config.time_horizon.start_date == datetime.date(2024, 12, 31)
         assert config.time_horizon.number_of_months == 12
         assert config.time_horizon.end_of_month is True
@@ -459,7 +461,7 @@ class TestScenarioConfig:
         }
         config = ScenarioConfig(**yaml_dict)
 
-        assert config.rule_paths == ["src/examples/scenarios"]
+        assert config.input_paths == ["src/examples/scenarios"]
         assert config.time_horizon.start_date == datetime.date(2024, 12, 31)
         assert config.time_horizon.number_of_months == 12
 

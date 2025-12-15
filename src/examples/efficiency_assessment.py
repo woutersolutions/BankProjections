@@ -21,7 +21,6 @@ from bank_projections.projections.projection import Projection
 from bank_projections.projections.redemption import Redemption
 from bank_projections.projections.valuation import Valuation
 from bank_projections.scenarios.scenario import Scenario
-from bank_projections.scenarios.template_registry import TemplateRegistry
 from bank_projections.utils.logging import log_iterator, setup_logger_format_with_context
 from bank_projections.utils.time import TimeHorizon
 from examples import EXAMPLE_FOLDER, OUTPUT_FOLDER

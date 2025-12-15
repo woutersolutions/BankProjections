@@ -5,9 +5,8 @@ import time
 import polars as pl
 
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
-from bank_projections.scenarios.template_registry import TemplateRegistry
 from examples import EXAMPLE_FOLDER
-from examples.synthetic_data import generate_synthetic_curves, generate_synthetic_positions, read_range
+from examples.synthetic_data import generate_synthetic_positions, read_range
 
 methods = ["swap"]
 
@@ -21,13 +20,12 @@ position_input = {
 }
 position_input["number"] = number_of_loans
 
-curves = generate_synthetic_curves()
 current_date = datetime.date(2024, 12, 31)
 scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
 market_rates = scenario.market_data.get_market_rates(current_date)
 zero_rates = market_rates.curves.get_zero_rates()
 
-positions = generate_synthetic_positions(market_rates, current_date=current_date, curves=curves, **position_input)
+positions = generate_synthetic_positions(current_date=current_date, curves=curves, **position_input)
 
 for method in methods:
     print(f"Valuation method: {method}")

@@ -5,12 +5,12 @@ from unittest.mock import Mock
 
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.market_data import MarketData, MarketRates
-from bank_projections.projections.rule import Rule
+from bank_projections.projections.projectionrule import ProjectionRule
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.time import TimeIncrement
 
 
-class MockRule(Rule):
+class MockProjectionRule(ProjectionRule):
     """Mock rule for testing."""
 
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
@@ -30,8 +30,8 @@ class TestScenario:
 
     def test_scenario_init_with_rules(self):
         """Test Scenario initialization with rules."""
-        rule1 = MockRule()
-        rule2 = MockRule()
+        rule1 = MockProjectionRule()
+        rule2 = MockProjectionRule()
         rules = {"rule1": rule1, "rule2": rule2}
 
         scenario = Scenario(rules=rules)
@@ -60,8 +60,8 @@ class TestScenario:
 
     def test_scenario_apply_with_rules(self):
         """Test applying scenario with rules."""
-        rule1 = Mock(spec=Rule)
-        rule2 = Mock(spec=Rule)
+        rule1 = Mock(spec=ProjectionRule)
+        rule2 = Mock(spec=ProjectionRule)
         rules = {"rule1": rule1, "rule2": rule2}
 
         scenario = Scenario(rules=rules)
@@ -82,8 +82,8 @@ class TestScenario:
 
     def test_scenario_apply_rule_chaining(self):
         """Test that rules are applied in sequence (chained)."""
-        rule1 = Mock(spec=Rule)
-        rule2 = Mock(spec=Rule)
+        rule1 = Mock(spec=ProjectionRule)
+        rule2 = Mock(spec=ProjectionRule)
         rules = {"rule1": rule1, "rule2": rule2}
 
         scenario = Scenario(rules=rules)

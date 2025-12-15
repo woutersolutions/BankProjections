@@ -1,31 +1,57 @@
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any
+
 from pydantic import BaseModel
 
-from bank_projections.financials.balance_sheet import BalanceSheet
-from bank_projections.financials.market_data import MarketData, MarketRates
-from bank_projections.projections.rule import Rule
-from bank_projections.utils.combine import Combinable
-from bank_projections.utils.logging import log_iterator
+from bank_projections.financials.market_data import Curves
+from bank_projections.scenarios.scenario_input_type import (
+    AuditInput,
+    BalanceSheetMutationInput,
+    BalanceSheetMutationInputItem,
+    CostIncomeInput,
+    CostIncomeInputItem,
+    CurveInput,
+    ProductionInput,
+    ProductionInputItem,
+    TaxInput,
+)
 from bank_projections.utils.time import TimeHorizonConfig, TimeIncrement
 
 
-class Scenario(Rule, Combinable):
-    def __init__(self, rules: dict[str, Rule] | None = None, market_data: MarketData | None = None):
-        self.rules = rules or {}
-        self.market_data = market_data or MarketData()
+@dataclass
+class ScenarioSnapShot:
+    curves: Curves
+    tax: TaxInput
+    audit: AuditInput
+    production: list[ProductionInputItem]
+    mutations: list[BalanceSheetMutationInputItem]
+    cost_income: list[CostIncomeInputItem]
 
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
-        bs.validate()
-        for _name, rule in log_iterator(self.rules.items()):
-            bs = rule.apply(bs, increment, market_rates)
-            bs.validate()
-        return bs
 
-    def combine(self, other: "Scenario") -> "Scenario":
-        combined_rules = {**self.rules, **other.rules}
-        combined_market_data = self.market_data.combine(other.market_data)
-        return Scenario(combined_rules, combined_market_data)
+class Scenario:
+    def __init__(self, **kwargs: Any) -> None:
+        self.scenario_input = defaultdict(list)
+        for key, value in kwargs.items():
+            self.scenario_input[key].append(value)
+
+    def add_input(self, key: str, value: Any) -> None:
+        self.scenario_input[key].append(value)
+
+    def get_input(self, key: str) -> Any:
+        return self.scenario_input[key]
+
+    def snapshot_at(self, increment: TimeIncrement) -> ScenarioSnapShot:
+        return ScenarioSnapShot(
+            curves=CurveInput(self.scenario_input["interestrates"]).filter_on_date_snapshot(increment),
+            tax=TaxInput(self.scenario_input["tax"]).filter_on_date_snapshot(increment),
+            audit=AuditInput(self.scenario_input["audit"]).filter_on_date_snapshot(increment),
+            production=ProductionInput(self.scenario_input["production"]).filter_on_date_snapshot(increment),
+            mutations=BalanceSheetMutationInput(self.scenario_input["mutations"]).filter_on_date_snapshot(increment),
+            cost_income=CostIncomeInput(self.scenario_input["costincome"]).filter_on_date_snapshot(increment),
+        )
 
 
 class ScenarioConfig(BaseModel):
-    rule_paths: list[str]
+    input_paths: list[str]
     time_horizon: TimeHorizonConfig

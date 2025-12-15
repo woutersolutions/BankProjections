@@ -3,13 +3,13 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.market_data import MarketRates
-from bank_projections.projections.rule import Rule
+from bank_projections.projections.projectionrule import ProjectionRule
+from bank_projections.scenarios.scenario import ScenarioSnapShot
 from bank_projections.utils.time import TimeIncrement
 
 
-class AgioRedemption(Rule):
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
+class AgioRedemption(ProjectionRule):
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, scenario: ScenarioSnapShot) -> BalanceSheet:
         if increment.from_date == increment.to_date:  # No time passed
             return bs
 

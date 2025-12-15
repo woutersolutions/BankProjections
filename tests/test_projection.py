@@ -9,7 +9,7 @@ import pytest
 from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.financials.market_data import MarketData, MarketRates
 from bank_projections.projections.projection import Projection, ProjectionResult
-from bank_projections.projections.rule import Rule
+from bank_projections.projections.projectionrule import ProjectionRule
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.time import TimeHorizon, TimeIncrement
 
@@ -161,7 +161,7 @@ class TestProjection:
     @patch("bank_projections.projections.projection.calculate_metrics")
     def test_projection_run_single_increment(self, mock_calculate_metrics):
         # Create mock dependencies
-        mock_rule = Mock(spec=Rule)
+        mock_rule = Mock(spec=ProjectionRule)
         mock_bs = MagicMock(spec=BalanceSheet)
         mock_increment = Mock(spec=TimeIncrement)
         mock_increment.from_date = datetime.date(2023, 1, 1)
@@ -220,8 +220,8 @@ class TestProjection:
     @patch("bank_projections.projections.projection.calculate_metrics")
     def test_projection_run_multiple_increments(self, mock_calculate_metrics):
         # Create mock dependencies
-        mock_rule1 = Mock(spec=Rule)
-        mock_rule2 = Mock(spec=Rule)
+        mock_rule1 = Mock(spec=ProjectionRule)
+        mock_rule2 = Mock(spec=ProjectionRule)
         mock_bs = MagicMock(spec=BalanceSheet)
         mock_bs.__len__.return_value = 1000
 
@@ -373,7 +373,7 @@ class TestProjection:
 
     def test_projection_run_rule_exception_handling(self):
         """Test that exceptions in rule application are propagated."""
-        mock_rule = Mock(spec=Rule)
+        mock_rule = Mock(spec=ProjectionRule)
         mock_bs = MagicMock(spec=BalanceSheet)
         mock_bs.__len__.return_value = 1000
         mock_increment = Mock(spec=TimeIncrement)

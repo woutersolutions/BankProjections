@@ -1,8 +1,10 @@
+import datetime
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 import polars as pl
+from dateutil.relativedelta import relativedelta
 
 from bank_projections.app_config import Config
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
@@ -113,3 +115,49 @@ BalanceSheetItemRegistry.register(
     "funding",
     BalanceSheetItem(expr=~BalanceSheetCategoryRegistry.is_asset_side_expr()),
 )
+
+
+class Cohort:
+    def __init__(
+        self, age: int, unit: Literal["days", "months", "years"], minimum: bool = False, maximum: bool = False
+    ) -> None:
+        self.age = age
+        self.unit = unit
+        self.minimum = minimum
+        self.maximum = maximum
+        assert not (minimum and maximum), "Cohort cannot be both minimum and maximum"
+        # Validate unit is one of the expected values
+        if unit not in ("days", "months", "years"):
+            raise ValueError(f"Unit '{unit}' must be 'days', 'months', or 'years'")
+
+    @staticmethod
+    def from_string(label: str, value: int) -> "Cohort":
+        if label.startswith("minage"):
+            minimum = True
+            maximum = False
+            unit = label[len("minage") :]
+        elif label.startswith("maxage"):
+            minimum = False
+            maximum = True
+            unit = label[len("maxage") :]
+        elif label.startswith("age"):
+            minimum = False
+            maximum = False
+            unit = label[len("age") :]
+        else:
+            raise ValueError(f"Cohort string '{label}' must start with 'age', 'minage', or 'maxage'")
+
+        return Cohort(age=value, unit=unit, minimum=minimum, maximum=maximum)
+
+    def get_expression(self, reference_date: datetime.date) -> pl.Expr:
+        offset_date = reference_date - relativedelta(**{self.unit: self.age})
+
+        if self.minimum:
+            return pl.col("OriginationDate") >= pl.lit(offset_date)
+        elif self.maximum:
+            return pl.col("OriginationDate") <= pl.lit(offset_date)
+        else:
+            offset_date2 = reference_date - relativedelta(**{self.unit: self.age + 1})
+            return (pl.col("OriginationDate") > pl.lit(offset_date2)) & (
+                pl.col("OriginationDate") <= pl.lit(offset_date)
+            )
