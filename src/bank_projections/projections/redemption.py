@@ -16,6 +16,7 @@ class Redemption(ProjectionRule):
 
         matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
 
+        # Determine repayments
         repayment_factors = (
             pl.when(matured)
             .then(1.0)
@@ -25,6 +26,12 @@ class Redemption(ProjectionRule):
                 )
             )
         )
+        manual_redemptions = [mutation for mutation in scenario.mutations if mutation.metric == "repaymentrate"]
+        for mutation in manual_redemptions:
+            repayment_factors = (
+                pl.when(mutation.item.filter_expression).then(pl.lit(mutation.amount)).otherwise(repayment_factors)
+            )
+
         prepayment_factors = pl.col("PrepaymentRate").fill_null(0.0) * increment.portion_year
         redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
 

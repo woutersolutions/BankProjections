@@ -167,12 +167,28 @@ class NotionalOnlyRedemptionType(RedemptionType):
         return [pl.col("MaturityDate").is_not_null()]
 
 
+class ManualRedemptionType(RedemptionType):
+    @classmethod
+    def redemption_factor(
+        cls, maturity_date: pl.Expr, interest_rate: pl.Expr, coupon_date: pl.Expr, projection_date: datetime.date
+    ) -> pl.Expr:
+        return pl.lit(None, pl.Float64)  # Is overridden by manual input
+
+    @classmethod
+    def required_columns_validation(cls, date: datetime.date) -> list[pl.Expr]:
+        """Validates that manual redemption only needs maturity date.
+        :param date:
+        """
+        return []
+
+
 # Register all redemption types
 RedemptionTypeRegistry.register("bullet", BulletRedemptionType())
 RedemptionTypeRegistry.register("annuity", AnnuityRedemptionType())
 RedemptionTypeRegistry.register("perpetual", PerpetualRedemptionType())
 RedemptionTypeRegistry.register("linear", LinearRedemptionType())
 RedemptionTypeRegistry.register("notional", NotionalOnlyRedemptionType())
+RedemptionTypeRegistry.register("manual", ManualRedemptionType())
 
 
 def validate_df(

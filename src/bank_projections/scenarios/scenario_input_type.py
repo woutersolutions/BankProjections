@@ -218,7 +218,10 @@ class BalanceSheetMutationInputItem:
                 case "item" | "counteritem" | "amount":
                     pass
                 case "metric":
-                    self.metric = BalanceSheetMetrics.get(value)
+                    if strip_identifier(value) in ["repaymentrate"]:
+                        self.metric = strip_identifier(value)
+                    else:
+                        self.metric = BalanceSheetMetrics.get(value)
                 case _ if key.startswith("counter"):
                     label = strip_identifier(key[len("counter") :])
                     if label is not None and is_in_identifiers(label, Config.label_columns()):

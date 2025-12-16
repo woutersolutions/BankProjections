@@ -122,7 +122,7 @@ def generate_synthetic_positions(
     # Generate maturity dates
     maturity_dates: list[datetime.date | None]
     match strip_identifier(redemption_type):
-        case "perpetual":
+        case "perpetual" | "manual":
             maturity_dates = [None] * number
         case "bullet" | "linear" | "annuity" | "notional":
             if maturity is None:

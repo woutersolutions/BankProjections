@@ -1,4 +1,5 @@
 from bank_projections.financials.balance_sheet import BalanceSheet
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetric
 from bank_projections.projections.projectionrule import ProjectionRule
 from bank_projections.scenarios.scenario import ScenarioSnapShot
 from bank_projections.scenarios.scenario_input_type import BalanceSheetMutationInputItem
@@ -8,7 +9,8 @@ from bank_projections.utils.time import TimeIncrement
 class BalanceSheetMutationRule(ProjectionRule):
     def apply(self, bs: BalanceSheet, increment: TimeIncrement, scenario: ScenarioSnapShot) -> BalanceSheet:
         for mutation_item in scenario.mutations:
-            bs = self.apply_item(bs, increment, mutation_item)
+            if isinstance(mutation_item.metric, BalanceSheetMetric):
+                bs = self.apply_item(bs, increment, mutation_item)
         return bs
 
     def apply_item(self, bs: BalanceSheet, increment: TimeIncrement, mutation_item: BalanceSheetMutationInputItem):
