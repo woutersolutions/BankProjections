@@ -17,10 +17,7 @@ class BalanceSheetMutationRule(ProjectionRule):
         # Implement the logic to apply the mutation to the balance sheet based on rule_input
         # This is a placeholder implementation
 
-        item = mutation_item.item
-        for cohort in mutation_item.cohorts:
-            expr = cohort.get_expression(increment.to_date)
-            item = item.add_condition(expr)
+        item = mutation_item.item.add_cohort_expressions(mutation_item.cohorts, increment.to_date)
 
         if mutation_item.date is None or increment.contains(mutation_item.date):
             bs.mutate_metric(

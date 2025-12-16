@@ -1,5 +1,4 @@
 import datetime
-from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import pandas as pd
@@ -12,10 +11,53 @@ from bank_projections.utils.base_registry import BaseRegistry
 from bank_projections.utils.parsing import get_identifier, is_in_identifiers, read_date, strip_identifier
 
 
-@dataclass
-class BalanceSheetItem:
-    identifiers: dict[str, Any] = field(default_factory=dict)
+class Cohort:
+    def __init__(
+        self, age: int, unit: Literal["days", "months", "years"], minimum: bool = False, maximum: bool = False
+    ) -> None:
+        self.age = age
+        self.unit = unit
+        self.minimum = minimum
+        self.maximum = maximum
+        assert not (minimum and maximum), "Cohort cannot be both minimum and maximum"
+        # Validate unit is one of the expected values
+        if unit not in ("days", "months", "years"):
+            raise ValueError(f"Unit '{unit}' must be 'days', 'months', or 'years'")
 
+    @staticmethod
+    def from_string(label: str, value: int) -> "Cohort":
+        if label.startswith("minage"):
+            minimum = True
+            maximum = False
+            unit = label[len("minage") :]
+        elif label.startswith("maxage"):
+            minimum = False
+            maximum = True
+            unit = label[len("maxage") :]
+        elif label.startswith("age"):
+            minimum = False
+            maximum = False
+            unit = label[len("age") :]
+        else:
+            raise ValueError(f"Cohort string '{label}' must start with 'age', 'minage', or 'maxage'")
+
+        return Cohort(age=value, unit=unit, minimum=minimum, maximum=maximum)
+
+    def get_expression(self, reference_date: datetime.date) -> pl.Expr:
+        offset_date = reference_date - relativedelta(**{self.unit: self.age})
+
+        if self.minimum:
+            return pl.col("OriginationDate") >= pl.lit(offset_date)
+        elif self.maximum:
+            return pl.col("OriginationDate") <= pl.lit(offset_date)
+        else:
+            offset_date2 = reference_date - relativedelta(**{self.unit: self.age + 1})
+            return (pl.col("OriginationDate") > pl.lit(offset_date2)) & (
+                pl.col("OriginationDate") <= pl.lit(offset_date)
+            )
+
+
+class BalanceSheetItem:
     def __init__(self, expr: pl.Expr | None = None, **identifiers: Any) -> None:
         self.identifiers = {}
         for key, value in identifiers.items():
@@ -53,10 +95,21 @@ class BalanceSheetItem:
     def remove_identifier(self, identifier: str) -> "BalanceSheetItem":
         identifiers = self.identifiers.copy()
         del identifiers[identifier]
-        return BalanceSheetItem(**identifiers)
+        return BalanceSheetItem(expr=self.expr, **identifiers)
 
     def copy(self) -> "BalanceSheetItem":
-        return BalanceSheetItem(**self.identifiers.copy())
+        return BalanceSheetItem(expr=self.expr, **self.identifiers.copy())
+
+    def add_cohort_expression(self, cohort: Cohort, reference_date: datetime.date) -> "BalanceSheetItem":
+        expr = cohort.get_expression(reference_date)
+        return self.add_condition(expr)
+
+    def add_cohort_expressions(self, cohorts: list[Cohort], reference_date: datetime.date) -> "BalanceSheetItem":
+        if len(cohorts) > 0:
+            expr = pl.all_horizontal([cohort.get_expression(reference_date) for cohort in cohorts])
+            return self.add_condition(expr)
+        else:
+            return self
 
     @property
     def filter_expression(self) -> pl.Expr:
@@ -115,49 +168,3 @@ BalanceSheetItemRegistry.register(
     "funding",
     BalanceSheetItem(expr=~BalanceSheetCategoryRegistry.is_asset_side_expr()),
 )
-
-
-class Cohort:
-    def __init__(
-        self, age: int, unit: Literal["days", "months", "years"], minimum: bool = False, maximum: bool = False
-    ) -> None:
-        self.age = age
-        self.unit = unit
-        self.minimum = minimum
-        self.maximum = maximum
-        assert not (minimum and maximum), "Cohort cannot be both minimum and maximum"
-        # Validate unit is one of the expected values
-        if unit not in ("days", "months", "years"):
-            raise ValueError(f"Unit '{unit}' must be 'days', 'months', or 'years'")
-
-    @staticmethod
-    def from_string(label: str, value: int) -> "Cohort":
-        if label.startswith("minage"):
-            minimum = True
-            maximum = False
-            unit = label[len("minage") :]
-        elif label.startswith("maxage"):
-            minimum = False
-            maximum = True
-            unit = label[len("maxage") :]
-        elif label.startswith("age"):
-            minimum = False
-            maximum = False
-            unit = label[len("age") :]
-        else:
-            raise ValueError(f"Cohort string '{label}' must start with 'age', 'minage', or 'maxage'")
-
-        return Cohort(age=value, unit=unit, minimum=minimum, maximum=maximum)
-
-    def get_expression(self, reference_date: datetime.date) -> pl.Expr:
-        offset_date = reference_date - relativedelta(**{self.unit: self.age})
-
-        if self.minimum:
-            return pl.col("OriginationDate") >= pl.lit(offset_date)
-        elif self.maximum:
-            return pl.col("OriginationDate") <= pl.lit(offset_date)
-        else:
-            offset_date2 = reference_date - relativedelta(**{self.unit: self.age + 1})
-            return (pl.col("OriginationDate") > pl.lit(offset_date2)) & (
-                pl.col("OriginationDate") <= pl.lit(offset_date)
-            )
