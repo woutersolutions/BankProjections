@@ -183,9 +183,8 @@ class BalanceSheet(Positions):
         labels = correct_identifier_keys(labels, Config.label_columns())
         metrics = strip_identifier_keys(metrics)
 
-        # TODO: Should pl lit be put on all labels?
         if "book" not in labels:
-            labels["Book"] = pl.lit("front")
+            labels["Book"] = "front"
 
         if based_on_item is None:
             raise NotImplementedError("Based on no item not yet implement")
@@ -215,7 +214,7 @@ class BalanceSheet(Positions):
         new_data = (
             self._data.filter(based_on_item.filter_expression)
             .with_columns(
-                **labels,
+                **{label: pl.lit(value) for label, value in labels.items()},
                 OriginationDate=pl.lit(origination_date),
                 MaturityDate=pl.lit(maturity_date, dtype=pl.Date),
             )

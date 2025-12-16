@@ -141,6 +141,9 @@ class BalanceSheetItem:
     def __or__(self, other: "BalanceSheetItem") -> "BalanceSheetItem":
         return BalanceSheetItem(expr=self.filter_expression | other.filter_expression)
 
+    def __repr__(self) -> str:
+        return f"BalanceSheetItem(identifiers={self.identifiers}, expr={self.expr})"
+
 
 class BalanceSheetItemRegistry(BaseRegistry[BalanceSheetItem]):
     pass
