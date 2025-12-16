@@ -10,7 +10,7 @@ from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry, Cohort
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
 from bank_projections.financials.market_data import Curves, parse_tenor
-from bank_projections.scenarios.excel_sheet_format import ExcelInput
+from bank_projections.scenarios.excel_sheet_format import ExcelInput, KeyValueInput
 from bank_projections.utils.parsing import (
     get_identifier,
     is_in_identifiers,
@@ -38,6 +38,9 @@ class TaxInput(ScenarioInput):
 
         excel_input = excel_inputs[0]
 
+        if not isinstance(excel_input, KeyValueInput):
+            raise TypeError("TaxInput requires KeyValueInput format.")
+
         self.tax_rate = excel_input.general_tags["Tax Rate"]
 
     def filter_on_date_snapshot(self, increment: TimeIncrement) -> "TaxInput":
@@ -48,10 +51,12 @@ class AuditInput(ScenarioInput):
     def __init__(self, excel_inputs: list[ExcelInput]) -> None:
         assert len(excel_inputs) == 1, "AuditInput requires exactly one ExcelInput."
 
-        excel_input = excel_inputs[0].general_tags
+        excel_input = excel_inputs[0]
+        if not isinstance(excel_input, KeyValueInput):
+            raise TypeError("AuditInput requires KeyValueInput format.")
 
         self.target = BalanceSheetItem()
-        for key, value in excel_input.items():
+        for key, value in excel_input.general_tags.items():
             match strip_identifier(key):
                 case "closingmonth":
                     self.closing_month = int(value)
@@ -70,12 +75,7 @@ class AuditInput(ScenarioInput):
 
 class CurveInput(ScenarioInput):
     def __init__(self, excel_inputs: list[ExcelInput]) -> None:
-        curve_list = []
-
-        for excel_input in excel_inputs:
-            curve_list.append(excel_input.content)
-
-        self.data = pd.concat(curve_list, ignore_index=True)
+        self.data = pd.concat([excel_input.to_dataframe() for excel_input in excel_inputs], ignore_index=True)
         self._enforce_schema()
 
     @staticmethod
@@ -175,24 +175,17 @@ class ProductionInputItem:
 
 class ProductionInput(ScenarioInput):
     def __init__(self, excel_inputs: list[ExcelInput]) -> None:
-        production_items: list[ProductionInputItem] = []
-
-        for excel_input in excel_inputs:
-            for idx, row in excel_input.content.iterrows():
-                # TODO: Account for multi-header set-up
-                rule_input = {**excel_input.general_tags, **row}
-                production_item = ProductionInputItem(**rule_input)
-                production_items.append(production_item)
-
-        self.production_items = production_items
+        self.production_items: list[ProductionInputItem] = [
+            ProductionInputItem(**items) for excel_input in excel_inputs for items in excel_input.to_dict_list()
+        ]
 
     def filter_on_date_snapshot(self, increment: TimeIncrement) -> list[ProductionInputItem]:
         return [item for item in self.production_items if item.date is None or increment.contains(item.date)]
 
 
 class BalanceSheetMutationInputItem:
-    def __init__(self, rule_input: dict[str, Any], amount: float):
-        self.amount = amount
+    def __init__(self, rule_input: dict[str, Any]):
+        self.amount = rule_input["Amount"]
         self.relative = True
         self.multiplicative = False
         self.offset_liquidity = False
@@ -222,7 +215,7 @@ class BalanceSheetMutationInputItem:
             match strip_identifier(key):
                 case _ if value in ["", np.nan, None]:
                     pass
-                case "item" | "counteritem":
+                case "item" | "counteritem" | "amount":
                     pass
                 case "metric":
                     self.metric = BalanceSheetMetrics.get(value)
@@ -254,27 +247,14 @@ class BalanceSheetMutationInputItem:
                     raise KeyError(f"{key} not recognized in BalanceSheetMutationRule")
 
 
-# TODO: Duplicate code with ProductionInput, refactor later
 class BalanceSheetMutationInput(ScenarioInput):
     def __init__(self, excel_inputs: list[ExcelInput]) -> None:
-        mutation_items: list[BalanceSheetMutationInputItem] = []
-
-        for excel_input in excel_inputs:
-            for idx, row in excel_input.content.iterrows():
-                for col in range(excel_input.content.shape[1]):
-                    amount = row.iloc[col]
-                    if pd.isna(amount) or amount == 0:
-                        continue
-                    col_headers = excel_input.col_headers.iloc[col].to_dict()
-                    row_headers = excel_input.row_headers.iloc[int(idx)].to_dict()
-                    rule_input = {**excel_input.general_tags, **col_headers, **row_headers, "amount": amount}
-                    mutation_item = BalanceSheetMutationInputItem(**rule_input)
-                    mutation_items.append(mutation_item)
-
-        self.production_items = mutation_items
+        self.mutation_items: list[BalanceSheetMutationInputItem] = [
+            BalanceSheetMutationInputItem(items) for excel_input in excel_inputs for items in excel_input.to_dict_list()
+        ]
 
     def filter_on_date_snapshot(self, increment: TimeIncrement) -> list[BalanceSheetMutationInputItem]:
-        return [item for item in self.production_items if item.date is None or increment.contains(item.date)]
+        return [item for item in self.mutation_items if item.date is None or increment.contains(item.date)]
 
 
 class CostIncomeInputItem:
@@ -321,13 +301,9 @@ class CostIncomeInputItem:
 
 class CostIncomeInput(ScenarioInput):
     def __init__(self, excel_inputs: list[ExcelInput]) -> None:
-        self.cost_income_items: list[CostIncomeInputItem] = []
-
-        for excel_input in excel_inputs:
-            for idx, row in excel_input.content.iterrows():
-                rule_input = {**excel_input.general_tags, **row}
-                cost_income_item = CostIncomeInputItem(**rule_input)
-                self.cost_income_items.append(cost_income_item)
+        self.cost_income_items: list[CostIncomeInputItem] = [
+            CostIncomeInputItem(**items) for excel_input in excel_inputs for items in excel_input.to_dict_list()
+        ]
 
     def filter_on_date_snapshot(self, increment: TimeIncrement) -> list[CostIncomeInputItem]:
         return [

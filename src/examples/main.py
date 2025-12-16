@@ -28,7 +28,7 @@ if __name__ == "__main__":
         scenario_config = ScenarioConfig(**yaml.safe_load(f))
 
     excel_inputs = TemplateTypeRegistry.load_paths(scenario_config.input_paths)
-    scenario = Scenario(**{data.template_name: data for data in excel_inputs})
+    scenario = Scenario(excel_inputs)
     rules = {
         "Coupons": CouponPayment(),
         "Redemption": Redemption(),

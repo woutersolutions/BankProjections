@@ -2,7 +2,7 @@
 
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
@@ -12,19 +12,70 @@ from bank_projections.utils.parsing import strip_identifier
 
 
 @dataclass
-class ExcelInput:
-    """Unified container for Excel input data from any template type."""
-
-    content: pd.DataFrame = field(default_factory=pd.DataFrame)
-    col_headers: pd.DataFrame = field(default_factory=pd.DataFrame)
-    row_headers: pd.DataFrame = field(default_factory=pd.DataFrame)
-    general_tags: dict[str, Any] = field(default_factory=dict)
-    template_name: str = ""
+class ExcelInput(ABC):
+    template_name: str
 
     def __post_init__(self):
-        if self.row_headers.empty and not self.content.empty:
-            self.row_headers = pd.DataFrame(index=self.content.index)
         self.template_name = strip_identifier(self.template_name)
+
+    @abstractmethod
+    def to_dict_list(self) -> list[dict[str, Any]]:
+        """Convert the input data to a list of dictionaries."""
+        pass
+
+    @abstractmethod
+    def to_dataframe(self) -> pd.DataFrame:
+        """Convert the input data to a pandas DataFrame."""
+        pass
+
+
+@dataclass
+class KeyValueInput(ExcelInput):
+    general_tags: dict[str, Any]
+
+    def to_dict_list(self) -> list[dict[str, Any]]:
+        return [self.general_tags]
+
+    def to_dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame([self.general_tags])
+
+
+@dataclass
+class TableInput(ExcelInput):
+    table: pd.DataFrame
+    general_tags: dict[str, Any]
+    template_name: str
+
+    def to_dict_list(self) -> list[dict[str, Any]]:
+        return [{**row, **self.general_tags} for row in self.table.to_dict("records")]
+
+    def to_dataframe(self) -> pd.DataFrame:
+        return self.table.assign(**self.general_tags)
+
+
+@dataclass
+class MultiHeaderTableInput(ExcelInput):
+    general_tags: dict[str, Any]
+    col_headers: pd.DataFrame
+    row_headers: pd.DataFrame
+    content: pd.DataFrame
+
+    def to_dict_list(self) -> list[dict[str, Any]]:
+        return [
+            {**self.general_tags, **row_header, **col_header, "Amount": self.content.iloc[int(row), int(column)]}
+            for row, row_header in self.row_headers.iterrows()
+            for column, col_header in self.col_headers.iterrows()
+        ]
+
+    def to_dataframe(self) -> pd.DataFrame:
+        return pd.concat(
+            [
+                pd.concat([self.row_headers, self.content.iloc[:, [int(col)].assign(col_header)]], axis=1).assign(
+                    self.general_tags
+                )
+                for col, col_header in self.col_headers.iterrows()
+            ]
+        )
 
 
 class TemplateType(ABC):
@@ -38,7 +89,7 @@ class TemplateType(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> ExcelInput:
+    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str):
         """Load the Excel sheet into an ExcelInput."""
         pass
 
@@ -187,13 +238,15 @@ class MultiHeaderTemplate(TemplateType):
         return df_raw.map(lambda x: isinstance(x, str) and "*" in x).any().any()
 
     @classmethod
-    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> ExcelInput:
+    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> MultiHeaderTableInput:
         # Find cell with '*' marker
         star_mask = df_raw.map(lambda x: isinstance(x, str) and "*" in x)
         star_row, star_col = star_mask.stack()[star_mask.stack()].index[0]
 
         # Find the first row with non-empty cells from the third column onwards
         col_header_start_row = df_raw.iloc[:, 2:].apply(lambda row: row.notna().any(), axis=1).idxmax()
+        col_header_start_row = max(col_header_start_row, 1)  # Ensure at least row 1
+
         assert col_header_start_row <= star_row
 
         # Extract column headers (rows from col_header_start to star_row, columns from star_col onwards)
@@ -224,7 +277,7 @@ class MultiHeaderTemplate(TemplateType):
             if key and pd.notna(value):
                 general_tags[key] = value
 
-        return ExcelInput(
+        return MultiHeaderTableInput(
             content=content,
             col_headers=col_headers,
             row_headers=row_headers,
@@ -244,7 +297,7 @@ class KeyValueTemplate(TemplateType):
         return cols_beyond_ab.isna().all().all() or cols_beyond_ab.empty
 
     @classmethod
-    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> ExcelInput:
+    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> KeyValueInput:
         # Read key-value pairs from rows below the template header
         general_tags = {}
         for idx in range(1, len(df_raw)):
@@ -253,7 +306,7 @@ class KeyValueTemplate(TemplateType):
             if pd.notna(key) and pd.notna(value):
                 general_tags[str(key).strip()] = value
 
-        return ExcelInput(
+        return KeyValueInput(
             general_tags=general_tags,
             template_name=template_name,
         )
@@ -268,7 +321,7 @@ class OneHeaderTemplate(TemplateType):
         return True
 
     @classmethod
-    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> ExcelInput:
+    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> TableInput:
         # Find the first row with non-empty cells from the third column onwards
         header_start_row = df_raw.iloc[:, 2:].apply(lambda row: row.notna().any(), axis=1).idxmax()
 
@@ -279,9 +332,6 @@ class OneHeaderTemplate(TemplateType):
             header=header_start_row,
         )
 
-        # Create col_headers from the column names
-        col_headers = pd.DataFrame({"column": content.columns})
-
         # Read general tags
         general_tags = {}
         for idx in range(1, header_start_row):
@@ -290,10 +340,9 @@ class OneHeaderTemplate(TemplateType):
             if key and pd.notna(value):
                 general_tags[key] = value
 
-        return ExcelInput(
-            content=content,
-            col_headers=col_headers,
+        return TableInput(
             general_tags=general_tags,
+            table=content,
             template_name=template_name,
         )
 
