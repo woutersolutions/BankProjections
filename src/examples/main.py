@@ -16,6 +16,7 @@ from bank_projections.scenarios.mutation import BalanceSheetMutationRule
 from bank_projections.scenarios.production import ProductionRule
 from bank_projections.scenarios.scenario import Scenario, ScenarioConfig
 from bank_projections.scenarios.tax import TaxProjectionRule
+from bank_projections.scenarios.undrawn import DrawDownRule
 from bank_projections.utils.logging import setup_logger_format_with_context
 from bank_projections.utils.time import TimeHorizon
 from examples import EXAMPLE_FOLDER
@@ -32,6 +33,7 @@ if __name__ == "__main__":
     rules = {
         "Coupons": CouponPayment(),
         "Redemption": Redemption(),
+        "Drawdown": DrawDownRule(),
         "Accrual": Accrual(),
         "Agio": AgioRedemption(),
         "Valuation": Valuation(),
