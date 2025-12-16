@@ -33,7 +33,7 @@ class Redemption(ProjectionRule):
         for mutation in [mutation for mutation in scenario.mutations if mutation.metric == "repayment"]:
             repayment_factors = (
                 pl.when(mutation.item.filter_expression)
-                .then(pl.lit(mutation.amount) / pl.col("Nominal"))
+                .then(pl.lit(mutation.amount) / ((pl.col("Nominal") * mutation.item.filter_expression).sum()))
                 .otherwise(repayment_factors)
             )
 
@@ -41,10 +41,12 @@ class Redemption(ProjectionRule):
         for mutation in [mutation for mutation in scenario.mutations if mutation.metric == "prepayment"]:
             prepayment_factors = (
                 pl.when(mutation.item.filter_expression)
-                .then(pl.lit(mutation.amount) / pl.col("Nominal") / (1 - repayment_factors))
+                .then(
+                    pl.lit(mutation.amount)
+                    / (pl.col("Nominal") * (1 - repayment_factors) * mutation.item.filter_expression).sum()
+                )
                 .otherwise(prepayment_factors)
             )
-
 
         redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
 
