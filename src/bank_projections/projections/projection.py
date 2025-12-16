@@ -98,13 +98,12 @@ class Projection:
 
         start_bs_size = len(start_bs)
 
-        for scenario_name, scenario in log_iterator(self.scenarios.items(), prefix="Scenario "):
+        for scenario_name, scenario in log_iterator(
+            self.scenarios.items(), prefix="Scenario ", item_name=lambda x: x[0], timed=True
+        ):
             bs = start_bs.copy()
 
-            # TODO: Make increment with number and description, simplifying iteration
-            for _i, increment in log_iterator(
-                enumerate(self.horizon, 1), prefix="Time step ", suffix=f"/{total_increments}", timed=True
-            ):
+            for increment in log_iterator(self.horizon, prefix="Time step ", timed=True):
                 bs = bs.initialize_new_date(increment.to_date)
 
                 scenario_snapshot = scenario.snapshot_at(increment)

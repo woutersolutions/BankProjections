@@ -5,7 +5,7 @@ with timing information and add context to all log messages within scope.
 """
 
 import time
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any
@@ -70,36 +70,63 @@ def log_context(name: str, timed: bool = True) -> Iterator[None]:
             _context_stack.set(stack)
 
 
-def log_iterator(iterable: Iterable[Any], prefix: str = "", suffix: str = "", timed: bool = False) -> Iterator[Any]:
+def log_iterator(
+    iterable: Iterable,
+    prefix: str = "",
+    suffix: str = "",
+    timed: bool = False,
+    show_progress: bool = True,
+    item_name: Callable | None = str,
+) -> Iterator:
     """
     Iterator wrapper that adds log context for each iteration.
-    Each iteration is wrapped in a log context with optional timing and context
-    information added to all logs within that iteration.
 
     Args:
         iterable: The iterable to wrap
-        prefix: Base name for the context (default: "")
-        timed: If True, logs end message with timing. If False, only logs start message.
+        prefix: Prefix for the context name (default: "")
+        suffix: Suffix appended after progress (default: "")
+        timed: If True, logs end message with timing
+        show_progress: If True, shows "1/N" style progress (requires sized iterable)
+        item_name: Optional callable to extract display name from item.
+                   If None, uses 1-based index for progress display.
+
     Yields:
         Items from the original iterable
-    Example:
-        >>> for i in log_iterator(range(3), "processing"):
-        ...     logger.info(f"Value: {i}")
-        # Logs for each iteration:
-        # Starting processing0
-        # Value: 0 | processing0 |
-        # Ending processing0 in 0.01 seconds
 
-        >>> for i in log_iterator(range(3), "item", timed=False):
-        ...     logger.info(f"Value: {i}")
-        # Logs for each iteration:
-        # Starting item0
-        # Value: 0 | item0 |
-        # (no ending message)
+    Example:
+        >>> for item in log_iterator(items, prefix="Processing ", timed=True):
+        ...     logger.info(f"Working on {item}")
+        # Logs: "Starting Processing 1/3", "Starting Processing 2/3", etc.
+
+        >>> for key, value in log_iterator(mapping.items(), prefix="Key ", item_name=lambda x: x[0]):
+        ...     process(value)
+        # Logs: "Starting Key foo 1/3", "Starting Key bar 2/3", etc.
     """
-    for item in iterable:
-        name = str(item[0]) if isinstance(item, tuple) else str(item)
-        context_name = f"{prefix}{name}{suffix}"
+    # Convert to list if we need length for progress display
+    if show_progress:
+        items = list(iterable)
+        total = len(items)
+    else:
+        items = iterable
+        total = None
+
+    for i, item in enumerate(items, 1):
+        # Build context name
+        if item_name is not None:
+            name_part = item_name(item)
+        else:
+            name_part = str(i)
+
+        if show_progress and total is not None:
+            progress_part = f"{i}/{total}"
+            # If using item_name, include both name and progress
+            if item_name is not None:
+                context_name = f"{prefix}{name_part} {progress_part}{suffix}"
+            else:
+                context_name = f"{prefix}{progress_part}{suffix}"
+        else:
+            context_name = f"{prefix}{name_part}{suffix}"
+
         with log_context(context_name, timed=timed):
             yield item
 

@@ -156,3 +156,6 @@ class TimeIncrement:
 
     def __repr__(self) -> str:
         return f"TimeIncrement(from_date={self.from_date}, to_date={self.to_date})"
+
+    def __str__(self):
+        return f"{self.from_date} to {self.to_date}"
