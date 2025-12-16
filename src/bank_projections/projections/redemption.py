@@ -26,13 +26,26 @@ class Redemption(ProjectionRule):
                 )
             )
         )
-        manual_redemptions = [mutation for mutation in scenario.mutations if mutation.metric == "repaymentrate"]
-        for mutation in manual_redemptions:
+        for mutation in [mutation for mutation in scenario.mutations if mutation.metric == "repaymentrate"]:
             repayment_factors = (
                 pl.when(mutation.item.filter_expression).then(pl.lit(mutation.amount)).otherwise(repayment_factors)
             )
+        for mutation in [mutation for mutation in scenario.mutations if mutation.metric == "repayment"]:
+            repayment_factors = (
+                pl.when(mutation.item.filter_expression)
+                .then(pl.lit(mutation.amount) / pl.col("Nominal"))
+                .otherwise(repayment_factors)
+            )
 
         prepayment_factors = pl.col("PrepaymentRate").fill_null(0.0) * increment.portion_year
+        for mutation in [mutation for mutation in scenario.mutations if mutation.metric == "prepayment"]:
+            prepayment_factors = (
+                pl.when(mutation.item.filter_expression)
+                .then(pl.lit(mutation.amount) / pl.col("Nominal") / (1 - repayment_factors))
+                .otherwise(prepayment_factors)
+            )
+
+
         redemption_factors = 1 - (1 - repayment_factors) * (1 - prepayment_factors)
 
         new_nominal = pl.col("Nominal") * (1 - redemption_factors)
