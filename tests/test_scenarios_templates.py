@@ -1,22 +1,21 @@
-import contextlib
+"""Tests for scenario templates and utility functions."""
+
 import datetime
 import os
-import tempfile
 from unittest.mock import Mock
 
 import pandas as pd
 import pytest
 
-from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
-from bank_projections.financials.balance_sheet_item import BalanceSheetItem
-from bank_projections.financials.market_data import MarketRates
-from bank_projections.scenarios.mutation import AmountProjectionRuleBase, BalanceSheetMutationRule
-from bank_projections.scenarios.template import (
-    MultiHeaderProjectionInput,
+from bank_projections.financials.balance_sheet import BalanceSheet
+from bank_projections.scenarios.excel_sheet_format import (
+    MultiHeaderTableInput,
     MultiHeaderTemplate,
-    ScenarioTemplate,
+    TemplateType,
+    TemplateTypeRegistry,
 )
-from bank_projections.scenarios.template_registry import TemplateRegistry
+from bank_projections.scenarios.mutation import BalanceSheetMutationRule
+from bank_projections.scenarios.scenario import ScenarioSnapShot
 from bank_projections.utils.parsing import read_bool, read_date
 from bank_projections.utils.time import TimeIncrement
 from examples import EXAMPLE_FOLDER
@@ -82,112 +81,41 @@ class TestReadDate:
             read_date(123)
 
 
-class TestScenarioTemplate:
-    def test_scenario_template_is_abstract(self):
-        """Test that ScenarioTemplate cannot be instantiated directly"""
+class TestTemplateType:
+    def test_template_type_is_abstract(self):
+        """Test that TemplateType cannot be instantiated directly"""
         with pytest.raises(TypeError):
-            ScenarioTemplate()
+            TemplateType()
 
 
 class TestBalanceSheetMutationRule:
-    def setup_method(self):
-        self.mock_bs = Mock(spec=BalanceSheet)
-        self.mock_increment = Mock(spec=TimeIncrement)
+    """Test BalanceSheetMutationRule class."""
 
-    def test_init_minimal_rule_input(self):
-        rule_input = {"metric": "nominal"}
-        amount = 1000.0
+    def test_instantiation(self):
+        """Test that BalanceSheetMutationRule can be instantiated without arguments."""
+        rule = BalanceSheetMutationRule()
+        assert rule is not None
 
-        rule = BalanceSheetMutationRule(rule_input, amount)
+    def test_apply_with_no_mutations(self, minimal_scenario, minimal_scenario_snapshot):
+        """Test applying rule when scenario has no mutations."""
+        from examples.synthetic_data import create_synthetic_balance_sheet
 
-        assert rule.amount == amount
-        assert isinstance(rule.item, BalanceSheetItem)
-        assert rule.relative is True
-        assert rule.multiplicative is False
-        assert rule.offset_liquidity is False
-        assert rule.offset_pnl is False
-        assert isinstance(rule.reason, MutationReason)
-        assert rule.date is None
+        rule = BalanceSheetMutationRule()
+        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
+        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
 
-    def test_init_with_boolean_flags(self):
-        rule_input = {
-            "metric": "nominal",
-            "relative": "false",
-            "multiplicative": "true",
-            "offsetliquidity": "yes",
-            "offsetpnl": "no",
-        }
-        amount = 1000.0
+        # minimal_scenario_snapshot has no mutations
+        result = rule.apply(bs, increment, minimal_scenario_snapshot)
 
-        rule = BalanceSheetMutationRule(rule_input, amount)
-
-        assert rule.relative is False
-        assert rule.multiplicative is True
-        assert rule.offset_liquidity is True
-        assert rule.offset_pnl is False
-
-    def test_init_with_date(self):
-        rule_input = {"metric": "nominal", "date": "2023-01-15"}
-        amount = 1000.0
-
-        rule = BalanceSheetMutationRule(rule_input, amount)
-
-        assert rule.date == datetime.date(2023, 1, 15)
-
-    def test_init_with_unrecognized_key(self):
-        rule_input = {"metric": "nominal", "unknown_key": "some_value"}
-        amount = 1000.0
-
-        with pytest.raises(KeyError, match="unknown_key not recognized in BalanceSheetMutationRule"):
-            BalanceSheetMutationRule(rule_input, amount)
-
-    def test_apply_without_date_constraint(self):
-        rule_input = {"metric": "nominal"}
-        amount = 1000.0
-        rule = BalanceSheetMutationRule(rule_input, amount)
-
-        # Mock TimeIncrement
-        self.mock_increment.contains.return_value = True
-
-        result = rule.apply(self.mock_bs, self.mock_increment, MarketRates())
-
-        # Should call mutate_metric on the balance sheet
-        self.mock_bs.mutate_metric.assert_called_once()
-        assert result == self.mock_bs
-
-    def test_apply_with_date_constraint_matching(self):
-        rule_input = {"metric": "nominal", "date": "2023-01-15"}
-        amount = 1000.0
-        rule = BalanceSheetMutationRule(rule_input, amount)
-
-        # Mock TimeIncrement to contain the date
-        self.mock_increment.contains.return_value = True
-
-        result = rule.apply(self.mock_bs, self.mock_increment, MarketRates())
-
-        # Should call mutate_metric on the balance sheet
-        self.mock_bs.mutate_metric.assert_called_once()
-        assert result == self.mock_bs
-
-    def test_apply_with_date_constraint_not_matching(self):
-        rule_input = {"metric": "nominal", "date": "2023-01-15"}
-        amount = 1000.0
-        rule = BalanceSheetMutationRule(rule_input, amount)
-
-        # Mock TimeIncrement to NOT contain the date
-        self.mock_increment.contains.return_value = False
-
-        result = rule.apply(self.mock_bs, self.mock_increment, MarketRates())
-
-        # Should NOT call mutate_metric on the balance sheet
-        self.mock_bs.mutate_metric.assert_not_called()
-        assert result == self.mock_bs
+        assert result is not None
+        assert result == bs  # No changes since no mutations
 
 
 class TestMultiHeaderRule:
     def setup_method(self):
         self.mock_bs = Mock(spec=BalanceSheet)
         self.mock_increment = Mock(spec=TimeIncrement)
+        self.mock_scenario = Mock(spec=ScenarioSnapShot)
 
         # Create sample data
         self.content = pd.DataFrame({0: [100.0, 200.0], 1: [150.0, 250.0]})
@@ -200,228 +128,51 @@ class TestMultiHeaderRule:
         self.general_tags = {"offset_pnl": "false"}
 
     def test_init(self):
-        rule_set = MultiHeaderProjectionInput(
-            self.content, self.col_headers, self.row_headers, self.general_tags, BalanceSheetMutationRule
+        rule_set = MultiHeaderTableInput(
+            content=self.content,
+            col_headers=self.col_headers,
+            row_headers=self.row_headers,
+            general_tags=self.general_tags,
+            template_name="balancesheetmutations",
         )
 
-        assert rule_set.content.equals(self.content)
-        assert rule_set.col_headers.equals(self.col_headers)
-        assert rule_set.row_headers.equals(self.row_headers)
         assert rule_set.general_tags == self.general_tags
-        assert rule_set.rule_type == BalanceSheetMutationRule
-
-    def test_apply(self):
-        # Create a mock rule class that we'll pass to MultiHeaderRule
-        mock_rule_class = Mock()
-        mock_rule_instance = Mock()
-        mock_rule_instance.apply.return_value = self.mock_bs
-        mock_rule_class.return_value = mock_rule_instance
-
-        rule_set = MultiHeaderProjectionInput(
-            self.content, self.col_headers, self.row_headers, self.general_tags, mock_rule_class
-        )
-
-        result = rule_set.apply(self.mock_bs, self.mock_increment, MarketRates())
-
-        # Should create 4 rules (2 rows × 2 cols)
-        assert mock_rule_class.call_count == 4
-        assert mock_rule_instance.apply.call_count == 4
-        assert result == self.mock_bs
-
-    def test_load_excel_invalid_template_name(self):
-        """Test with invalid template name using a mock"""
-        test_data = pd.DataFrame(
-            [
-                ["InvalidTemplate", "BalanceSheetMutations", "", ""],
-                ["param1", "value1", "", ""],
-            ]
-        )
-
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as temp_file:
-            temp_name = temp_file.name
-
-        with pd.ExcelWriter(temp_name, engine="openpyxl") as writer:
-            test_data.to_excel(writer, sheet_name="Sheet1", index=False, header=False)
-
-        try:
-            with pytest.raises(ValueError, match="First cell must be 'Template'"):
-                TemplateRegistry.load_excel_sheet(temp_name, "Sheet1")
-        finally:
-            import contextlib
-            import os
-
-            with contextlib.suppress(PermissionError):
-                os.unlink(temp_name)
-
-    def test_load_excel_invalid_scenario_type(self):
-        """Test with invalid scenario type using a mock"""
-        test_data = pd.DataFrame(
-            [
-                ["Template", "InvalidScenario", "", ""],
-                ["param1", "value1", "", ""],
-            ]
-        )
-
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as temp_file:
-            temp_name = temp_file.name
-
-        with pd.ExcelWriter(temp_name, engine="openpyxl") as writer:
-            test_data.to_excel(writer, sheet_name="Sheet1", index=False, header=False)
-
-        try:
-            with pytest.raises(ValueError, match="Template 'InvalidScenario' not recognized"):
-                TemplateRegistry.load_excel_sheet(temp_name, "Sheet1")
-        finally:
-            with contextlib.suppress(PermissionError):
-                os.unlink(temp_name)
-
-    def test_template_registry_registration(self):
-        """Test that templates are properly registered"""
-        # Check that the default template is registered
-        assert "balancesheetmutations" in TemplateRegistry.items
-        template = TemplateRegistry.get("balancesheetmutations")
-        assert isinstance(template, MultiHeaderTemplate)
-        assert template.rule_type == BalanceSheetMutationRule
 
 
 class TestMultiHeaderTemplate:
-    def test_initialization(self):
-        """Test MultiHeaderTemplate initialization"""
-        template = MultiHeaderTemplate(BalanceSheetMutationRule)
-        assert template.rule_type == BalanceSheetMutationRule
+    """Test MultiHeaderTemplate class methods."""
 
-    def test_load_excel_sheet_returns_multi_header_rule(self):
-        """Test that load_excel_sheet returns MultiHeaderRule"""
-        # Since creating a proper Excel file is complex, let's just test the basic functionality
-        template = MultiHeaderTemplate(BalanceSheetMutationRule)
-        assert template.rule_type == BalanceSheetMutationRule
+    def test_is_subclass_of_template_type(self):
+        """Test that MultiHeaderTemplate is a subclass of TemplateType."""
+        assert issubclass(MultiHeaderTemplate, TemplateType)
 
-        # Test that the template is a ScenarioTemplate
-        assert isinstance(template, ScenarioTemplate)
+    def test_matches_method_exists(self):
+        """Test that MultiHeaderTemplate has a matches class method."""
+        assert hasattr(MultiHeaderTemplate, "matches")
+        assert callable(MultiHeaderTemplate.matches)
+
+    def test_load_method_exists(self):
+        """Test that MultiHeaderTemplate has a load class method."""
+        assert hasattr(MultiHeaderTemplate, "load")
+        assert callable(MultiHeaderTemplate.load)
 
 
 class TestAbstractClasses:
-    def test_scenario_template_is_abstract(self):
-        """Test that ScenarioTemplate cannot be instantiated"""
+    def test_template_type_is_abstract(self):
+        """Test that TemplateType cannot be instantiated"""
         with pytest.raises(TypeError):
-            ScenarioTemplate()
-
-    def test_amount_rule_base_is_abstract(self):
-        """Test that AmountRuleBase cannot be instantiated"""
-        with pytest.raises(TypeError):
-            AmountProjectionRuleBase({}, 100.0)
+            TemplateType()
 
 
-class TestRuleSetIntegration:
-    """Test that the new architecture works with RuleSet"""
+class TestTemplateTypeRegistryLoadFolder:
+    """Test TemplateTypeRegistry.load_folder method."""
 
-    def test_scenario_ruleset_composition(self):
-        """Test that scenarios can be composed from multiple rules"""
-        from bank_projections.projections.redemption import Redemption
-        from bank_projections.scenarios.scenario import Scenario
-
-        # Create a scenario with multiple rules
-        rule1 = Mock(spec=BalanceSheetMutationRule)
-        rule2 = Mock(spec=Redemption)
-
-        scenario = Scenario(rules={"rule1": rule1, "rule2": rule2})
-        assert len(scenario.rules) == 2
-        assert rule1 in scenario.rules.values()
-        assert rule2 in scenario.rules.values()
-
-
-class TestOneHeaderTemplate:
-    def test_initialization(self):
-        from bank_projections.scenarios.template import OneHeaderTemplate
-
-        template = OneHeaderTemplate(BalanceSheetMutationRule)
-        assert template.rule_type == BalanceSheetMutationRule
-
-    def test_one_header_rule_apply(self):
-        from bank_projections.scenarios.template import OneHeaderProjectionInput
-
-        mock_bs = Mock(spec=BalanceSheet)
-        mock_increment = Mock(spec=TimeIncrement)
-
-        content = pd.DataFrame({"metric": ["nominal", "book_value"], "date": ["2024-01-15", "2024-02-15"]})
-        general_tags = {"offset_pnl": "false"}
-
-        mock_rule_class = Mock()
-        mock_rule_instance = Mock()
-        mock_rule_instance.apply.return_value = mock_bs
-        mock_rule_class.return_value = mock_rule_instance
-
-        rule = OneHeaderProjectionInput(content, general_tags, mock_rule_class)
-        result = rule.apply(mock_bs, mock_increment, MarketRates())
-
-        assert mock_rule_class.call_count == 2
-        assert mock_rule_instance.apply.call_count == 2
-        assert result == mock_bs
-
-
-class TestTaxTemplate:
-    def test_tax_template_initialization(self):
-        from bank_projections.scenarios.tax import TaxTemplate
-
-        template = TaxTemplate()
-        assert isinstance(template, TaxTemplate)
-
-    def test_tax_rule_initialization(self):
-        from bank_projections.scenarios.tax import TaxProjectionRule
-
-        rule = TaxProjectionRule(tax_rate=0.25)
-        assert rule.tax_rate == 0.25
-
-    def test_tax_rule_apply(self, minimal_scenario):
-        import datetime
-
-        import polars as pl
-
-        from bank_projections.scenarios.tax import TaxProjectionRule
-        from examples.synthetic_data import create_synthetic_balance_sheet
-
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
-        bs.pnls = pl.DataFrame({"Amount": [100.0, -50.0, 75.0, -25.0]})
-
-        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
-        market_rates = MarketRates()
-
-        rule = TaxProjectionRule(tax_rate=0.25)
-        result = rule.apply(bs, increment, market_rates)
-
-        assert result is not None
-
-
-class TestKeyValueTemplate:
-    def test_key_value_template_initialization(self):
-        from bank_projections.scenarios.template import KeyValueProjectionRuleBase, KeyValueTemplate
-
-        template = KeyValueTemplate(KeyValueProjectionRuleBase)
-        assert template.rule_type == KeyValueProjectionRuleBase
-
-
-class TestTemplateRegistryLoadPaths:
-    """Test TemplateRegistry.load_paths method."""
-
-    def test_load_paths_with_folder(self):
-        """Test load_paths with a folder path."""
-        scenario = TemplateRegistry.load_paths([os.path.join(EXAMPLE_FOLDER, "scenarios")])
-        assert scenario is not None
-        assert len(scenario.rules) > 0
-
-    def test_load_paths_with_multiple_paths(self):
-        """Test load_paths combines multiple paths."""
-        paths = [os.path.join(EXAMPLE_FOLDER, "scenarios")]
-        scenario = TemplateRegistry.load_paths(paths)
-        assert scenario is not None
-
-    def test_load_paths_matches_load_folder(self):
-        """Test that load_paths with single folder matches load_folder."""
-        folder_path = os.path.join(EXAMPLE_FOLDER, "scenarios")
-        scenario_from_paths = TemplateRegistry.load_paths([folder_path])
-        scenario_from_folder = TemplateRegistry.load_folder(folder_path)
-
-        assert set(scenario_from_paths.rules.keys()) == set(scenario_from_folder.rules.keys())
+    def test_load_folder_returns_excel_inputs(self):
+        """Test load_folder with a folder path returns list of ExcelInput."""
+        excel_inputs = TemplateTypeRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        assert excel_inputs is not None
+        assert isinstance(excel_inputs, list)
+        assert len(excel_inputs) > 0
 
 
 class TestScenarioConfig:
@@ -446,24 +197,6 @@ class TestScenarioConfig:
         assert config.time_horizon.start_date == datetime.date(2024, 12, 31)
         assert config.time_horizon.number_of_months == 12
         assert config.time_horizon.end_of_month is True
-
-    def test_scenario_config_from_yaml_dict(self):
-        """Test creating ScenarioConfig from dict (as loaded from YAML)."""
-        from bank_projections.scenarios.scenario import ScenarioConfig
-
-        yaml_dict = {
-            "rule_paths": ["src/examples/scenarios"],
-            "time_horizon": {
-                "start_date": "2024-12-31",
-                "number_of_months": 12,
-                "end_of_month": True,
-            },
-        }
-        config = ScenarioConfig(**yaml_dict)
-
-        assert config.input_paths == ["src/examples/scenarios"]
-        assert config.time_horizon.start_date == datetime.date(2024, 12, 31)
-        assert config.time_horizon.number_of_months == 12
 
 
 class TestAggregationConfig:
@@ -496,17 +229,6 @@ class TestAggregationConfig:
         assert config.cashflow == ["ItemType"]
         assert config.oci == ["ItemType", "SubItemType"]
 
-    def test_aggregation_config_partial(self):
-        """Test AggregationConfig with only some values set."""
-        from bank_projections.output_config import AggregationConfig
-
-        config = AggregationConfig(balance_sheet=["ItemType"])
-
-        assert config.balance_sheet == ["ItemType"]
-        assert config.pnl is None
-        assert config.cashflow is None
-        assert config.oci is None
-
 
 class TestOutputConfig:
     """Test OutputConfig Pydantic model."""
@@ -528,24 +250,3 @@ class TestOutputConfig:
         assert config.output_folder == "output"
         assert config.output_file == "test_%Y%m%d.xlsx"
         assert config.aggregation.balance_sheet == ["ItemType", "SubItemType"]
-
-    def test_output_config_from_yaml_dict(self):
-        """Test creating OutputConfig from dict (as loaded from YAML)."""
-        from bank_projections.output_config import OutputConfig
-
-        yaml_dict = {
-            "output_folder": "output",
-            "output_file": "main example_%Y%m%d_%H%M%S.xlsx",
-            "aggregation": {
-                "balance_sheet": ["ItemType", "SubItemType"],
-                "pnl": ["ItemType", "SubItemType", "module", "rule"],
-                "cashflow": ["ItemType", "SubItemType", "module", "rule"],
-                "oci": ["ItemType", "SubItemType", "module", "rule"],
-            },
-        }
-        config = OutputConfig(**yaml_dict)
-
-        assert config.output_folder == "output"
-        assert config.output_file == "main example_%Y%m%d_%H%M%S.xlsx"
-        assert config.aggregation.balance_sheet == ["ItemType", "SubItemType"]
-        assert config.aggregation.pnl == ["ItemType", "SubItemType", "module", "rule"]

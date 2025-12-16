@@ -108,7 +108,7 @@ class Projection:
 
                 scenario_snapshot = scenario.snapshot_at(increment)
 
-                for rule_name, rule in self.rules.items():
+                for _rule_name, rule in self.rules.items():
                     bs = rule.apply(bs, increment, scenario_snapshot)
 
                     # Update progress

@@ -9,6 +9,7 @@ from bank_projections.app_config import Config
 from bank_projections.financials.balance_sheet import MutationReason
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem, BalanceSheetItemRegistry, Cohort
 from bank_projections.financials.balance_sheet_metric_registry import BalanceSheetMetrics
+from bank_projections.financials.balance_sheet_metrics import BalanceSheetMetric  # noqa: TC001
 from bank_projections.financials.market_data import Curves, parse_tenor
 from bank_projections.scenarios.excel_sheet_format import ExcelInput, KeyValueInput
 from bank_projections.utils.parsing import (
@@ -193,6 +194,7 @@ class BalanceSheetMutationInputItem:
         self.reason = MutationReason(rule="BalanceSheetMutationRule", module="Mutation")
         self.date: datetime.date | None = None
         self.cohorts: list[Cohort] = []
+        self.metric: str | BalanceSheetMetric | None = None
 
         if is_in_identifiers("item", list(rule_input.keys())):
             value = rule_input[get_identifier("item", list(rule_input.keys()))]
@@ -241,8 +243,10 @@ class BalanceSheetMutationInputItem:
                         raise KeyError(f"{key} not recognized as valid balance sheet label")
                 case _ if is_in_identifiers(key, Config.label_columns()):
                     self.item = self.item.add_identifier(key, value)
-                case _ if strip_identifier(key).startswith(("age", "minage", "maxage")):
-                    cohort = Cohort.from_string(strip_identifier(key), read_int(value))
+                case _ if (stripped_key := strip_identifier(key)) is not None and stripped_key.startswith(
+                    ("age", "minage", "maxage")
+                ):
+                    cohort = Cohort.from_string(stripped_key, read_int(value))
                     self.cohorts.append(cohort)
                 case "relative":
                     self.relative = read_bool(value)

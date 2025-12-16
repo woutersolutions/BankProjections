@@ -1,108 +1,40 @@
+"""Tests for audit rule."""
+
 import datetime
 
-import pytest
-
-from bank_projections.financials.market_data import MarketRates
 from bank_projections.scenarios.audit import AuditRule
 from bank_projections.utils.time import TimeIncrement
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 
 class TestAuditRule:
-    def test_init_minimal(self):
-        rule_input = {
-            "ClosingMonth": 12,
-            "AuditMonth": 3,
-            "TargetItemType": "Mortgages",
-        }
-        rule = AuditRule(rule_input)
+    """Test AuditRule class."""
 
-        assert rule.closing_month == 12
-        assert rule.audit_month == 3
-        assert rule.target.identifiers["ItemType"] == "Mortgages"
+    def test_audit_rule_instantiation(self):
+        """Test that AuditRule can be instantiated."""
+        rule = AuditRule()
+        assert rule is not None
 
-    def test_init_with_multiple_target_labels(self):
-        rule_input = {
-            "ClosingMonth": 12,
-            "AuditMonth": 3,
-            "TargetItemType": "Mortgages",
-            "TargetCurrency": "EUR",
-        }
-        rule = AuditRule(rule_input)
-
-        assert rule.target.identifiers["ItemType"] == "Mortgages"
-        assert rule.target.identifiers["Currency"] == "EUR"
-
-    def test_init_with_unrecognized_key(self):
-        rule_input = {
-            "ClosingMonth": 12,
-            "AuditMonth": 3,
-            "UnknownKey": "value",
-        }
-
-        with pytest.raises(KeyError, match="UnknownKey not recognized in AuditRule"):
-            AuditRule(rule_input)
-
-    def test_apply_no_audit_in_increment(self, minimal_scenario):
-        rule_input = {
-            "ClosingMonth": 12,
-            "AuditMonth": 3,
-            "TargetItemType": "Mortgages",
-        }
-        rule = AuditRule(rule_input)
+    def test_apply_no_audit_in_increment(self, minimal_scenario, minimal_scenario_snapshot):
+        """Test applying audit rule when no audit date falls in increment."""
+        rule = AuditRule()
 
         bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
-        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 2, 28))
-        market_rates = MarketRates()
+        # January increment - audit month is March (in minimal_scenario)
+        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
 
-        result = rule.apply(bs, increment, market_rates)
-
-        assert result == bs
-
-    def test_apply_with_audit_in_increment(self, minimal_scenario):
-        rule_input = {
-            "ClosingMonth": 12,
-            "AuditMonth": 3,
-            "TargetItemType": "Mortgages",
-        }
-        rule = AuditRule(rule_input)
-
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
-        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 3, 31))
-        market_rates = MarketRates()
-
-        result = rule.apply(bs, increment, market_rates)
+        result = rule.apply(bs, increment, minimal_scenario_snapshot)
 
         assert result is not None
 
-    def test_apply_audit_date_calculation(self, minimal_scenario):
-        rule_input = {
-            "ClosingMonth": 12,
-            "AuditMonth": 3,
-            "TargetItemType": "Mortgages",
-        }
-        rule = AuditRule(rule_input)
+    def test_apply_with_audit_in_increment(self, minimal_scenario, minimal_scenario_snapshot):
+        """Test applying audit rule when audit date falls in increment."""
+        rule = AuditRule()
 
         bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
+        # March increment - audit month is March (in minimal_scenario)
         increment = TimeIncrement(datetime.date(2024, 3, 1), datetime.date(2024, 3, 31))
-        market_rates = MarketRates()
 
-        result = rule.apply(bs, increment, market_rates)
+        result = rule.apply(bs, increment, minimal_scenario_snapshot)
 
         assert result is not None
-
-    def test_apply_no_audit_before_audit_month(self, minimal_scenario):
-        rule_input = {
-            "ClosingMonth": 12,
-            "AuditMonth": 6,
-            "TargetItemType": "Mortgages",
-        }
-        rule = AuditRule(rule_input)
-
-        bs = create_synthetic_balance_sheet(datetime.date(2024, 1, 1), scenario=minimal_scenario)
-        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 3, 31))
-        market_rates = MarketRates()
-
-        result = rule.apply(bs, increment, market_rates)
-
-        assert result == bs

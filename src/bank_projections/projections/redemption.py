@@ -14,7 +14,7 @@ class Redemption(ProjectionRule):
         if increment.from_date == increment.to_date:  # No time passed
             return bs
 
-        matured = pl.col("MaturityDate") <= pl.lit(increment.to_date)
+        matured = pl.col("MaturityDate").is_not_null() & (pl.col("MaturityDate") <= pl.lit(increment.to_date))
 
         # Determine repayments
         repayment_factors = (

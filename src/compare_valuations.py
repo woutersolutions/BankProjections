@@ -5,6 +5,9 @@ import time
 import polars as pl
 
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
+from bank_projections.scenarios.excel_sheet_format import TemplateTypeRegistry
+from bank_projections.scenarios.scenario import Scenario
+from bank_projections.utils.time import TimeIncrement
 from examples import EXAMPLE_FOLDER
 from examples.synthetic_data import generate_synthetic_positions, read_range
 
@@ -21,9 +24,11 @@ position_input = {
 position_input["number"] = number_of_loans
 
 current_date = datetime.date(2024, 12, 31)
-scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-market_rates = scenario.market_data.get_market_rates(current_date)
-zero_rates = market_rates.curves.get_zero_rates()
+excel_inputs = TemplateTypeRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+scenario = Scenario(excel_inputs)
+scenario_snapshot = scenario.snapshot_at(TimeIncrement(current_date, current_date))
+curves = scenario_snapshot.curves
+zero_rates = curves.get_zero_rates()
 
 positions = generate_synthetic_positions(current_date=current_date, curves=curves, **position_input)
 

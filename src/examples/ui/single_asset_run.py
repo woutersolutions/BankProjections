@@ -12,7 +12,8 @@ from bank_projections.projections.coupon_payment import CouponPayment
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.redemption import Redemption
 from bank_projections.projections.valuation import Valuation
-from bank_projections.scenarios.template_registry import TemplateRegistry
+from bank_projections.scenarios.excel_sheet_format import TemplateTypeRegistry
+from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.time import TimeHorizon
 from examples import EXAMPLE_FOLDER
 from examples.synthetic_data import create_single_asset_balance_sheet
@@ -95,10 +96,11 @@ def main() -> None:
     st.divider()
 
     if st.button("Run Projection", type="primary", width="stretch"):
-        # Load scenario but strip down to only basic rules needed for single asset runoff
-        scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        # Load scenario
+        excel_inputs = TemplateTypeRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        scenario = Scenario(excel_inputs)
         # Keep only runoff rules and Valuation - remove all other rules to avoid errors with missing items
-        scenario.rules = {
+        rules = {
             "Coupons": CouponPayment(),
             "Redemption": Redemption(),
             "Accrual": Accrual(),
@@ -128,7 +130,7 @@ def main() -> None:
             interest_rate=interest_rate,
             valuation_method=valuation_method if valuation_method != "none" else None,
         )
-        projection = Projection({"base": scenario}, horizon)
+        projection = Projection({"base": scenario}, horizon, rules)
 
         # Create progress bar
         progress_bar = st.progress(0, text="Starting projection...")

@@ -59,7 +59,7 @@ class Cohort:
 
 class BalanceSheetItem:
     def __init__(self, expr: pl.Expr | None = None, **identifiers: Any) -> None:
-        self.identifiers = {}
+        self.identifiers: dict[str, Any] = {}
         for key, value in identifiers.items():
             self._add_identifier(self.identifiers, key, value)
 

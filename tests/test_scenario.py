@@ -1,107 +1,77 @@
 """Tests for scenario module."""
 
 import datetime
-from unittest.mock import Mock
 
-from bank_projections.financials.balance_sheet import BalanceSheet
-from bank_projections.financials.market_data import MarketData, MarketRates
-from bank_projections.projections.projectionrule import ProjectionRule
-from bank_projections.scenarios.scenario import Scenario
+import pandas as pd
+
+from bank_projections.scenarios.excel_sheet_format import KeyValueInput, TableInput
+from bank_projections.scenarios.scenario import Scenario, ScenarioSnapShot
 from bank_projections.utils.time import TimeIncrement
-
-
-class MockProjectionRule(ProjectionRule):
-    """Mock rule for testing."""
-
-    def apply(self, bs: BalanceSheet, increment: TimeIncrement, market_rates: MarketRates) -> BalanceSheet:
-        return bs
 
 
 class TestScenario:
     """Test Scenario functionality."""
 
-    def test_scenario_init_minimal(self):
-        """Test Scenario initialization with minimal parameters."""
-        scenario = Scenario()
+    def test_scenario_init_with_curve_input(self):
+        """Test Scenario initialization with curve input."""
+        curve_data_df = pd.DataFrame(
+            {
+                "Date": [datetime.date(2024, 1, 1)] * 4,
+                "Name": ["euribor", "euribor", "euribor", "euribor"],
+                "Tenor": ["3m", "6m", "1y", "5y"],
+                "Type": ["spot", "spot", "zero", "zero"],
+                "Rate": [0.0285, 0.0305, 0.030, 0.032],
+                "Maturity": ["3m", "6m", "1y", "5y"],
+            }
+        )
+        curve_input = TableInput(
+            table=curve_data_df,
+            general_tags={},
+            template_name="interestrates",
+        )
+        tax_input = KeyValueInput(
+            general_tags={"Tax Rate": 0.25},
+            template_name="tax",
+        )
+        audit_input = KeyValueInput(
+            general_tags={"ClosingMonth": 12, "AuditMonth": 3},
+            template_name="audit",
+        )
 
-        assert isinstance(scenario.rules, dict)
-        assert len(scenario.rules) == 0
-        assert isinstance(scenario.market_data, MarketData)
+        scenario = Scenario(excel_inputs=[curve_input, tax_input, audit_input])
+        assert scenario is not None
 
-    def test_scenario_init_with_rules(self):
-        """Test Scenario initialization with rules."""
-        rule1 = MockProjectionRule()
-        rule2 = MockProjectionRule()
-        rules = {"rule1": rule1, "rule2": rule2}
+    def test_scenario_snapshot_at(self, minimal_scenario):
+        """Test getting snapshot at a specific time increment."""
+        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
+        snapshot = minimal_scenario.snapshot_at(increment)
 
-        scenario = Scenario(rules=rules)
+        assert isinstance(snapshot, ScenarioSnapShot)
+        assert snapshot.curves is not None
 
-        assert scenario.rules == rules
-        assert len(scenario.rules) == 2
+    def test_scenario_snapshot_has_tax_info(self, minimal_scenario):
+        """Test that snapshot contains tax information."""
+        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
+        snapshot = minimal_scenario.snapshot_at(increment)
 
-    def test_scenario_init_with_market_data(self):
-        """Test Scenario initialization with market data."""
-        market_data = MarketData()
-        scenario = Scenario(market_data=market_data)
+        assert snapshot.tax is not None
 
-        assert scenario.market_data is market_data
+    def test_scenario_snapshot_has_audit_info(self, minimal_scenario):
+        """Test that snapshot contains audit information."""
+        increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 1, 31))
+        snapshot = minimal_scenario.snapshot_at(increment)
 
-    def test_scenario_apply_no_rules(self):
-        """Test applying scenario with no rules."""
-        scenario = Scenario()
-        mock_bs = Mock(spec=BalanceSheet)
-        increment = TimeIncrement(datetime.date(2023, 1, 1), datetime.date(2023, 1, 31))
-        market_rates = Mock(spec=MarketRates)
+        assert snapshot.audit is not None
 
-        result = scenario.apply(mock_bs, increment, market_rates)
 
-        # With no rules, the balance sheet should be returned unchanged
-        assert result is mock_bs
+class TestScenarioSnapShot:
+    """Test ScenarioSnapShot functionality."""
 
-    def test_scenario_apply_with_rules(self):
-        """Test applying scenario with rules."""
-        rule1 = Mock(spec=ProjectionRule)
-        rule2 = Mock(spec=ProjectionRule)
-        rules = {"rule1": rule1, "rule2": rule2}
+    def test_snapshot_curves_available(self, minimal_scenario_snapshot):
+        """Test that curves are available in snapshot."""
+        assert minimal_scenario_snapshot.curves is not None
 
-        scenario = Scenario(rules=rules)
-        mock_bs = Mock(spec=BalanceSheet)
-        increment = TimeIncrement(datetime.date(2023, 1, 1), datetime.date(2023, 1, 31))
-        market_rates = Mock(spec=MarketRates)
-
-        # Mock the rule applications to return the same balance sheet
-        rule1.apply.return_value = mock_bs
-        rule2.apply.return_value = mock_bs
-
-        result = scenario.apply(mock_bs, increment, market_rates)
-
-        # Both rules should be applied
-        rule1.apply.assert_called_once_with(mock_bs, increment, market_rates)
-        rule2.apply.assert_called_once_with(mock_bs, increment, market_rates)
-        assert result is mock_bs
-
-    def test_scenario_apply_rule_chaining(self):
-        """Test that rules are applied in sequence (chained)."""
-        rule1 = Mock(spec=ProjectionRule)
-        rule2 = Mock(spec=ProjectionRule)
-        rules = {"rule1": rule1, "rule2": rule2}
-
-        scenario = Scenario(rules=rules)
-
-        mock_bs_initial = Mock(spec=BalanceSheet)
-        mock_bs_after_rule1 = Mock(spec=BalanceSheet)
-        mock_bs_after_rule2 = Mock(spec=BalanceSheet)
-
-        increment = TimeIncrement(datetime.date(2023, 1, 1), datetime.date(2023, 1, 31))
-        market_rates = Mock(spec=MarketRates)
-
-        # Set up the chain: rule1 transforms initial BS, rule2 transforms result of rule1
-        rule1.apply.return_value = mock_bs_after_rule1
-        rule2.apply.return_value = mock_bs_after_rule2
-
-        result = scenario.apply(mock_bs_initial, increment, market_rates)
-
-        # Verify the chaining
-        rule1.apply.assert_called_once_with(mock_bs_initial, increment, market_rates)
-        rule2.apply.assert_called_once_with(mock_bs_after_rule1, increment, market_rates)
-        assert result is mock_bs_after_rule2
+    def test_snapshot_production_available(self, minimal_scenario_snapshot):
+        """Test that production is available in snapshot (may be empty list)."""
+        assert minimal_scenario_snapshot.production is not None
+        assert isinstance(minimal_scenario_snapshot.production, list)

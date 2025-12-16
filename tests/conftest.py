@@ -3,8 +3,10 @@ import datetime
 import pandas as pd
 import pytest
 
-from bank_projections.financials.market_data import CurveData, MarketData
+from bank_projections.financials.market_data import Curves
+from bank_projections.scenarios.excel_sheet_format import KeyValueInput, TableInput
 from bank_projections.scenarios.scenario import Scenario
+from bank_projections.utils.time import TimeIncrement
 from examples.synthetic_data import create_synthetic_balance_sheet
 
 
@@ -24,9 +26,57 @@ def minimal_scenario():
             "Maturity": ["3m", "6m", "1y", "5y"],
         }
     )
-    curve_data = CurveData(curve_data_df)
-    market_data = MarketData(curves=curve_data)
-    return Scenario(market_data=market_data)
+    curve_input = TableInput(
+        table=curve_data_df,
+        general_tags={},
+        template_name="interestrates",
+    )
+    tax_input = KeyValueInput(
+        general_tags={"Tax Rate": 0.25},
+        template_name="tax",
+    )
+    audit_input = KeyValueInput(
+        general_tags={"ClosingMonth": 12, "AuditMonth": 3},
+        template_name="audit",
+    )
+    # Provide manual repayment rate for Intangible assets (which use manual redemption type)
+    mutations_df = pd.DataFrame(
+        {
+            "SubItemType": ["Intangible assets"],
+            "metric": ["repaymentrate"],
+            "Amount": [0.0],  # No repayment for intangible assets
+        }
+    )
+    mutations_input = TableInput(
+        table=mutations_df,
+        general_tags={},
+        template_name="balancesheetmutations",
+    )
+    return Scenario(excel_inputs=[curve_input, tax_input, audit_input, mutations_input])
+
+
+@pytest.fixture(scope="session")
+def minimal_scenario_snapshot(minimal_scenario):
+    """Create a ScenarioSnapShot for testing.
+
+    Session-scoped to avoid recreating for every test.
+    """
+    increment = TimeIncrement(datetime.date(2024, 1, 1), datetime.date(2024, 12, 31))
+    return minimal_scenario.snapshot_at(increment)
+
+
+@pytest.fixture
+def sample_curves():
+    """Provide sample curves for testing."""
+    df = pd.DataFrame(
+        {
+            "Name": ["euribor", "euribor", "euribor", "euribor"],
+            "Type": ["spot", "spot", "zero", "zero"],
+            "Tenor": ["3m", "6m", "1y", "5y"],
+            "Rate": [0.0285, 0.0305, 0.030, 0.032],
+        }
+    )
+    return Curves(df)
 
 
 @pytest.fixture(scope="session")

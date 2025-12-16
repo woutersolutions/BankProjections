@@ -8,9 +8,11 @@ import time
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any
+from typing import Any, TypeVar
 
 from loguru import logger
+
+T = TypeVar("T")
 
 # Thread-safe context stack using contextvars
 _context_stack: ContextVar[list[str] | None] = ContextVar("_context_stack", default=None)
@@ -71,13 +73,13 @@ def log_context(name: str, timed: bool = True) -> Iterator[None]:
 
 
 def log_iterator(
-    iterable: Iterable,
+    iterable: Iterable[T],
     prefix: str = "",
     suffix: str = "",
     timed: bool = False,
     show_progress: bool = True,
-    item_name: Callable | None = str,
-) -> Iterator:
+    item_name: Callable[[T], str] | None = str,
+) -> Iterator[T]:
     """
     Iterator wrapper that adds log context for each iteration.
 
@@ -112,10 +114,7 @@ def log_iterator(
 
     for i, item in enumerate(items, 1):
         # Build context name
-        if item_name is not None:
-            name_part = item_name(item)
-        else:
-            name_part = str(i)
+        name_part = item_name(item) if item_name is not None else str(i)
 
         if show_progress and total is not None:
             progress_part = f"{i}/{total}"

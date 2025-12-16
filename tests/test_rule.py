@@ -1,18 +1,20 @@
 """Unit tests for rule module."""
 
 import datetime
+from unittest.mock import Mock
 
 import pytest
 
-from bank_projections.financials.market_data import MarketRates
+from bank_projections.financials.balance_sheet import BalanceSheet
 from bank_projections.projections.projectionrule import ProjectionRule
+from bank_projections.scenarios.scenario import ScenarioSnapShot
 from bank_projections.utils.time import TimeIncrement
 
 
 class MockProjectionRule(ProjectionRule):
     """Mock implementation of Rule for testing."""
 
-    def apply(self, bs, increment, market_rates):
+    def apply(self, bs: BalanceSheet, increment: TimeIncrement, scenario: ScenarioSnapShot) -> BalanceSheet:
         return bs
 
 
@@ -72,7 +74,8 @@ class TestRule:
         """Test that concrete implementations work."""
         rule = MockProjectionRule()
         increment = TimeIncrement(datetime.date(2025, 1, 1), datetime.date(2025, 1, 31))
+        mock_scenario = Mock(spec=ScenarioSnapShot)
+        mock_bs = Mock(spec=BalanceSheet)
 
-        # Should not raise error
-        result = rule.apply(None, increment, MarketRates())
-        assert result is None  # Mock implementation returns None
+        result = rule.apply(mock_bs, increment, mock_scenario)
+        assert result == mock_bs

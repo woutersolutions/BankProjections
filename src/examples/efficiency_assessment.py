@@ -20,6 +20,7 @@ from loguru import logger
 from bank_projections.projections.projection import Projection
 from bank_projections.projections.redemption import Redemption
 from bank_projections.projections.valuation import Valuation
+from bank_projections.scenarios.excel_sheet_format import TemplateTypeRegistry
 from bank_projections.scenarios.scenario import Scenario
 from bank_projections.utils.logging import log_iterator, setup_logger_format_with_context
 from bank_projections.utils.time import TimeHorizon
@@ -51,9 +52,9 @@ class EfficiencyAssessment:
         self.size_multipliers = size_multipliers
         self.number_of_projections = number_of_projections
 
-        scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-        scenario.rules = {"Runoff": Redemption(), "Valuation": Valuation(), **scenario.rules}
-        self.scenario = scenario
+        excel_inputs = TemplateTypeRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        self.scenario = Scenario(excel_inputs)
+        self.rules = {"Runoff": Redemption(), "Valuation": Valuation()}
 
     def measure_time_horizon_performance(self) -> list[dict]:
         """Measure performance across different time horizons."""
@@ -81,7 +82,7 @@ class EfficiencyAssessment:
             logger.info(f"Testing time horizon: {num_time_steps} steps")
 
             # Measure performance
-            projection = Projection({"base": self.scenario}, horizon)
+            projection = Projection({"base": self.scenario}, horizon, self.rules)
 
             start_time = time.perf_counter()
             _ = projection.run(base_bs)
@@ -121,8 +122,9 @@ class EfficiencyAssessment:
             end_of_month=True,
         )
 
-        scenario = TemplateRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
-        scenario.rules = {"Runoff": Redemption(), "Valuation": Valuation(), **scenario.rules}
+        excel_inputs = TemplateTypeRegistry.load_folder(os.path.join(EXAMPLE_FOLDER, "scenarios"))
+        scenario = Scenario(excel_inputs)
+        rules = {"Runoff": Redemption(), "Valuation": Valuation()}
 
         for multiplier in log_iterator(self.size_multipliers, prefix="Multiplier "):
             logger.info(f"Testing balance sheet size multiplier: {multiplier}")
@@ -135,7 +137,7 @@ class EfficiencyAssessment:
             logger.info(f"Balance sheet positions: {num_positions}")
 
             # Measure performance
-            projection = Projection({"base": scenario}, horizon)
+            projection = Projection({"base": scenario}, horizon, rules)
 
             start_time = time.perf_counter()
             _ = projection.run(bs)

@@ -13,9 +13,10 @@ class BalanceSheetMutationRule(ProjectionRule):
                 bs = self.apply_item(bs, increment, mutation_item)
         return bs
 
-    def apply_item(self, bs: BalanceSheet, increment: TimeIncrement, mutation_item: BalanceSheetMutationInputItem):
+    def apply_item(
+        self, bs: BalanceSheet, increment: TimeIncrement, mutation_item: BalanceSheetMutationInputItem
+    ) -> BalanceSheet:
         # Implement the logic to apply the mutation to the balance sheet based on rule_input
-        # This is a placeholder implementation
 
         item = mutation_item.item.add_cohort_expressions(mutation_item.cohorts, increment.to_date)
 

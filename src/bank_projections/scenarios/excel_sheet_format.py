@@ -15,7 +15,7 @@ from bank_projections.utils.parsing import strip_identifier
 class ExcelInput(ABC):
     template_name: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.template_name = strip_identifier(self.template_name)
 
     @abstractmethod
@@ -89,7 +89,7 @@ class TemplateType(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str):
+    def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> ExcelInput:
         """Load the Excel sheet into an ExcelInput."""
         pass
 
@@ -170,9 +170,9 @@ class TemplateTypeRegistry(BaseRegistry[type[TemplateType]]):
             List of ExcelInput objects from all sheets.
         """
         xls = pd.ExcelFile(file_path)
-        results = []
+        results: list[ExcelInput] = []
         for sheet_name in xls.sheet_names:
-            result = cls.load_excel_sheet(file_path, sheet_name)
+            result = cls.load_excel_sheet(file_path, str(sheet_name))
             results.append(result)
         return results
 
@@ -235,7 +235,7 @@ class MultiHeaderTemplate(TemplateType):
 
     @classmethod
     def matches(cls, df_raw: pd.DataFrame) -> bool:
-        return df_raw.map(lambda x: isinstance(x, str) and "*" in x).any().any()
+        return bool(df_raw.map(lambda x: isinstance(x, str) and "*" in x).any().any())
 
     @classmethod
     def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> MultiHeaderTableInput:
@@ -294,7 +294,7 @@ class KeyValueTemplate(TemplateType):
         if df_raw.shape[1] <= 2:
             return True
         cols_beyond_ab = df_raw.iloc[:, 2:]
-        return cols_beyond_ab.isna().all().all() or cols_beyond_ab.empty
+        return bool(cols_beyond_ab.isna().all().all()) or cols_beyond_ab.empty
 
     @classmethod
     def load(cls, file_path: str, sheet_name: str, df_raw: pd.DataFrame, template_name: str) -> KeyValueInput:
