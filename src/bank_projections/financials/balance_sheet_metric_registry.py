@@ -9,6 +9,7 @@ from bank_projections.financials.balance_sheet_metrics import (
     DerivedAmount,
     DerivedMetric,
     DerivedWeight,
+    DirtyPrice,
     EncumberedHQLA,
     LeverageExposure,
     Limit,
@@ -16,6 +17,7 @@ from bank_projections.financials.balance_sheet_metrics import (
     MutationAmount,
     OffBalanceExposure,
     OnBalanceExposure,
+    Quantity,
     StoredAmount,
     StoredColumn,
     StoredWeight,
@@ -40,7 +42,6 @@ BalanceSheetMetrics.register("AccruedInterest", StoredAmount("AccruedInterest"))
 BalanceSheetMetrics.register("FairValueAdjustment", StoredAmount("FairValueAdjustment"))
 BalanceSheetMetrics.register("Undrawn", StoredAmount("Undrawn"))
 BalanceSheetMetrics.register("Agio", StoredAmount("Agio"))
-BalanceSheetMetrics.register("DirtyPrice", StoredWeight("DirtyPrice"))
 BalanceSheetMetrics.register("OtherOffBalanceWeight", StoredWeight("OtherOffBalanceWeight"))
 BalanceSheetMetrics.register("Notional", StoredAmount("Notional"))
 BalanceSheetMetrics.register("AccruedInterestError", StoredAmount("AccruedInterestError"))
@@ -48,6 +49,7 @@ BalanceSheetMetrics.register("AccruedInterestError", StoredAmount("AccruedIntere
 BalanceSheetMetrics.register("ValuationError", StoredWeight("ValuationError"))
 BalanceSheetMetrics.register("MarketValue", MarketValue())
 
+BalanceSheetMetrics.register("Quantity", Quantity())
 BalanceSheetMetrics.register("CoverageRate", DerivedWeight("Impairment"))
 BalanceSheetMetrics.register("AccruedInterestWeight", DerivedWeight("AccruedInterest"))
 BalanceSheetMetrics.register("AgioWeight", DerivedWeight("Agio"))
@@ -67,6 +69,7 @@ class BookValueSigned(DerivedMetric):
 
 
 BalanceSheetMetrics.register("BookValueSigned", BookValueSigned())
+BalanceSheetMetrics.register("DirtyPrice", DirtyPrice())
 
 BalanceSheetMetrics.register("OtherOffBalance", DerivedAmount("OtherOffBalanceWeight"))
 BalanceSheetMetrics.register("OnBalanceExposure", OnBalanceExposure())

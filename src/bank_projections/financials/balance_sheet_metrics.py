@@ -109,10 +109,34 @@ class DerivedMetric(BalanceSheetMetric, ABC):
         raise NotImplementedError("Derived metric cannot be modified")
 
 
+class Quantity(DerivedMetric):
+    @property
+    def get_expression(self) -> pl.Expr:
+        return pl.col("Nominal") + pl.col("Notional")
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return self.get_expression.sum()
+
+
+class DirtyPrice(DerivedMetric):
+    @property
+    def get_expression(self) -> pl.Expr:
+        return (pl.col("Nominal") + pl.col("FairValueAdjustment") + pl.col("AccruedInterest")) / (
+            pl.col("Nominal") + pl.col("Notional") + pl.lit(SMALL_NUMBER)
+        )
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return (pl.col("Nominal") + pl.col("FairValueAdjustment") + pl.col("AccruedInterest")).sum() / (
+            pl.col("Nominal") + pl.col("Notional") + pl.lit(SMALL_NUMBER)
+        ).sum()
+
+
 class MarketValue(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:
-        return pl.col("DirtyPrice") * (pl.col("Nominal") + pl.col("Notional"))
+        return pl.col("Nominal") + pl.col("FairValueAdjustment") + pl.col("AccruedInterest")
 
     @property
     def aggregation_expression(self) -> pl.Expr:
@@ -213,6 +237,7 @@ class Limit(DerivedMetric):
 
     def mutation_expression(self, amount: float, filter_expression: pl.Expr) -> pl.Expr:
         return pl.lit(amount)
+
 
 class LeverageExposure(DerivedMetric):
     @property

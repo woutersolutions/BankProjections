@@ -26,7 +26,6 @@ Undrawn,money,no,StoredAmount,,Undrawn commitment amount for credit facilities
 Agio,money,yes,StoredAmount,,Premium or discount on initial recognition
 Notional,money,no,StoredAmount,,Notional amount for derivatives
 AccruedInterestError,money,no,StoredAmount,,Difference between modeled and actual accrued interest
-DirtyPrice,percentage,no,StoredWeight,,Price including accrued interest as decimal (1.0 = par)
 OtherOffBalanceWeight,percentage,no,StoredWeight,,Weight for other off-balance sheet exposures
 ValuationError,percentage,no,StoredWeight,,Difference between modeled and market value as weight
 FloatingRate,percentage,no,StoredWeight,,Reference rate component of interest rate
@@ -38,20 +37,15 @@ TREAWeight,percentage,no,StoredWeight,,Risk weight for total risk exposure amoun
 EncumberedWeight,percentage,no,StoredWeight,,Portion of asset that is encumbered
 StableFundingWeight,percentage,no,StoredWeight,,Available/Required stable funding factor (NSFR)
 StressedOutflowWeight,percentage,no,StoredWeight,,Stressed outflow rate for LCR calculation
-CouponPayment,money,no,MutationAmount,,Interest payment amount during period
-Repayment,money,no,MutationAmount,,Scheduled principal repayment during period
-Prepayment,money,no,MutationAmount,,Unscheduled principal prepayment during period
-ImpairmentChange,money,no,MutationAmount,,Change in impairment provision during period
-AgioRedemption,money,no,MutationAmount,,Agio amortization during period
-Accrual,money,no,MutationAmount,,Interest accrual during period
-FairValueChange,money,no,MutationAmount,,Fair value change during period
 MarketValue,money,no,DerivedMetric,,Market value calculated as DirtyPrice * (Nominal + Notional)
 BookValue,money,no,DerivedMetric,,Accounting book value (Nominal + Agio + AccruedInterest + Impairment + FairValueAdjustment)
 BookValueSigned,money,no,DerivedMetric,,Book value with sign based on asset/liability classification
+DirtyPrice,percentage,no,DerivedMetric,,Price including accrued interest as decimal (1.0 = par)
 OnBalanceExposure,money,no,DerivedMetric,,On-balance exposure for regulatory purposes
 OffBalanceExposure,money,no,DerivedMetric,,Off-balance exposure (CCF * Undrawn + OtherOffBalanceWeight * Nominal)
 BaselExposure,money,no,DerivedMetric,,Total Basel exposure (OnBalance + OffBalance)
 LeverageExposure,money,no,DerivedMetric,,Leverage ratio exposure (OnBalance + Impairment + OffBalance)
+Limit,money,no,DerivedMetric,,Nominal + Undrawn
 HQLA,money,no,DerivedMetric,,High-quality liquid assets contribution
 EncumberedHQLA,money,no,DerivedMetric,,Encumbered portion of HQLA
 UnencumberedHQLA,money,no,DerivedMetric,,Unencumbered portion of HQLA
@@ -64,3 +58,21 @@ TREA,money,no,DerivedMetric,,Total risk exposure amount (TREAWeight * BaselExpos
 Encumbered,money,no,DerivedMetric,,Encumbered amount (EncumberedWeight * Nominal)
 StableFunding,money,no,DerivedMetric,,Available/Required stable funding amount
 StressedOutflow,money,no,DerivedMetric,,Stressed outflow amount for LCR
+CouponPayment,money,no,MutationMetric,,Interest payment amount during period
+RepaymentRate,percentage,no,MutationMetric,,Nominal outflow and cashflow relative to the Nominal
+Repayment,money,no,MutationMetric,,Nominal outflow and cashflow in euros
+Prepayment,money,no,MutationMetric,,Nominal outflow and cashflow in euros
+DrawDown,money,no,MutationMetric,,Flow from Undrawn to Nominal in euros
+DrawDownRate,percentage,no,MutationMetric,,Flor from Undrawn to Nominal relative to the Undrawn
+TopUp,money,no,MutationMetric,,Increase of undrawn in euros
+TopupRate,percentage,no,MutationMetric,,Increase of undrawn relative to the Nominal
+Accrual,money,no,MutationMetric,,Interest accrual during period
+AgioRedemption,money,no,MutationMetric,,Agio amortization during period
+FairValueChange,money,no,MutationMetric,,Fair value change during period
+CouponPayment,money,no,MutationAmount,,Interest payment amount during period
+Repayment,money,no,MutationAmount,,Scheduled principal repayment during period
+Prepayment,money,no,MutationAmount,,Unscheduled principal prepayment during period
+ImpairmentChange,money,no,MutationAmount,,Change in impairment provision during period
+AgioRedemption,money,no,MutationAmount,,Agio amortization during period
+Accrual,money,no,MutationAmount,,Interest accrual during period
+FairValueChange,money,no,MutationAmount,,Fair value change during period

@@ -3,6 +3,7 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
+from bank_projections.financials.balance_sheet_metrics import SMALL_NUMBER, Quantity
 from bank_projections.projections.projectionrule import ProjectionRule
 from bank_projections.projections.valuation_method import ValuationMethodRegistry
 from bank_projections.scenarios.scenario import ScenarioSnapShot
@@ -28,6 +29,17 @@ class Valuation(ProjectionRule):
         signs = BalanceSheetCategoryRegistry.book_value_sign()
         fair_value_change = new_fair_value_adjustment - pl.col("FairValueAdjustment")
 
+        for mutation in [mutation for mutation in scenario.mutations if mutation.metric == "fairvaluechange"]:
+            fair_value_change = (
+                pl.when(mutation.item.filter_expression)
+                .then(
+                    pl.lit(mutation.amount)
+                    / ((Quantity().get_expression * mutation.item.filter_expression).sum() + SMALL_NUMBER)
+                    * Quantity().get_expression
+                )
+                .otherwise(fair_value_change)
+            )
+
         bs.mutate(
             BalanceSheetItem(AccountingMethod="fairvaluethroughpnl")
             | BalanceSheetItem(AccountingMethod="fairvaluethroughoci"),
@@ -46,7 +58,6 @@ class Valuation(ProjectionRule):
                 .otherwise(0.0),
             },
             FairValueAdjustment=new_fair_value_adjustment,
-            DirtyPrice=pl.col("NewDirtyPrice"),
             FairValueChange=fair_value_change,
         )
 

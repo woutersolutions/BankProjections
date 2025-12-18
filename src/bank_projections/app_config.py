@@ -25,7 +25,14 @@ DEFAULT_DICTIONARY_PATH = Path(__file__).parent / "dictionary.csv"
 
 DataType = Literal["money", "percentage", "float", "string", "date", "enum"]
 KeywordType = Literal[
-    "StoredAmount", "StoredWeight", "MutationAmount", "DerivedMetric", "Label", "DateColumn", "Classification"
+    "StoredAmount",
+    "StoredWeight",
+    "MutationAmount",
+    "DerivedMetric",
+    "Label",
+    "DateColumn",
+    "Classification",
+    "MutationMetric",
 ]
 
 
@@ -114,6 +121,10 @@ class AppConfig(BaseModel):
     def balance_sheet_labels(self) -> list[str]:
         """Get balance sheet label columns from dictionary."""
         return [e.keyword for e in self.get_dictionary_entries("Label")]
+
+    def mutation_input_metrics(self):
+        """Get mutation input metrics from dictionary."""
+        return [e.keyword for e in self.get_dictionary_entries("MutationMetric")]
 
     def cashflow_labels(self) -> list[str]:
         return self.labels.cashflow

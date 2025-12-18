@@ -220,15 +220,7 @@ class BalanceSheetMutationInputItem:
                 case "item" | "counteritem" | "amount":
                     pass
                 case "metric":
-                    if strip_identifier(value) in [
-                        "repaymentrate",
-                        "repayment",
-                        "prepayment",
-                        "drawdown",
-                        "drawdownrate",
-                        "topup",
-                        "topuprate",
-                    ]:
+                    if is_in_identifiers(value, Config.mutation_input_metrics()):
                         self.metric = strip_identifier(value)
                     else:
                         self.metric = BalanceSheetMetrics.get(value)

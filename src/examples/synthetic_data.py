@@ -297,6 +297,7 @@ def generate_synthetic_positions(
             "CoverageRate",
             "CalculatedPrice",
             "CleanPrice",
+            "DirtyPrice",
         ]
     )
 

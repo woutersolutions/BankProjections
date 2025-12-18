@@ -110,6 +110,7 @@ class Projection:
 
                 for _rule_name, rule in self.rules.items():
                     bs = rule.apply(bs, increment, scenario_snapshot)
+                    bs.validate()
 
                     # Update progress
                     current_step += 1

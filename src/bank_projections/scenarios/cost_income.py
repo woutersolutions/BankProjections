@@ -164,6 +164,4 @@ class CostIncomeRule(ProjectionRule):
                         relative=True,
                     )
 
-        bs.validate()
-
         return bs

@@ -128,6 +128,31 @@ class DailyAccumulating(AccrualMethod):
         return True
 
 
+class ManualAccrualType(AccrualMethod):
+    def calculate_current_accrued_interest(
+        self,
+        nominal: pl.Expr,
+        coupon_rate: pl.Expr,
+        previous_coupon_date: pl.Expr,
+        next_coupon_date: pl.Expr,
+        current_date: datetime.date,
+    ) -> pl.Expr:
+        return pl.lit(None, dtype=pl.Float64)  # Is overridden by manual input
+
+    def calculate_accrual(
+        self,
+        nominal: pl.Expr,
+        coupon_rate: pl.Expr,
+        previous_coupon_date: pl.Expr,
+        next_coupon_date: pl.Expr,
+        current_date: datetime.date,
+    ) -> pl.Expr:
+        return pl.lit(None, dtype=pl.Float64)  # Is overridden by manual input
+
+    def is_accumulating(self) -> bool:
+        return False
+
+
 class AccrualMethodRegistry(BaseRegistry[AccrualMethod]):
     @classmethod
     def interest_accrual(
@@ -187,4 +212,5 @@ class AccrualMethodRegistry(BaseRegistry[AccrualMethod]):
 
 AccrualMethodRegistry.register("Recalculate Actual36525", RecalculateAccrual(Actual36525))
 AccrualMethodRegistry.register("Daily Accumulating", DailyAccumulating())
+AccrualMethodRegistry.register("Manual", ManualAccrualType())
 AccrualMethodRegistry.register("None", NoAccrual())

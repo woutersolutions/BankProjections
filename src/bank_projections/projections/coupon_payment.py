@@ -3,6 +3,7 @@ import polars as pl
 from bank_projections.financials.balance_sheet import BalanceSheet, MutationReason
 from bank_projections.financials.balance_sheet_category import BalanceSheetCategoryRegistry
 from bank_projections.financials.balance_sheet_item import BalanceSheetItem
+from bank_projections.financials.balance_sheet_metrics import SMALL_NUMBER
 from bank_projections.projections.accrual_method import AccrualMethodRegistry
 from bank_projections.projections.coupon_type import CouponTypeRegistry
 from bank_projections.projections.frequency import FrequencyRegistry
@@ -34,6 +35,17 @@ class CouponPayment(ProjectionRule):
         )
         new_coupon_date = pl.when(matured).then(None).otherwise(FrequencyRegistry.next_coupon_date(increment.to_date))
         coupon_payments = coupon_payment(pl.col("Nominal"), pl.col("InterestRate")) * number_of_payments
+        for mutation in [mutation for mutation in scenario.mutations if mutation.metric == "couponpayment"]:
+            coupon_payments = (
+                pl.when(mutation.item.filter_expression)
+                .then(
+                    pl.lit(mutation.amount)
+                    / ((pl.col("Nominal") * mutation.item.filter_expression).sum() + SMALL_NUMBER)
+                    * pl.col("Nominal")
+                )
+                .otherwise(coupon_payments)
+            )
+
         floating_rates = scenario.curves.floating_rate_expr()
         new_interest_rates = (
             pl.when(number_of_payments > 0)

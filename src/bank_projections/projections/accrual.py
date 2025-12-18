@@ -21,6 +21,17 @@ class Accrual(ProjectionRule):
             pl.col("NextCouponDate"),
             increment.to_date,
         )
+        for mutation in [mutation for mutation in scenario.mutations if mutation.metric == "accrual"]:
+            accrual = (
+                pl.when(mutation.item.filter_expression)
+                .then(
+                    pl.lit(mutation.amount)
+                    / (pl.col("Nominal") * mutation.item.filter_expression).sum()
+                    * pl.col("Nominal")
+                )
+                .otherwise(accrual)
+            )
+
         is_accumulating = AccrualMethodRegistry.is_accumulating()
         signs = BalanceSheetCategoryRegistry.book_value_sign()
 
