@@ -1,0 +1,66 @@
+keyword,data_type,required,keyword_type,registry,description
+ItemType,string,yes,Label,,Primary classification of balance sheet item
+SubItemType,string,yes,Label,,Secondary classification of balance sheet item
+Currency,string,yes,Label,,Currency code (ISO 4217)
+ReferenceRate,string,no,Label,,Reference rate identifier for floating rate items
+ValuationCurve,string,no,Label,,Discount curve identifier for valuation
+OriginationDate,date,no,DateColumn,,Date when the instrument was originated
+MaturityDate,date,no,DateColumn,,Contractual maturity date
+PreviousCouponDate,date,no,DateColumn,,Date of previous coupon payment
+NextCouponDate,date,no,DateColumn,,Date of next coupon payment
+BalanceSheetCategory,enum,yes,Classification,financials.balance_sheet_category.BalanceSheetCategoryRegistry,Asset/Liability/Equity classification
+AccountingMethod,enum,yes,Classification,financials.accounting_method.AccountingMethodRegistry,Accounting measurement basis (AC/FVTPL/FVOCI)
+AccrualMethod,enum,no,Classification,projections.accrual_method.AccrualMethodRegistry,Interest accrual calculation method
+ValuationMethod,enum,no,Classification,projections.valuation_method.ValuationMethodRegistry,Fair value calculation method
+CouponFrequency,enum,no,Classification,projections.frequency.FrequencyRegistry,Payment frequency (Monthly/Quarterly/Annual/etc.)
+RedemptionType,enum,no,Classification,projections.redemption_type.RedemptionTypeRegistry,Principal redemption pattern (Bullet/Linear/Annuity)
+CouponType,enum,no,Classification,projections.coupon_type.CouponTypeRegistry,Interest rate type (Fixed/Floating)
+IFRS9Stage,enum,no,Classification,financials.stage.IFRS9StageRegistry,IFRS 9 impairment stage (1/2/3/N.a./Poci)
+HQLAClass,enum,no,Classification,financials.hqla_class.HQLARegistry,HQLA classification (Level1/Level2A/Level2B/None)
+Book,enum,no,Classification,projections.book.BookRegistry,In actuals or created in projection (front/back)
+Nominal,money,yes,StoredAmount,,Principal amount of the balance sheet item
+Impairment,money,yes,StoredAmount,,Credit impairment provision (negative for assets)
+AccruedInterest,money,yes,StoredAmount,,Accrued but unpaid interest
+FairValueAdjustment,money,no,StoredAmount,,Fair value adjustment for FVTPL/FVOCI items
+Undrawn,money,no,StoredAmount,,Undrawn commitment amount for credit facilities
+Agio,money,yes,StoredAmount,,Premium or discount on initial recognition
+Notional,money,no,StoredAmount,,Notional amount for derivatives
+AccruedInterestError,money,no,StoredAmount,,Difference between modeled and actual accrued interest
+DirtyPrice,percentage,no,StoredWeight,,Price including accrued interest as decimal (1.0 = par)
+OtherOffBalanceWeight,percentage,no,StoredWeight,,Weight for other off-balance sheet exposures
+ValuationError,percentage,no,StoredWeight,,Difference between modeled and market value as weight
+FloatingRate,percentage,no,StoredWeight,,Reference rate component of interest rate
+Spread,percentage,no,StoredWeight,,Spread component over reference rate
+InterestRate,percentage,no,StoredWeight,,Total contractual interest rate
+PrepaymentRate,percentage,no,StoredWeight,,Annual prepayment rate assumption
+CCF,percentage,no,StoredWeight,,Credit conversion factor for undrawn commitments
+TREAWeight,percentage,no,StoredWeight,,Risk weight for total risk exposure amount
+EncumberedWeight,percentage,no,StoredWeight,,Portion of asset that is encumbered
+StableFundingWeight,percentage,no,StoredWeight,,Available/Required stable funding factor (NSFR)
+StressedOutflowWeight,percentage,no,StoredWeight,,Stressed outflow rate for LCR calculation
+CouponPayment,money,no,MutationAmount,,Interest payment amount during period
+Repayment,money,no,MutationAmount,,Scheduled principal repayment during period
+Prepayment,money,no,MutationAmount,,Unscheduled principal prepayment during period
+ImpairmentChange,money,no,MutationAmount,,Change in impairment provision during period
+AgioRedemption,money,no,MutationAmount,,Agio amortization during period
+Accrual,money,no,MutationAmount,,Interest accrual during period
+FairValueChange,money,no,MutationAmount,,Fair value change during period
+MarketValue,money,no,DerivedMetric,,Market value calculated as DirtyPrice * (Nominal + Notional)
+BookValue,money,no,DerivedMetric,,Accounting book value (Nominal + Agio + AccruedInterest + Impairment + FairValueAdjustment)
+BookValueSigned,money,no,DerivedMetric,,Book value with sign based on asset/liability classification
+OnBalanceExposure,money,no,DerivedMetric,,On-balance exposure for regulatory purposes
+OffBalanceExposure,money,no,DerivedMetric,,Off-balance exposure (CCF * Undrawn + OtherOffBalanceWeight * Nominal)
+BaselExposure,money,no,DerivedMetric,,Total Basel exposure (OnBalance + OffBalance)
+LeverageExposure,money,no,DerivedMetric,,Leverage ratio exposure (OnBalance + Impairment + OffBalance)
+HQLA,money,no,DerivedMetric,,High-quality liquid assets contribution
+EncumberedHQLA,money,no,DerivedMetric,,Encumbered portion of HQLA
+UnencumberedHQLA,money,no,DerivedMetric,,Unencumbered portion of HQLA
+OtherOffBalance,money,no,DerivedMetric,,Other off-balance exposure (OtherOffBalanceWeight * Nominal)
+CoverageRate,percentage,no,DerivedMetric,,Impairment coverage rate (Impairment / Nominal)
+AccruedInterestWeight,percentage,no,DerivedMetric,,Accrued interest as weight (AccruedInterest / Nominal)
+AgioWeight,percentage,no,DerivedMetric,,Agio as weight (Agio / Nominal)
+UndrawnPortion,percentage,no,DerivedMetric,,Undrawn portion (Undrawn / Nominal)
+TREA,money,no,DerivedMetric,,Total risk exposure amount (TREAWeight * BaselExposure)
+Encumbered,money,no,DerivedMetric,,Encumbered amount (EncumberedWeight * Nominal)
+StableFunding,money,no,DerivedMetric,,Available/Required stable funding amount
+StressedOutflow,money,no,DerivedMetric,,Stressed outflow amount for LCR
