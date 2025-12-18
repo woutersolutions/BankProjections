@@ -253,29 +253,35 @@ class BalanceSheet(Positions):
             .pipe(Config.cast_columns)
         )
 
-        # process the metrics
+        # Assert no metrics are processed twice
+        mutation_columns = [BalanceSheetMetrics.get(metric).mutation_column for metric in metrics.keys()]
+        duplicate_mutations = set(
+            [
+                metric
+                for metric in metrics.keys()
+                if mutation_columns.count(BalanceSheetMetrics.get(metric).mutation_column) > 1
+            ]
+        )
+        if duplicate_mutations:
+            raise ValueError(f"Cannot process the same underlying metric twice: {duplicate_mutations}")
+
+        # Assume zero undrawn if not specified
+        if "undrawn" not in metrics and "undrawnportion" not in metrics:
+            metrics["undrawnportion"] = self.get_amount(based_on_item, "UndrawnPortion")
+
+        # Assume the same coverage rate if not specified
+        if "impairment" not in metrics and "coverageRate" not in metrics:
+            metrics["coveragerate"] = self.get_amount(based_on_item, "CoverageRate")
+
+        # Assume zero agio if not specified
+        if "agio" not in metrics and "agioweight" not in metrics:
+            metrics["agioweight"] = 0.0
+
+        # process the size
         if "nominal" in metrics:
             new_data = self._process_metric(new_data, metrics, "nominal")
         else:
             raise ValueError("Must specify nominal when adding new item to balance sheet")
-
-        # Assume zero undrawn if not specified
-        if "undrawn" in metrics and "undrawnportion" in metrics:
-            raise ValueError("Cannot specify both undrawn and undrawn portion in ProductionRule")
-        elif "undrawn" not in metrics and "undrawnportion" not in metrics:
-            metrics["undrawn"] = 0.0
-
-        # Assume the same coverage rate if not specified
-        if "impairment" in metrics and "coveragerate" in metrics:
-            raise ValueError("Cannot specify both impairment and coverage rate in ProductionRule")
-        elif "impairment" not in metrics and "coverageRate" not in metrics:
-            metrics["coveragerate"] = self.get_amount(based_on_item, "CoverageRate")
-
-        # Assume zero agio if not specified
-        if "agio" in metrics and "agioWeight" in metrics:
-            raise ValueError("Cannot specify both agio and agio weight in ProductionRule")
-        elif "agio" not in metrics and "agioWeight" not in metrics:
-            metrics["Agio"] = 0.0
 
         new_data = new_data.with_columns(
             [

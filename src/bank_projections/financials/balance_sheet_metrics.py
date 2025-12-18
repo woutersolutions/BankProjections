@@ -198,6 +198,22 @@ class BaselExposure(DerivedMetric):
         return self.get_expression.sum()
 
 
+class Limit(DerivedMetric):
+    @property
+    def get_expression(self) -> pl.Expr:
+        return pl.col("Nominal") + pl.col("Undrawn")
+
+    @property
+    def aggregation_expression(self) -> pl.Expr:
+        return self.get_expression.sum()
+
+    @property
+    def mutation_column(self) -> str:
+        return "Undrawn"
+
+    def mutation_expression(self, amount: float, filter_expression: pl.Expr) -> pl.Expr:
+        return pl.lit(amount)
+
 class LeverageExposure(DerivedMetric):
     @property
     def get_expression(self) -> pl.Expr:

@@ -11,6 +11,7 @@ from bank_projections.financials.balance_sheet_metrics import (
     DerivedWeight,
     EncumberedHQLA,
     LeverageExposure,
+    Limit,
     MarketValue,
     MutationAmount,
     OffBalanceExposure,
@@ -72,6 +73,7 @@ BalanceSheetMetrics.register("OnBalanceExposure", OnBalanceExposure())
 BalanceSheetMetrics.register("OffBalanceExposure", OffBalanceExposure())
 BalanceSheetMetrics.register("BaselExposure", BaselExposure())
 BalanceSheetMetrics.register("LeverageExposure", LeverageExposure())
+BalanceSheetMetrics.register("Limit", Limit())
 
 BalanceSheetMetrics.register("FloatingRate", StoredWeight("FloatingRate"))
 BalanceSheetMetrics.register("Spread", StoredWeight("Spread"))
